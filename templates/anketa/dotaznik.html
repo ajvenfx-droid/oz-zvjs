@@ -39,6 +39,12 @@
             </label>
           {% endfor %}
         {% endif %}
+        {% if not o.anonymna %}
+          <label class="moznost anonymne-volba">
+            <input type="checkbox" name="anonymne_{{ o.id }}" value="1" {% if o.id in anonymne %}checked{% endif %} {% if zamknute %}disabled{% endif %}>
+            Odpovedať anonymne (vedenie uvidí len súhrn, nie moju odpoveď)
+          </label>
+        {% endif %}
       </fieldset>
     {% endfor %}
 

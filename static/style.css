@@ -477,3 +477,4 @@ summary.rozbalit strong { font-weight: 600; }
 .tabulka--evidencia th { white-space: normal; min-width: 70px; max-width: 120px; line-height: 1.25; vertical-align: bottom; font-size: 0.8rem; }
 .tabulka--evidencia th, .tabulka--evidencia td { padding: 6px 6px; }
 .ok { color: #1d6b2a; font-weight: 600; }
+.anonymne-volba { margin-top: 8px; font-size: 0.9rem; color: #555; }

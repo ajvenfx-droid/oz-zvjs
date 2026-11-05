@@ -116,6 +116,9 @@ def init_db(db):
     if "potvrdene" not in [r["name"] for r in db.execute("PRAGMA table_info(hlas)")]:
         # 0 = rozpracovaný dotazník (člen ho ešte môže meniť), 1 = potvrdený a uzavretý.
         db.execute("ALTER TABLE hlas ADD COLUMN potvrdene INTEGER NOT NULL DEFAULT 1")
+    if "anonymna" not in [r["name"] for r in db.execute("PRAGMA table_info(odpoved)")]:
+        # Člen si môže zvoliť, že jeho odpoveď na otázku bude anonymná.
+        db.execute("ALTER TABLE odpoved ADD COLUMN anonymna INTEGER NOT NULL DEFAULT 0")
     if nastavenie(db, "prva_anketa_vlozena") is None:
         if db.execute("SELECT COUNT(*) FROM anketa").fetchone()[0] == 0:
             uloz_anketu(db, None, PRVA_ANKETA["nazov"], PREDVOLENY_UVOD, "", PRVA_ANKETA["otazky"])
@@ -337,11 +340,13 @@ def dotazniky_clena(db, cislo):
 
 
 def moje_odpovede(db, hlas_id):
-    """{otazka_id: [id možnosti alebo text]}"""
-    odp = {}
-    for r in db.execute("SELECT otazka_id, moznost_id, text FROM odpoved WHERE hlas_id = ?", (hlas_id,)):
+    """({otazka_id: [id možnosti alebo text]}, {otazka_id, na ktoré člen odpovedal anonymne})"""
+    odp, anonymne = {}, set()
+    for r in db.execute("SELECT otazka_id, moznost_id, text, anonymna FROM odpoved WHERE hlas_id = ?", (hlas_id,)):
         odp.setdefault(r["otazka_id"], []).append(r["moznost_id"] if r["moznost_id"] is not None else r["text"])
-    return odp
+        if r["anonymna"]:
+            anonymne.add(r["otazka_id"])
+    return odp, anonymne
 
 
 def text_odpovedi(anketa, otazky, odpovede):
@@ -369,7 +374,7 @@ def dotaznik(anketa_id):
                                text=f"Tento dotazník je len pre členov ZO {mesto_zo(db, anketa['zo_slug'])}.")
     otazky = nacitaj_otazky(db, anketa_id)
     hlas = db.execute("SELECT * FROM hlas WHERE anketa_id = ? AND cislo = ?", (anketa_id, cislo)).fetchone()
-    odpovede = moje_odpovede(db, hlas["id"]) if hlas else {}
+    odpovede, anonymne = moje_odpovede(db, hlas["id"]) if hlas else ({}, set())
     uzavrety = bool(hlas and hlas["potvrdene"])
     ukoncena = je_ukoncena(anketa)
     chyby = []
@@ -397,6 +402,7 @@ def dotaznik(anketa_id):
             flash("Dotazník je už uzavretý, odpovede sa nedajú meniť.")
             return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
         nove = []
+        anonymne = {o["id"] for o in otazky if request.form.get(f"anonymne_{o['id']}") and not o["anonymna"]}
         for o in otazky:
             pole = f"otazka_{o['id']}"
             if o["typ"] == TYP_TEXT:
@@ -424,15 +430,15 @@ def dotaznik(anketa_id):
                 hlas_id = hlas["id"]
                 db.execute("UPDATE hlas SET cas = ?, potvrdene = ? WHERE id = ?", (cas, potvrdit, hlas_id))
                 db.execute("DELETE FROM odpoved WHERE hlas_id = ?", (hlas_id,))
-            db.executemany("INSERT INTO odpoved (hlas_id, otazka_id, moznost_id, text) VALUES (?, ?, ?, ?)",
-                           [(hlas_id, *o) for o in nove])
+            db.executemany("INSERT INTO odpoved (hlas_id, otazka_id, moznost_id, text, anonymna) VALUES (?, ?, ?, ?, ?)",
+                           [(hlas_id, *o, int(o[0] in anonymne)) for o in nove])
             db.commit()
             flash("Dotazník bol odoslaný a uzavretý. Ďakujeme." if potvrdit
                   else "Odpovede sú uložené. Dotazník môžete ešte meniť, nakoniec ho potvrďte a odošlite.")
             return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
 
     return render_template("anketa/dotaznik.html", anketa=anketa, otazky=otazky, odpovede=odpovede,
-                           uzavrety=uzavrety, ukoncena=ukoncena, chyby=chyby, hlas=hlas,
+                           uzavrety=uzavrety, ukoncena=ukoncena, chyby=chyby, hlas=hlas, anonymne=anonymne,
                            zo_mesto=mesto_zo(db, anketa["zo_slug"]))
 
 
@@ -649,16 +655,19 @@ def vysledky_ankety(db, anketa_id):
         "LEFT JOIN clen c ON c.cislo = h.cislo WHERE h.anketa_id = ? AND h.potvrdene = 1 ORDER BY h.cas",
         (anketa_id,),
     ):
-        odpovede = {}
+        odpovede, skryte = {}, set()
         for r in db.execute(
-            "SELECT o.otazka_id, COALESCE(m.text, o.text) AS text FROM odpoved o "
+            "SELECT o.otazka_id, COALESCE(m.text, o.text) AS text, o.anonymna FROM odpoved o "
             "LEFT JOIN moznost m ON m.id = o.moznost_id WHERE o.hlas_id = ? "
             "ORDER BY m.poradie",
             (h["id"],),
         ):
             odpovede.setdefault(r["otazka_id"], []).append(r["text"])
+            if r["anonymna"]:
+                skryte.add(r["otazka_id"])
         anonymne = {o["id"] for o in otazky if o["anonymna"]}
-        hlasujuci.append({**dict(h), "odpovede": {k: ", ".join(v) for k, v in odpovede.items() if k not in anonymne}})
+        hlasujuci.append({**dict(h), "odpovede": {k: ("anonymne" if k in skryte else ", ".join(v))
+                                                  for k, v in odpovede.items() if k not in anonymne}})
     return otazky, hlasov, hlasujuci
 
 
