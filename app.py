@@ -169,7 +169,6 @@ def zostav_menu():
     return menu
 
 
-@app.context_processor
 def verzia_stranky():
     try:
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERZIA"), encoding="utf-8") as f:
@@ -181,6 +180,7 @@ def verzia_stranky():
 VERZIA_STRANKY = verzia_stranky()
 
 
+@app.context_processor
 def inject_globals():
     return {
         "verzia_stranky": VERZIA_STRANKY,
