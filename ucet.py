@@ -93,7 +93,9 @@ def over_heslo(db, clen, ucet, heslo):
         return check_password_hash(ucet["heslo_hash"], heslo)
     if not clen["preukaz_hash"] or not heslo.strip():
         return False
-    return hmac.compare_digest(clen["preukaz_hash"], hash_preukazu(db, heslo))
+    h = re.sub(r"\s+", "", heslo)
+    varianty = {h, h.lstrip("0"), "0" + h}  # Excel často zje úvodnú nulu
+    return any(hmac.compare_digest(clen["preukaz_hash"], hash_preukazu(db, v)) for v in varianty if v)
 
 
 def zaznamenaj_zlyhanie(db, cislo, ucet):
@@ -158,7 +160,7 @@ def prihlasenie():
         return redirect(url_for("ucet.moje_konto"))
     if request.method == "POST":
         db = get_db()
-        cislo = request.form.get("cislo", "").strip()
+        cislo = re.sub(r"\s+", "", request.form.get("cislo", ""))
         heslo = request.form.get("heslo", "")
         clen = db.execute("SELECT * FROM clen WHERE cislo = ?", (cislo,)).fetchone()
         ucet = db.execute("SELECT * FROM ucet WHERE cislo = ?", (cislo,)).fetchone()

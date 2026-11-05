@@ -77,6 +77,41 @@ def init_db(db):
         )
         """
     )
+    if "z_evidencie" not in [r["name"] for r in db.execute("PRAGMA table_info(clen)")]:
+        db.execute("ALTER TABLE clen ADD COLUMN z_evidencie INTEGER NOT NULL DEFAULT 0")
+    db.commit()
+    synchronizuj_prihlasovanie(db)
+
+
+def synchronizuj_prihlasovanie(db):
+    """Členovia z evidencie sa môžu prihlásiť: odborárske číslo = Identifikačné číslo,
+    heslo = služobné / zamestnanecké číslo. Ručne nahratý zoznam členov má prednosť."""
+    from anketa import hash_preukazu
+
+    z_evidencie = {}
+    for (u,) in db.execute("SELECT udaje FROM evidencia_clen"):
+        u = json.loads(u)
+        cislo = re.sub(r"\s+", "", u.get("Identifikačné číslo", ""))
+        if not cislo:
+            continue
+        meno = " ".join(x for x in (u.get("Meno poisteného", ""), u.get("Priezvisko / Názov poisteného", "")) if x)
+        sluzobne = u.get("Služobné/ zam. číslo", "")
+        z_evidencie[cislo] = (meno, hash_preukazu(db, sluzobne) if sluzobne.strip() else "")
+    existujuce = {r["cislo"]: r for r in db.execute("SELECT cislo, meno, preukaz_hash, z_evidencie FROM clen")}
+    for cislo, (meno, preukaz) in z_evidencie.items():
+        r = existujuce.get(cislo)
+        if r is None:
+            db.execute("INSERT INTO clen (cislo, meno, preukaz_hash, z_evidencie) VALUES (?, ?, ?, 1)",
+                       (cislo, meno, preukaz))
+        elif r["z_evidencie"]:
+            db.execute("UPDATE clen SET meno = ?, preukaz_hash = ? WHERE cislo = ?", (meno, preukaz, cislo))
+        else:
+            db.execute("UPDATE clen SET meno = CASE WHEN meno = '' THEN ? ELSE meno END, "
+                       "preukaz_hash = CASE WHEN preukaz_hash = '' THEN ? ELSE preukaz_hash END WHERE cislo = ?",
+                       (meno, preukaz, cislo))
+    for cislo, r in existujuce.items():
+        if r["z_evidencie"] and cislo not in z_evidencie:
+            db.execute("DELETE FROM clen WHERE cislo = ?", (cislo,))
     db.commit()
 
 
@@ -301,6 +336,7 @@ def prehlad():
             )
             spolu += len(clenovia)
         db.commit()
+        synchronizuj_prihlasovanie(db)
         flash(f"Nahraté: {len(obsah)} ZO, spolu {spolu} členov "
               f"({'údaje spojené s doterajšími' if spojit else 'zoznamy týchto ZO nahradené'}).")
         return redirect(url_for("evidencia.prehlad"))
@@ -378,6 +414,7 @@ def uprav_clena(slug, clen_id=None):
         if akcia == "zmazat" and clen_id is not None:
             db.execute("DELETE FROM evidencia_clen WHERE id = ?", (clen_id,))
             db.commit()
+            synchronizuj_prihlasovanie(db)
             flash("Člen bol vymazaný z evidencie.")
             return redirect(url_for("evidencia.zo", slug=slug))
         udaje = {st: request.form.get(f"st_{i}", "").strip() for i, st in enumerate(stlpce)}
@@ -392,6 +429,7 @@ def uprav_clena(slug, clen_id=None):
             db.execute("UPDATE evidencia_clen SET kluc = ?, farba = ?, udaje = ? WHERE id = ?",
                        (kluc_clena(udaje), farba, json.dumps(udaje, ensure_ascii=False), clen_id))
         db.commit()
+        synchronizuj_prihlasovanie(db)
         flash("Údaje člena boli uložené.")
         return redirect(url_for("evidencia.zo", slug=slug))
     return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, clen=clen, clen_id=clen_id, farby=FARBY)
@@ -405,5 +443,6 @@ def zmazat(slug):
     db.execute("DELETE FROM evidencia_clen WHERE zo_slug = ?", (slug,))
     db.execute("DELETE FROM evidencia_stlpce WHERE zo_slug = ?", (slug,))
     db.commit()
+    synchronizuj_prihlasovanie(db)
     flash("Evidencia členov tejto ZO bola zmazaná.")
     return redirect(url_for("evidencia.prehlad"))

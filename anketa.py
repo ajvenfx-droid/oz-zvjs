@@ -404,6 +404,8 @@ def nahraj_clenov():
         [(c, m, hash_preukazu(db, p) if p else "") for c, (m, p) in clenovia.items()],
     )
     db.commit()
+    import evidencia
+    evidencia.synchronizuj_prihlasovanie(db)
     bez_preukazu = sum(1 for m, p in clenovia.values() if not p)
     sprava = f"Zoznam členov bol nahradený. Počet platných čísel: {len(clenovia)}."
     if bez_preukazu:
