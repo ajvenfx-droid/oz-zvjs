@@ -4,7 +4,7 @@
   <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu</a>
   <h1 class="nadpis">Kontá členov</h1>
   <p>Členov v zozname: <strong>{{ konta|length }}</strong> · s vlastným heslom: <strong>{{ vlastnych }}</strong> · so zadaným e-mailom: <strong>{{ s_emailom }}</strong>
-    {% if bez_preukazu %}· <span class="varovanie">bez čísla preukazu (nemôžu sa prihlásiť): {{ bez_preukazu }}</span>{% endif %}</p>
+    {% if bez_preukazu %}· <span class="varovanie">bez e-mailu alebo služobného čísla (zatiaľ sa nemôžu prihlásiť): {{ bez_preukazu }}</span>{% endif %}</p>
   <p class="info">Prihlasovacie meno je e-mail člena z evidencie členov, prvotné heslo je jeho služobné / zamestnanecké číslo
     z evidencie, kým si člen nenastaví vlastné heslo. Členovia sa sem dostanú nahratím zoznamov v Evidencii členov.</p>
 
@@ -105,7 +105,7 @@
             {% for k in konta %}
               <tr>
                 <td>{{ k.cislo }}</td><td>{{ k.meno }}</td>
-                <td>{% if k.vlastne_heslo %}Vlastné heslo{% elif k.ma_preukaz %}Číslo preukazu{% else %}<span class="varovanie">Chýba číslo preukazu</span>{% endif %}</td>
+                <td>{% if k.vlastne_heslo %}Vlastné heslo{% elif not k.email %}<span class="varovanie">Chýba e-mail</span>{% elif k.ma_preukaz %}Služobné číslo{% else %}<span class="varovanie">Chýba služobné číslo</span>{% endif %}</td>
                 <td>{{ k.email }}</td>
               </tr>
             {% endfor %}

@@ -443,15 +443,16 @@ def nove_heslo(token):
 def spravca_konta():
     db = get_db()
     konta = db.execute(
-        "SELECT c.cislo, c.meno, c.preukaz_hash != '' AS ma_preukaz, "
-        "COALESCE(u.heslo_hash, '') != '' AS vlastne_heslo, COALESCE(u.email, '') AS email "
+        "SELECT c.cislo, c.meno, (c.preukaz_hash != '' OR c.sluzobne_hash != '') AS ma_preukaz, "
+        "COALESCE(u.heslo_hash, '') != '' AS vlastne_heslo, "
+        "CASE WHEN COALESCE(u.email, '') != '' THEN u.email ELSE c.email END AS email "
         "FROM clen c LEFT JOIN ucet u ON u.cislo = c.cislo ORDER BY c.cislo"
     ).fetchall()
     return render_template(
         "ucet/spravca_konta.html",
         konta=konta,
         vlastnych=sum(1 for k in konta if k["vlastne_heslo"]),
-        bez_preukazu=sum(1 for k in konta if not k["ma_preukaz"] and not k["vlastne_heslo"]),
+        bez_preukazu=sum(1 for k in konta if not k["email"] or (not k["ma_preukaz"] and not k["vlastne_heslo"])),
         s_emailom=sum(1 for k in konta if k["email"]),
         smtp_email=nastavenie(db, "smtp_email") or "",
         email_nastaveny=posta.je_nastavena(db),
