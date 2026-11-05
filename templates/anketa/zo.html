@@ -6,7 +6,7 @@
     <h1 class="nadpis">Dotazníky ZO {{ mesto }}</h1>
     <a class="tlacidlo" href="{{ url_for('anketa.uprav_anketu') }}">+ Nový dotazník</a>
   </div>
-  <p class="info">Dotazník uvidia členovia ZO {{ mesto }} po prihlásení v Moje konto.</p>
+  <p class="info">Nový dotazník je najprv koncept. Členovia ZO {{ mesto }} ho uvidia v Moje konto až po kliknutí na „Zverejniť“.</p>
   {% if ankety %}
     <table class="tabulka">
       <thead><tr><th>Názov</th><th>Stav</th><th>Odoslaných</th><th></th></tr></thead>
@@ -14,11 +14,19 @@
         {% for a in ankety %}
           <tr>
             <td><strong>{{ a.nazov }}</strong></td>
-            <td>{% if a.ukoncena %}Ukončený{% elif a.koniec %}Do {{ a.koniec|koniec }}{% else %}Otvorený{% endif %}</td>
+            <td>{% if not a.zverejneny %}Koncept – členovia ho nevidia{% elif a.ukoncena %}Ukončený{% elif a.koniec %}Do {{ a.koniec|koniec }}{% else %}Otvorený{% endif %}</td>
             <td>{{ a.hlasov }}</td>
             <td class="akcie">
               <a href="{{ url_for('anketa.vysledky', anketa_id=a.id) }}">Výsledky</a>
               <a href="{{ url_for('anketa.uprav_anketu', anketa_id=a.id) }}">Upraviť</a>
+              {% if a.zverejneny %}
+                {% if not a.hlasov %}<form method="post" action="{{ url_for('anketa.zverejni_anketu', anketa_id=a.id) }}"><input type="hidden" name="akcia" value="stiahnut"><button type="submit" class="odkaz-tlacidlo">Stiahnuť</button></form>{% endif %}
+              {% else %}
+                <form method="post" action="{{ url_for('anketa.zverejni_anketu', anketa_id=a.id) }}"
+                      onsubmit="return confirm('Zverejniť dotazník „{{ a.nazov }}“? Členovia ho uvidia v Moje konto.');">
+                  <input type="hidden" name="akcia" value="zverejnit"><button type="submit" class="odkaz-tlacidlo"><strong>Zverejniť</strong></button>
+                </form>
+              {% endif %}
               <form method="post" action="{{ url_for('anketa.zmaz_anketu', anketa_id=a.id) }}"
                     onsubmit="return confirm('Naozaj zmazať dotazník „{{ a.nazov }}“ aj so všetkými odpoveďami?');">
                 <button type="submit" class="odkaz-tlacidlo">Zmazať</button>

@@ -122,6 +122,9 @@ def init_db(db):
     if "vpisovat" not in [r["name"] for r in db.execute("PRAGMA table_info(moznost)")]:
         # Možnosť, pri ktorej člen dopíše vlastný text (napr. „Iné: …“).
         db.execute("ALTER TABLE moznost ADD COLUMN vpisovat INTEGER NOT NULL DEFAULT 0")
+    if "zverejneny" not in [r["name"] for r in db.execute("PRAGMA table_info(anketa)")]:
+        # 0 = koncept, ktorý členovia nevidia; 1 = zverejnený. Doterajšie ankety ostávajú zverejnené.
+        db.execute("ALTER TABLE anketa ADD COLUMN zverejneny INTEGER NOT NULL DEFAULT 1")
     if nastavenie(db, "prva_anketa_vlozena") is None:
         if db.execute("SELECT COUNT(*) FROM anketa").fetchone()[0] == 0:
             uloz_anketu(db, None, PRVA_ANKETA["nazov"], PREDVOLENY_UVOD, "", PRVA_ANKETA["otazky"])
@@ -232,7 +235,7 @@ def rozober_otazky(text):
 def uloz_anketu(db, anketa_id, nazov, uvod, koniec, otazky_text, menit_otazky=True):
     if anketa_id is None:
         cur = db.execute(
-            "INSERT INTO anketa (slug, nazov, uvod, koniec, otazky_text) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO anketa (slug, nazov, uvod, koniec, otazky_text, zverejneny) VALUES (?, ?, ?, ?, ?, 0)",
             (vytvor_slug(db, nazov), nazov, uvod, koniec, otazky_text),
         )
         anketa_id = cur.lastrowid
@@ -331,7 +334,7 @@ def pocet_hlasov(db, anketa_id):
 
 
 def aktivne_ankety(db):
-    return [a for a in db.execute("SELECT * FROM anketa ORDER BY id DESC") if not je_ukoncena(a)]
+    return [a for a in db.execute("SELECT * FROM anketa ORDER BY id DESC") if a["zverejneny"] and not je_ukoncena(a)]
 
 
 def je_clenom_zo(db, cislo, zo_slug):
@@ -392,8 +395,8 @@ def dotazniky_clena(db, cislo):
     for a in db.execute("SELECT * FROM anketa ORDER BY id DESC"):
         if a["zo_slug"] and a["zo_slug"] not in moje_zo:
             continue
-        if not db.execute("SELECT 1 FROM otazka WHERE anketa_id = ?", (a["id"],)).fetchone():
-            continue  # rozpracovaný dotazník bez otázok členom neukazujeme
+        if not a["zverejneny"]:
+            continue  # koncept členovia nevidia, kým ho predseda nezverejní
         h = db.execute("SELECT potvrdene FROM hlas WHERE anketa_id = ? AND cislo = ?", (a["id"], cislo)).fetchone()
         stav = "nevyplneny" if h is None else ("odoslany" if h["potvrdene"] else "rozpracovany")
         if je_ukoncena(a) and stav != "odoslany":
@@ -440,9 +443,9 @@ def dotaznik(anketa_id):
         return render_template("anketa/sprava.html", anketa=anketa, nadpis="Dotazník nie je pre vás",
                                text=f"Tento dotazník je len pre členov ZO {mesto_zo(db, anketa['zo_slug'])}.")
     otazky = nacitaj_otazky(db, anketa_id)
-    if not otazky:
+    if not anketa["zverejneny"] or not otazky:
         return render_template("anketa/sprava.html", anketa=anketa, nadpis="Dotazník sa pripravuje",
-                               text="Tento dotazník zatiaľ nemá otázky.")
+                               text="Tento dotazník ešte nebol zverejnený.")
     hlas = db.execute("SELECT * FROM hlas WHERE anketa_id = ? AND cislo = ?", (anketa_id, cislo)).fetchone()
     odpovede, anonymne, vpisy = moje_odpovede(db, hlas["id"]) if hlas else ({}, set(), {})
     uzavrety = bool(hlas and hlas["potvrdene"])
@@ -690,6 +693,25 @@ def uprav_anketu(anketa_id=None):
 def _organizacie(db):
     from evidencia import abecedne
     return sorted(db.execute("SELECT slug, mesto FROM zakladna_organizacia").fetchall(), key=lambda z: abecedne(z["mesto"]))
+
+
+@bp.route("/spravca/<int:anketa_id>/zverejnit", methods=["POST"])
+def zverejni_anketu(anketa_id):
+    db = get_db()
+    anketa = _anketa_na_spravu(db, anketa_id)
+    if request.form.get("akcia") == "stiahnut":
+        if db.execute("SELECT 1 FROM hlas WHERE anketa_id = ?", (anketa_id,)).fetchone():
+            flash("Dotazník už niekto začal vypĺňať, preto ho nie je možné stiahnuť.")
+        else:
+            db.execute("UPDATE anketa SET zverejneny = 0 WHERE id = ?", (anketa_id,))
+            flash("Dotazník bol stiahnutý, členovia ho už nevidia.")
+    elif not db.execute("SELECT 1 FROM otazka WHERE anketa_id = ?", (anketa_id,)).fetchone():
+        flash("Dotazník nemá žiadnu otázku, preto ho nie je možné zverejniť.")
+    else:
+        db.execute("UPDATE anketa SET zverejneny = 1 WHERE id = ?", (anketa_id,))
+        flash(f"Dotazník „{anketa['nazov']}“ je zverejnený, členovia ho vidia v Moje konto.")
+    db.commit()
+    return redirect(spat_na_zoznam(anketa["zo_slug"]))
 
 
 @bp.route("/spravca/<int:anketa_id>/zmazat", methods=["POST"])

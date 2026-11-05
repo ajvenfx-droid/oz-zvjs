@@ -29,12 +29,20 @@
                 <span class="odkaz-ankety">{{ url_for('anketa.hlasovanie', slug=a.slug, _external=True) }}</span>
               </td>
               <td>
-                {% if a.ukoncena %}Ukončená{% elif a.koniec %}Do {{ a.koniec|koniec }}{% else %}Otvorená, bez dátumu ukončenia{% endif %}
+                {% if not a.zverejneny %}Koncept – členovia ho nevidia{% elif a.ukoncena %}Ukončená{% elif a.koniec %}Do {{ a.koniec|koniec }}{% else %}Otvorená, bez dátumu ukončenia{% endif %}
               </td>
               <td>{{ a.hlasov }}</td>
               <td class="akcie">
                 <a href="{{ url_for('anketa.vysledky', anketa_id=a.id) }}">Výsledky</a>
                 <a href="{{ url_for('anketa.uprav_anketu', anketa_id=a.id) }}">Upraviť</a>
+                {% if a.zverejneny %}
+                  {% if not a.hlasov %}<form method="post" action="{{ url_for('anketa.zverejni_anketu', anketa_id=a.id) }}"><input type="hidden" name="akcia" value="stiahnut"><button type="submit" class="odkaz-tlacidlo">Stiahnuť</button></form>{% endif %}
+                {% else %}
+                  <form method="post" action="{{ url_for('anketa.zverejni_anketu', anketa_id=a.id) }}"
+                        onsubmit="return confirm('Zverejniť dotazník „{{ a.nazov }}“? Členovia ho uvidia v Moje konto.');">
+                    <input type="hidden" name="akcia" value="zverejnit"><button type="submit" class="odkaz-tlacidlo"><strong>Zverejniť</strong></button>
+                  </form>
+                {% endif %}
                 <form method="post" action="{{ url_for('anketa.zmaz_anketu', anketa_id=a.id) }}"
                       onsubmit="return confirm('Naozaj zmazať anketu „{{ a.nazov }}“ aj so všetkými hlasmi?');">
                   <button type="submit" class="odkaz-tlacidlo">Zmazať</button>
