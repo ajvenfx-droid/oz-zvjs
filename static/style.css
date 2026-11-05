@@ -466,3 +466,4 @@ select { font: inherit; padding: 8px 10px; border: 1px solid #c9c2ad; border-rad
 .legenda { display: inline-block; padding: 0 8px; border-radius: 3px; font-size: 0.85rem; margin-left: 8px; }
 .legenda--zelena { background: #e3f4c6; }
 .legenda--cervena { background: #fbd3d3; }
+.lista-uctu .verzia { color: #888; font-size: 0.8em; }

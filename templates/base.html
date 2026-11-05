@@ -24,6 +24,7 @@
     {% else %}
       <a href="{{ url_for('ucet.prihlasenie') }}">Prihlásiť sa</a>
     {% endif %}
+    {% if verzia_stranky %}<span class="verzia">ver. {{ verzia_stranky }}</span>{% endif %}
   </div>
 
   <header class="hlavicka">
