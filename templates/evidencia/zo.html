@@ -87,7 +87,7 @@
         <tbody>
           {% for z in zmeny %}
             <tr><td>{{ z.cas }}</td><td>{{ z.meno }} ({{ z.cislo }})</td>
-              <td>{% for st, stare, nove in z.zmeny %}{{ st }}: {{ stare or '–' }} → <strong>{{ nove or '–' }}</strong><br>{% endfor %}</td></tr>
+              <td>{% for st, stare, nove in z.zmeny %}{{ st|stlpec }}: {{ stare or '–' }} → <strong>{{ nove or '–' }}</strong><br>{% endfor %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -98,7 +98,7 @@
   {% if clenovia %}
     <div class="tabulka-obal">
       <table class="tabulka tabulka--evidencia">
-        <thead><tr><th>#</th>{% for s in stlpce %}<th>{{ s }}</th>{% endfor %}</tr></thead>
+        <thead><tr><th>#</th>{% for s in stlpce %}<th>{{ s|stlpec }}</th>{% endfor %}</tr></thead>
         <tbody>
           {% for c in clenovia %}
             <tr class="{{ 'riadok--' ~ c.farba if c.farba }}">

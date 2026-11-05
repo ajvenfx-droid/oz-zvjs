@@ -48,11 +48,11 @@
       {% for nazov, hodnota, index in z.polia %}
         {% if index is not none %}
           <label class="pole">
-            <span class="pole__nazov">{{ nazov }}</span>
+            <span class="pole__nazov">{{ nazov|stlpec }}</span>
             <input type="{{ 'email' if nazov == 'E-mail' else 'text' }}" name="st_{{ index }}" value="{{ hodnota }}">
           </label>
         {% else %}
-          <p class="pole"><span class="pole__nazov">{{ nazov }}</span><br><strong>{{ hodnota }}</strong></p>
+          <p class="pole"><span class="pole__nazov">{{ nazov|stlpec }}</span><br><strong>{{ hodnota }}</strong></p>
         {% endif %}
       {% endfor %}
       <button type="submit" class="tlacidlo">Uložiť zmeny</button>

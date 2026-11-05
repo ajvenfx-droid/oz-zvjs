@@ -58,6 +58,20 @@ def skorsi_vstup(stare, nove):
         nove[VSTUP] = stare[VSTUP]
 
 
+# Kratšie názvy stĺpcov na zobrazenie (v dátach a súboroch zostávajú pôvodné).
+KRATKE_NAZVY = {
+    "Priezvisko / Názov poisteného": "Priezvisko",
+    "Adresa trvalého pobytu – ulica, číslo domu": "Ulica",
+    "Adresa trvalého pobytu – mesto": "Mesto",
+    "Adresa trvalého pobytu – PSČ": "PSČ",
+    "Dátum vstupu do poistenia": "Vstup do poistenia",
+}
+
+
+def nazov_stlpca(stlpec):
+    return KRATKE_NAZVY.get(stlpec, stlpec)
+
+
 def menitelne_clenom(stlpce):
     return [s for s in stlpce if s not in NEMENITELNE_CLENOM and s.lower() != "číslo"]
 
@@ -1010,3 +1024,6 @@ def foto(slug, clen_id):
     if f is None:
         abort(404)
     return Response(f["data"], mimetype=f["typ"], headers={"Cache-Control": "private, max-age=86400"})
+
+
+bp.add_app_template_filter(nazov_stlpca, "stlpec")

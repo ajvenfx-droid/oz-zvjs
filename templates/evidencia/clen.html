@@ -30,7 +30,7 @@
   <form method="post" class="formular">
     {% for s in stlpce %}
       <label class="pole">
-        <span class="pole__nazov">{{ s }}</span>
+        <span class="pole__nazov">{{ s|stlpec }}</span>
         <input type="text" name="st_{{ loop.index0 }}" value="{{ clen.udaje.get(s, '') }}">
       </label>
     {% endfor %}
