@@ -16,6 +16,10 @@
       <li>ponechajte „Just the push event“ a kliknite <strong>Add webhook</strong></li>
     </ul>
     <p class="info">Tajný kľúč nikomu neposielajte. Potom sa stránka po každej zmene na GitHube aktualizuje sama.</p>
+    <form method="post" onsubmit="return confirm('Vytvoriť nový kľúč? Starý prestane platiť a na GitHube ho treba zmeniť.');">
+      <input type="hidden" name="akcia" value="novy_kluc">
+      <button type="submit" class="odkaz-tlacidlo">Vytvoriť nový tajný kľúč</button>
+    </form>
   </section>
 
   <section class="panel">

@@ -69,6 +69,11 @@ def github():
 @len_spravca
 def spravca():
     db = get_db()
+    if request.method == "POST" and request.form.get("akcia") == "novy_kluc":
+        nastav(db, "webhook_tajomstvo", secrets.token_hex(20))
+        db.commit()
+        flash("Vytvorený nový tajný kľúč. Vložte ho na GitHube do nastavení webhooku (Edit → Secret).")
+        return redirect(url_for("nasadenie.spravca"))
     if request.method == "POST":
         ok, vypis = aktualizuj()
         flash(("Stránka je aktualizovaná. " if ok else "Aktualizácia zlyhala: ") + vypis[-300:])
