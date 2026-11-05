@@ -71,6 +71,8 @@ def init_db(db):
         db.execute("ALTER TABLE ucet ADD COLUMN email TEXT NOT NULL DEFAULT ''")
     if "zo_slug" not in stlpce:
         db.execute("ALTER TABLE ucet ADD COLUMN zo_slug TEXT NOT NULL DEFAULT ''")
+    if "funkcia" not in stlpce:
+        db.execute("ALTER TABLE ucet ADD COLUMN funkcia TEXT NOT NULL DEFAULT ''")
     db.commit()
 
 
@@ -128,7 +130,7 @@ def nacitaj_prihlaseneho():
         "SELECT c.cislo, c.meno, COALESCE(u.rola, 'clen') AS rola, "
         "COALESCE(u.heslo_hash, '') != '' AS vlastne_heslo, "
         "CASE WHEN COALESCE(u.email, '') != '' THEN u.email ELSE COALESCE(c.email, '') END AS email, "
-        "COALESCE(u.zo_slug, '') AS zo_slug "
+        "COALESCE(u.zo_slug, '') AS zo_slug, COALESCE(u.funkcia, '') AS funkcia "
         "FROM clen c LEFT JOIN ucet u ON u.cislo = c.cislo WHERE c.cislo = ?",
         (cislo,),
     ).fetchone()
@@ -138,8 +140,12 @@ def nacitaj_prihlaseneho():
     clen = dict(row)
     clen["skutocna_rola"] = clen["rola"]
     # Predseda ZO, predsedníctvo či správca si môže prepnúť zobrazenie „ako člen“.
+    if clen["rola"] == "clen" and clen["funkcia"]:
+        clen["rola"] = "zo"
+        clen["skutocna_rola"] = "zo"
     if clen["rola"] != "clen" and session.get("ako_clen"):
         clen["rola"] = "clen"
+        clen["funkcia"] = ""
     g.clen = clen
 
 
@@ -299,7 +305,8 @@ def emaily_predsedov(db, zo_slug):
     """E-maily predsedu a podpredsedu ZO (prístup v evidencii), inak e-mail z popisu ZO."""
     emaily = [r["email"] for r in db.execute(
         "SELECT CASE WHEN COALESCE(u.email, '') != '' THEN u.email ELSE c.email END AS email "
-        "FROM ucet u JOIN clen c ON c.cislo = u.cislo WHERE u.rola = 'zo' AND u.zo_slug = ?", (zo_slug,))
+        "FROM ucet u JOIN clen c ON c.cislo = u.cislo WHERE u.zo_slug = ? AND (u.rola = 'zo' OR u.funkcia != '')",
+        (zo_slug,))
         if r["email"]]
     if not emaily:
         zo = db.execute("SELECT popis FROM zakladna_organizacia WHERE slug = ?", (zo_slug,)).fetchone()
@@ -476,10 +483,10 @@ def spravca_konta():
         email_nastaveny=posta.je_nastavena(db),
         role=ROLE,
         pristupy=db.execute(
-            "SELECT u.cislo, c.meno, u.rola, u.zo_slug, z.mesto FROM ucet u "
+            "SELECT u.cislo, c.meno, u.rola, u.zo_slug, u.funkcia, z.mesto FROM ucet u "
             "JOIN clen c ON c.cislo = u.cislo "
             "LEFT JOIN zakladna_organizacia z ON z.slug = u.zo_slug "
-            "WHERE u.rola IN ('zo', 'vedenie', 'spravca') ORDER BY u.rola, z.poradie, c.meno"
+            "WHERE u.rola IN ('zo', 'vedenie', 'spravca') OR u.funkcia != '' ORDER BY u.rola, z.poradie, c.meno"
         ).fetchall(),
         organizacie=sorted(db.execute("SELECT slug, mesto FROM zakladna_organizacia").fetchall(),
                            key=lambda z: abecedne(z["mesto"])),
@@ -507,7 +514,8 @@ def nastav_rolu():
     else:
         db.execute(
             "INSERT INTO ucet (cislo, rola, zo_slug) VALUES (?, ?, ?) "
-            "ON CONFLICT(cislo) DO UPDATE SET rola = excluded.rola, zo_slug = excluded.zo_slug",
+            "ON CONFLICT(cislo) DO UPDATE SET rola = excluded.rola, zo_slug = excluded.zo_slug, "
+            "funkcia = CASE WHEN excluded.rola = 'zo' AND excluded.zo_slug = ucet.zo_slug THEN ucet.funkcia ELSE '' END",
             (cislo, rola, zo_slug),
         )
         db.commit()

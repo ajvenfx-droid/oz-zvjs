@@ -19,6 +19,30 @@
       <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Archív odídených</a>
     </div>
   </div>
+  <section class="panel">
+    <h2>Vedenie ZO</h2>
+    <p>Predseda: <strong>{{ vedenie.predseda.meno if vedenie.predseda else '–' }}</strong>
+      · Podpredseda: <strong>{{ vedenie.podpredseda.meno if vedenie.podpredseda else '–' }}</strong></p>
+    {% if je_spravca %}
+      <form method="post" action="{{ url_for('evidencia.nastav_vedenie', slug=zo.slug) }}" class="formular">
+        {% for f, nazov in [('predseda', 'Predseda'), ('podpredseda', 'Podpredseda')] %}
+          <label class="pole">
+            <span class="pole__nazov">{{ nazov }}</span>
+            <select name="{{ f }}">
+              <option value="">– nikto –</option>
+              {% for c in na_vyber %}
+                {% set cislo = c.udaje['Identifikačné číslo']|replace(' ', '') %}
+                <option value="{{ cislo }}" {% if vedenie[f] and vedenie[f].cislo == cislo %}selected{% endif %}>
+                  {{ c.udaje.get('Priezvisko / Názov poisteného', '') }} {{ c.udaje.get('Meno poisteného', '') }} ({{ cislo }})</option>
+              {% endfor %}
+            </select>
+          </label>
+        {% endfor %}
+        <button type="submit" class="tlacidlo">Uložiť vedenie ZO</button>
+      </form>
+      <p class="info">Predseda a podpredseda dostanú prístup na zmeny členov tejto ZO a upozornenia, keď si člen zmení údaje.</p>
+    {% endif %}
+  </section>
   {% if zmeny %}
     <details class="panel">
       <summary><strong>Zmeny údajov od členov</strong> ({{ zmeny|length }}, posledná {{ zmeny[0].cas }})</summary>

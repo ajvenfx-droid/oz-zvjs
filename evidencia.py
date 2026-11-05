@@ -398,10 +398,10 @@ def pristup(slug=None):
     clen = g.get("clen")
     if clen is None:
         return None
+    if slug is not None and clen["zo_slug"] == slug and (clen["rola"] == "zo" or clen["funkcia"]):
+        return "menit"
     if clen["rola"] == "vedenie":
         return "citat"
-    if clen["rola"] == "zo" and slug is not None and clen["zo_slug"] == slug:
-        return "menit"
     return None
 
 
@@ -589,8 +589,49 @@ def zo(slug):
     clenovia, hladat, zoradit = _vyber(clenovia)
     zmeny = [dict(r) | {"zmeny": json.loads(r["zmeny"])} for r in get_db().execute(
         "SELECT cas, meno, cislo, zmeny FROM evidencia_zmena WHERE zo_slug = ? ORDER BY id DESC LIMIT 30", (slug,))]
+    vsetci = _nacitaj_zo(slug)[2]
     return render_template("evidencia/zo.html", zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
-                           hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny)
+                           hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny,
+                           vedenie=vedenie_zo(get_db(), slug), na_vyber=sorted(
+                               [c for c in vsetci if c["udaje"].get("Identifikačné číslo")],
+                               key=lambda c: (abecedne(c["udaje"].get("Priezvisko / Názov poisteného", "")),
+                                              abecedne(c["udaje"].get("Meno poisteného", "")))))
+
+
+FUNKCIE = ("predseda", "podpredseda")
+
+
+def vedenie_zo(db, slug):
+    """{funkcia: {cislo, meno}} pre predsedu a podpredsedu ZO."""
+    return {r["funkcia"]: {"cislo": r["cislo"], "meno": r["meno"] or r["cislo"]} for r in db.execute(
+        "SELECT u.cislo, u.funkcia, COALESCE(c.meno, '') AS meno FROM ucet u LEFT JOIN clen c ON c.cislo = u.cislo "
+        "WHERE u.zo_slug = ? AND u.funkcia IN ('predseda', 'podpredseda')", (slug,))}
+
+
+@bp.route("/<slug>/vedenie", methods=["POST"])
+def nastav_vedenie(slug):
+    """Správca vyberie predsedu a podpredsedu ZO z jej členov; dostanú prístup na zmeny v svojej ZO."""
+    if not je_spravca():
+        abort(403)
+    zo, _, clenovia, _ = _nacitaj_zo(slug)
+    db = get_db()
+    platne = {re.sub(r"\s+", "", c["udaje"].get("Identifikačné číslo", "")) for c in clenovia} - {""}
+    for funkcia in FUNKCIE:
+        cislo = re.sub(r"\s+", "", request.form.get(funkcia, ""))
+        if cislo and cislo not in platne:
+            continue
+        db.execute("UPDATE ucet SET funkcia = '', zo_slug = '', "
+                   "rola = CASE WHEN rola = 'zo' THEN 'clen' ELSE rola END "
+                   "WHERE zo_slug = ? AND funkcia = ? AND cislo != ?", (slug, funkcia, cislo))
+        if cislo:
+            db.execute(
+                "INSERT INTO ucet (cislo, rola, zo_slug, funkcia) VALUES (?, 'zo', ?, ?) "
+                "ON CONFLICT(cislo) DO UPDATE SET zo_slug = excluded.zo_slug, funkcia = excluded.funkcia, "
+                "rola = CASE WHEN ucet.rola IN ('spravca', 'vedenie') THEN ucet.rola ELSE 'zo' END",
+                (cislo, slug, funkcia))
+    db.commit()
+    flash(f"Vedenie ZO {zo['mesto']} bolo uložené. Predseda a podpredseda môžu meniť členov svojej ZO.")
+    return redirect(url_for("evidencia.zo", slug=slug))
 
 
 @bp.route("/<slug>/export.csv")

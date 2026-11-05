@@ -68,7 +68,7 @@
             {% for p in pristupy %}
               <tr>
                 <td>{{ p.cislo }}</td><td>{{ p.meno }}</td>
-                <td>{% if p.rola == 'zo' %}predseda / podpredseda ZO {{ p.mesto }}{% elif p.rola == 'spravca' %}správca stránky{% else %}predsedníctvo – len prezeranie{% endif %}</td>
+                <td>{% if p.funkcia %}{{ p.funkcia }} ZO {{ p.mesto }}{% if p.rola == 'spravca' %} + správca stránky{% elif p.rola == 'vedenie' %} + predsedníctvo{% endif %}{% elif p.rola == 'zo' %}predseda / podpredseda ZO {{ p.mesto }}{% elif p.rola == 'spravca' %}správca stránky{% else %}predsedníctvo – len prezeranie{% endif %}</td>
                 <td>
                   <form method="post" action="{{ url_for('ucet.nastav_rolu') }}">
                     <input type="hidden" name="cislo" value="{{ p.cislo }}">
