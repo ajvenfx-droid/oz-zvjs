@@ -234,6 +234,13 @@ def precitaj_subor(nazov, data):
             hore = str(hlavicka[i] or "").strip()
             dole = str(pod[i] or "").strip() if i < len(pod) else ""
             nazov_st = dole or hore
+            if not nazov_st:
+                # Napr. „identifikačné číslo“ býva v niektorých hárkoch o riadok vyššie nad hlavičkou.
+                for j in range(h - 1, max(h - 4, -1), -1):
+                    nad = riadky[j]
+                    if i < len(nad) and str(nad[i] or "").strip():
+                        nazov_st = str(nad[i]).strip()
+                        break
             if nazov_st:
                 stlpce.append((i, zjednot_stlpec(nazov_st)))
         clenovia = []
