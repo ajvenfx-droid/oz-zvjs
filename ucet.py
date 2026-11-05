@@ -24,6 +24,7 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import posta
+from evidencia import abecedne
 from anketa import CASOVA_ZONA, hash_preukazu, len_spravca, nastav, nastavenie
 from db import get_db
 
@@ -354,8 +355,8 @@ def spravca_konta():
             "LEFT JOIN zakladna_organizacia z ON z.slug = u.zo_slug "
             "WHERE u.rola IN ('zo', 'vedenie') ORDER BY u.rola, z.poradie, c.meno"
         ).fetchall(),
-        organizacie=db.execute(
-            "SELECT slug, mesto FROM zakladna_organizacia ORDER BY poradie, mesto").fetchall(),
+        organizacie=sorted(db.execute("SELECT slug, mesto FROM zakladna_organizacia").fetchall(),
+                           key=lambda z: abecedne(z["mesto"])),
     )
 
 

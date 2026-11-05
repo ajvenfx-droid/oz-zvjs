@@ -239,6 +239,13 @@ def kluc_clena(udaje):
     return "meno:" + "|".join(casti).lower()
 
 
+def abecedne(text):
+    """Kľúč na zoradenie podľa slovenskej abecedy (diakritika až za základným písmenom)."""
+    import unicodedata
+    zaklad = "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
+    return (zaklad, text.lower())
+
+
 # --- prístup ------------------------------------------------------------------
 
 
@@ -362,6 +369,7 @@ def prehlad():
            FROM zakladna_organizacia z LEFT JOIN evidencia_stlpce s ON s.zo_slug = z.slug
            ORDER BY z.poradie, z.mesto"""
     ).fetchall()
+    organizacie = sorted(organizacie, key=lambda z: abecedne(z["mesto"]))
     return render_template("evidencia/prehlad.html", organizacie=organizacie)
 
 
