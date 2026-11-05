@@ -131,9 +131,11 @@ def init_db(db):
         # 0 = koncept, ktorý členovia nevidia; 1 = zverejnený. Doterajšie ankety ostávajú zverejnené.
         db.execute("ALTER TABLE anketa ADD COLUMN zverejneny INTEGER NOT NULL DEFAULT 1")
     if nastavenie(db, "prva_anketa_vlozena") is None:
-        if db.execute("SELECT COUNT(*) FROM anketa").fetchone()[0] == 0:
-            uloz_anketu(db, None, PRVA_ANKETA["nazov"], PREDVOLENY_UVOD, "", PRVA_ANKETA["otazky"])
-        nastav(db, "prva_anketa_vlozena", "1")
+        nastav(db, "prva_anketa_vlozena", "1")  # ukážková anketa sa už nevytvára
+    if nastavenie(db, "ukazkova_anketa_zmazana") is None:
+        # Ukážková anketa „Nákup hodiniek na plaváreň“ pre všetkých členov – na žiadosť vedenia zmazaná.
+        db.execute("DELETE FROM anketa WHERE nazov = ? AND zo_slug = ''", (PRVA_ANKETA["nazov"],))
+        nastav(db, "ukazkova_anketa_zmazana", "1")
     db.commit()
 
 
