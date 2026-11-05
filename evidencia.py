@@ -77,14 +77,17 @@ def init_db(db):
         )
         """
     )
-    if "z_evidencie" not in [r["name"] for r in db.execute("PRAGMA table_info(clen)")]:
+    stlpce_clen = [r["name"] for r in db.execute("PRAGMA table_info(clen)")]
+    if "z_evidencie" not in stlpce_clen:
         db.execute("ALTER TABLE clen ADD COLUMN z_evidencie INTEGER NOT NULL DEFAULT 0")
+    if "email" not in stlpce_clen:
+        db.execute("ALTER TABLE clen ADD COLUMN email TEXT NOT NULL DEFAULT ''")
     db.commit()
     synchronizuj_prihlasovanie(db)
 
 
 def synchronizuj_prihlasovanie(db):
-    """Členovia z evidencie sa môžu prihlásiť: odborárske číslo = Identifikačné číslo,
+    """Členovia z evidencie sa môžu prihlásiť: meno = e-mail z evidencie (alebo identifikačné číslo),
     heslo = služobné / zamestnanecké číslo. Ručne nahratý zoznam členov má prednosť."""
     from anketa import hash_preukazu
 
@@ -96,14 +99,17 @@ def synchronizuj_prihlasovanie(db):
             continue
         meno = " ".join(x for x in (u.get("Meno poisteného", ""), u.get("Priezvisko / Názov poisteného", "")) if x)
         sluzobne = u.get("Služobné/ zam. číslo", "")
-        z_evidencie[cislo] = (meno, hash_preukazu(db, sluzobne) if sluzobne.strip() else "")
+        email = re.sub(r"\s+", "", u.get("E-mail", "")).lower()
+        z_evidencie[cislo] = (meno, hash_preukazu(db, sluzobne) if sluzobne.strip() else "", email)
     existujuce = {r["cislo"]: r for r in db.execute("SELECT cislo, meno, preukaz_hash, z_evidencie FROM clen")}
-    for cislo, (meno, preukaz) in z_evidencie.items():
+    for cislo, (meno, preukaz, email) in z_evidencie.items():
         r = existujuce.get(cislo)
         if r is None:
-            db.execute("INSERT INTO clen (cislo, meno, preukaz_hash, z_evidencie) VALUES (?, ?, ?, 1)",
-                       (cislo, meno, preukaz))
-        elif r["z_evidencie"]:
+            db.execute("INSERT INTO clen (cislo, meno, preukaz_hash, z_evidencie, email) VALUES (?, ?, ?, 1, ?)",
+                       (cislo, meno, preukaz, email))
+            continue
+        db.execute("UPDATE clen SET email = ? WHERE cislo = ?", (email, cislo))
+        if r["z_evidencie"]:
             db.execute("UPDATE clen SET meno = ?, preukaz_hash = ? WHERE cislo = ?", (meno, preukaz, cislo))
         else:
             db.execute("UPDATE clen SET meno = CASE WHEN meno = '' THEN ? ELSE meno END, "

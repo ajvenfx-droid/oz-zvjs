@@ -154,14 +154,30 @@ def bezpecny_ciel(dalej):
 # --- člen -------------------------------------------------------------------
 
 
+def najdi_cisla(db, meno):
+    """Prihlasovacie meno je e-mail (z evidencie alebo z Moje konto); funguje aj odborárske číslo."""
+    if "@" not in meno:
+        return [meno] if meno else []
+    meno = meno.lower()
+    return [r["cislo"] for r in db.execute(
+        "SELECT c.cislo FROM clen c LEFT JOIN ucet u ON u.cislo = c.cislo "
+        "WHERE lower(c.email) = ? OR lower(COALESCE(u.email, '')) = ? ORDER BY c.cislo", (meno, meno))]
+
+
 @bp.route("/prihlasenie", methods=["GET", "POST"])
 def prihlasenie():
     if g.clen is not None:
         return redirect(url_for("ucet.moje_konto"))
     if request.method == "POST":
         db = get_db()
-        cislo = re.sub(r"\s+", "", request.form.get("cislo", ""))
+        meno = re.sub(r"\s+", "", request.form.get("cislo", ""))
         heslo = request.form.get("heslo", "")
+        kandidati = najdi_cisla(db, meno)
+        # Ak má viac členov rovnaký e-mail, prihlási sa ten, ktorému sedí heslo.
+        cislo = next((c for c in kandidati if over_heslo(
+            db, db.execute("SELECT * FROM clen WHERE cislo = ?", (c,)).fetchone(),
+            db.execute("SELECT * FROM ucet WHERE cislo = ?", (c,)).fetchone(), heslo)),
+            kandidati[0] if kandidati else "")
         clen = db.execute("SELECT * FROM clen WHERE cislo = ?", (cislo,)).fetchone()
         ucet = db.execute("SELECT * FROM ucet WHERE cislo = ?", (cislo,)).fetchone()
         if ucet is not None and ucet["zamknute_do"] and teraz() < ucet["zamknute_do"]:
@@ -179,7 +195,7 @@ def prihlasenie():
         else:
             if clen is not None:
                 zaznamenaj_zlyhanie(db, cislo, ucet)
-            flash("Nesprávne odborárske číslo alebo heslo.")
+            flash("Nesprávny e-mail alebo heslo.")
     return render_template("ucet/prihlasenie.html")
 
 
@@ -234,12 +250,15 @@ def moje_konto():
 def zabudnute_heslo():
     db = get_db()
     if request.method == "POST":
-        cislo = request.form.get("cislo", "").strip()
+        kandidati = najdi_cisla(db, re.sub(r"\s+", "", request.form.get("cislo", "")))
+        cislo = kandidati[0] if len(kandidati) == 1 else ""
         ucet = db.execute(
-            "SELECT u.* FROM ucet u JOIN clen c ON c.cislo = u.cislo "
-            "WHERE u.cislo = ? AND u.email != ''",
+            "SELECT c.cislo, CASE WHEN COALESCE(u.email, '') != '' THEN u.email ELSE c.email END AS email "
+            "FROM clen c LEFT JOIN ucet u ON u.cislo = c.cislo WHERE c.cislo = ?",
             (cislo,),
         ).fetchone()
+        if ucet is not None and not ucet["email"]:
+            ucet = None
         if ucet is not None and posta.je_nastavena(db):
             nedavny = db.execute(
                 "SELECT 1 FROM obnova_hesla WHERE cislo = ? AND platne_do > ?",
@@ -294,8 +313,9 @@ def nove_heslo(token):
             flash(chyba)
         else:
             db.execute(
-                "UPDATE ucet SET heslo_hash = ?, zlyhane_pokusy = 0, zamknute_do = '' WHERE cislo = ?",
-                (generate_password_hash(request.form["heslo"]), zaznam["cislo"]),
+                "INSERT INTO ucet (cislo, heslo_hash) VALUES (?, ?) ON CONFLICT(cislo) DO UPDATE SET "
+                "heslo_hash = excluded.heslo_hash, zlyhane_pokusy = 0, zamknute_do = ''",
+                (zaznam["cislo"], generate_password_hash(request.form["heslo"])),
             )
             db.execute("DELETE FROM obnova_hesla WHERE cislo = ?", (zaznam["cislo"],))
             db.commit()
@@ -405,5 +425,5 @@ def obnov_heslo():
             (cislo,),
         )
         db.commit()
-        flash(f"Heslo člena {cislo} je obnovené. Prihlási sa číslom svojho preukazu.")
+        flash(f"Heslo člena {cislo} je obnovené. Prihlási sa svojím služobným alebo zamestnaneckým číslom.")
     return redirect(url_for("ucet.spravca_konta"))

@@ -4,7 +4,7 @@
   <h1 class="nadpis">Prihlásenie člena</h1>
   <form method="post" class="formular formular--uzky">
     <label class="pole">
-      <span class="pole__nazov">Odborárske číslo</span>
+      <span class="pole__nazov">E-mail</span>
       <input type="text" name="cislo" required autofocus autocomplete="username" value="{{ request.form.get('cislo', '') }}">
     </label>
     <label class="pole">
@@ -14,7 +14,8 @@
     <button type="submit" class="tlacidlo">Prihlásiť sa</button>
   </form>
   <div class="panel">
-    <p>Pri prvom prihlásení je heslom <strong>číslo vášho zamestnaneckého alebo služobného preukazu</strong>.
+    <p>Prihlasovacím menom je <strong>váš e-mail</strong>, ktorý má zväz uložený v evidencii.
+      Pri prvom prihlásení je heslom <strong>vaše služobné alebo zamestnanecké číslo</strong>.
       Po prihlásení si ho v časti Moje konto môžete zmeniť na vlastné heslo.</p>
     <p><a href="{{ url_for('ucet.zabudnute_heslo') }}">Zabudli ste heslo?</a></p>
   </div>

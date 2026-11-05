@@ -3,14 +3,14 @@
 {% block content %}
   <a class="spat" href="{{ url_for('ucet.prihlasenie') }}">&larr; Späť na prihlásenie</a>
   <h1 class="nadpis">Zabudnuté heslo</h1>
-  <p>Zadajte svoje odborárske číslo. Na e-mail, ktorý máte uložený v Moje konto, vám pošleme odkaz na nastavenie nového hesla.</p>
+  <p>Zadajte svoj e-mail, ktorým sa prihlasujete. Pošleme naň odkaz na nastavenie nového hesla.</p>
   <form method="post" class="formular formular--uzky">
     <label class="pole">
-      <span class="pole__nazov">Odborárske číslo</span>
+      <span class="pole__nazov">E-mail</span>
       <input type="text" name="cislo" required autofocus autocomplete="username">
     </label>
     <button type="submit" class="tlacidlo">Poslať odkaz</button>
   </form>
-  <p class="info">Nemáte v konte zadaný e-mail? Požiadajte predsedu ZO o obnovenie hesla.
-    Potom sa prihlásite číslom svojho preukazu.</p>
+  <p class="info">Ak vám odkaz nepríde, požiadajte predsedu ZO o obnovenie hesla.
+    Potom sa prihlásite svojím služobným alebo zamestnaneckým číslom.</p>
 {% endblock %}
