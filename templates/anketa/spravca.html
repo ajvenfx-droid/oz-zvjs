@@ -1,12 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Správa ankiet – {{ nazov_zvazu }}{% endblock %}
+{% block title %}Správa stránky – {{ nazov_zvazu }}{% endblock %}
 {% block content %}
   <div class="riadok-nadpis">
-    <h1 class="nadpis">Správa ankiet</h1>
+    <h1 class="nadpis">Správa stránky</h1>
     <form method="post" action="{{ url_for('anketa.odhlasenie') }}">
       <button type="submit" class="tlacidlo tlacidlo--sekundarne">Odhlásiť</button>
     </form>
   </div>
+
+  <section class="panel">
+    <h2>Obsah stránky</h2>
+    <p>Texty stránok (Úvod, O nás, 2 %, BOZP, Kontakty, Pre členov), Aktuality, Tlačové správy a Dokumenty.</p>
+    <a class="tlacidlo" href="{{ url_for('obsah.spravca_obsah') }}">Spravovať obsah</a>
+  </section>
 
   <section class="panel">
     <h2>Ankety</h2>

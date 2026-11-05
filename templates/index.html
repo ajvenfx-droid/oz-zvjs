@@ -1,32 +1,51 @@
 {% extends "base.html" %}
+{% block uvod %}
+  <section class="hero">
+    <div class="hero__vnutro">
+      <h1 class="hero__nadpis">{{ nazov_zvazu }}</h1>
+      {% if uvod.text %}<div class="hero__text">{{ uvod.text|text }}</div>{% endif %}
+      <a class="hero__tlacidlo" href="{{ url_for('obsah.o_nas') }}">Zistiť viac</a>
+    </div>
+  </section>
+{% endblock %}
 {% block content %}
   {% if ankety %}
-    <h1 class="nadpis">Prebiehajúce ankety</h1>
-    <ul class="zoznam-zo">
-      {% for a in ankety %}
-        <li>
-          <a class="karta-zo karta-zo--anketa" href="{{ url_for('anketa.hlasovanie', slug=a.slug) }}">
-            <span class="karta-zo__mesto">{{ a.nazov }}</span>
-            <span class="karta-zo__nazov">
-              {% if a.koniec %}Hlasovanie do {{ a.koniec|koniec }}{% else %}Kliknite a hlasujte{% endif %}
-            </span>
-          </a>
-        </li>
-      {% endfor %}
-    </ul>
+    <section class="sekcia">
+      <h2 class="nadpis">Prebiehajúce ankety</h2>
+      <ul class="zoznam-zo">
+        {% for a in ankety %}
+          <li>
+            <a class="karta-zo karta-zo--anketa" href="{{ url_for('anketa.hlasovanie', slug=a.slug) }}">
+              <span class="karta-zo__mesto">{{ a.nazov }}</span>
+              <span class="karta-zo__nazov">
+                {% if a.koniec %}Hlasovanie do {{ a.koniec|koniec }}{% else %}Kliknite a hlasujte{% endif %}
+              </span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
   {% endif %}
 
-  <h1 class="nadpis">Základné organizácie</h1>
-  <ul class="zoznam-zo">
-    {% for zo in organizacie %}
-      <li>
-        <a class="karta-zo" href="{{ url_for('organizacia', slug=zo.slug) }}">
-          <span class="karta-zo__mesto">{{ zo.mesto }}</span>
-          <span class="karta-zo__nazov">{{ zo.nazov }}</span>
-        </a>
-      </li>
-    {% else %}
-      <li>Zatiaľ nie sú evidované žiadne základné organizácie.</li>
-    {% endfor %}
-  </ul>
+  {% for nadpis, typ, zoznam in [('Aktuality', 'aktuality', aktuality), ('Tlačové správy', 'tlacove-spravy', tlacove)] %}
+    <section class="sekcia">
+      <div class="riadok-nadpis">
+        <h2 class="nadpis">{{ nadpis }}</h2>
+        <a class="viac" href="{{ url_for('obsah.clanky', typ=typ) }}">Všetky {{ nadpis|lower }} &rarr;</a>
+      </div>
+      {% if zoznam %}
+        <div class="mriezka-clankov">
+          {% for c in zoznam %}
+            <a class="karta-clanku" href="{{ url_for('obsah.clanok', typ=typ, clanok_id=c.id) }}">
+              <span class="karta-clanku__datum">{{ c.datum|datum }}</span>
+              <span class="karta-clanku__nazov">{{ c.nazov }}</span>
+              <span class="karta-clanku__text">{{ c.text|skratka(140) }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="info">Zatiaľ bez príspevkov.</p>
+      {% endif %}
+    </section>
+  {% endfor %}
 {% endblock %}

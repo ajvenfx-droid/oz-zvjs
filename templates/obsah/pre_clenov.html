@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Pre členov – {{ nazov_zvazu }}{% endblock %}
+{% block uvod %}<div class="banner"><h1 class="banner__nadpis">Pre členov</h1></div>{% endblock %}
+{% block content %}
+  {% if stranka.text %}<div class="text-stranky">{{ stranka.text|text }}</div>{% endif %}
+
+  <section class="panel">
+    <h2>Ankety</h2>
+    {% if ankety %}
+      <ul class="zoznam-zo">
+        {% for a in ankety %}
+          <li>
+            <a class="karta-zo karta-zo--anketa" href="{{ url_for('anketa.hlasovanie', slug=a.slug) }}">
+              <span class="karta-zo__mesto">{{ a.nazov }}</span>
+              <span class="karta-zo__nazov">{% if a.koniec %}Hlasovanie do {{ a.koniec|koniec }}{% else %}Kliknite a hlasujte{% endif %}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="info">Momentálne neprebieha žiadna anketa.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Dokumenty pre členov</h2>
+    {% if dokumenty %}
+      <ul class="zoznam-dokumentov">
+        {% for d in dokumenty %}
+          <li><a href="{{ d.odkaz or url_for('obsah.stiahni_dokument', dokument_id=d.id, nazov=d.nazov_suboru) }}">{{ d.nazov }}</a>
+            <span class="info">{{ d.datum|datum }}</span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="info">Zatiaľ bez dokumentov.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Moje konto</h2>
+    <p>Zmena hesla a e-mailu pre obnovu hesla.</p>
+    <a class="tlacidlo" href="{{ url_for('ucet.moje_konto') }}">Otvoriť Moje konto</a>
+  </section>
+{% endblock %}

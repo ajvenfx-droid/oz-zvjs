@@ -1,8 +1,14 @@
 # Stránka OZ ZVJS
 
 Webová stránka Odborového zväzu Zboru väzenskej a justičnej stráže.
-Aktuálne obsahuje hlavnú stránku s názvom zväzu, zoznam základných organizácií (ZO),
-podstránku pre každú ZO a ankety pre členov (pozri `NAVOD-ANKETA.md`).
+Vzhľad a menu podľa ozzvjs.sk (Domov, Aktuality, O nás, Venujte 2 %, BOZP, Dokumenty,
+Pre členov, Tlačové správy, Kontakty). Obsah sa upravuje priamo na stránke v časti
+„Správa stránky → Obsah stránky“: texty stránok, Aktuality, Tlačové správy (3 záložky)
+a Dokumenty (súbory alebo odkazy, voliteľne len pre prihlásených členov).
+Ďalej obsahuje zoznam základných organizácií, kontá členov a ankety (pozri `NAVOD-ANKETA.md`).
+
+Formát textov: prázdny riadok = nový odsek, `## ` = podnadpis, `- ` = odrážka,
+adresy https:// a e-maily sa zmenia na odkazy.
 
 ## Ako spustiť (vnútorný server)
 
@@ -36,10 +42,12 @@ Databáza SQLite sa vytvorí automaticky pri prvom spustení.
 - `db.py` – pripojenie k databáze
 - `anketa.py` – ankety pre členov
 - `ucet.py` – kontá a prihlasovanie členov
+- `obsah.py` – upraviteľné stránky, články a dokumenty
 - `posta.py` – posielanie e-mailov
 - `nastav_heslo.py` – nastavenie hesla správcu ankiet
 - `templates/` – HTML šablóny stránok
 - `static/style.css` – vzhľad
+- `static/logo.png` – logo zväzu
 
 ## Pridanie ďalšej základnej organizácie
 

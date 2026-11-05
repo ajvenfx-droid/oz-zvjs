@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ nadpis }} – {{ nazov_zvazu }}{% endblock %}
+{% block uvod %}<div class="banner"><h1 class="banner__nadpis">{% if typ == 'aktuality' %}Aktuality – očakávané udalosti{% else %}{{ nadpis }}{% endif %}</h1></div>{% endblock %}
+{% block content %}
+  {% if rubriky %}
+    <nav class="zalozky">
+      {% for k, n in rubriky %}<a href="{{ url_for('obsah.clanky', typ=typ, rubrika=k) }}" class="{{ 'aktivna' if k == rubrika }}">{{ n }}</a>{% endfor %}
+    </nav>
+  {% endif %}
+  {% for rok, zoznam in roky.items() %}
+    <section class="sekcia">
+      <h2 class="{{ 'podnadpis' if rubriky else 'nadpis-stranky' }}">{% if not rubriky %}{{ nadpis }} {% endif %}{{ rok }}</h2>
+      {% for c in zoznam %}
+        <article class="clanok-v-zozname">
+          <h3><span class="clanok-v-zozname__datum">{{ c.datum|datum }}</span>
+            <a href="{{ url_for('obsah.clanok', typ=typ, clanok_id=c.id) }}">{{ c.nazov }}</a></h3>
+          {% if c.text %}<p>{{ c.text|skratka }}</p>{% endif %}
+        </article>
+      {% endfor %}
+    </section>
+  {% else %}
+    <p class="info">Zatiaľ bez príspevkov.</p>
+  {% endfor %}
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ clanok.nazov }} – {{ nazov_zvazu }}{% endblock %}
+{% block uvod %}<div class="banner"><h1 class="banner__nadpis">{{ nadpis }}</h1></div>{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('obsah.clanky', typ=typ) }}">&larr; {{ nadpis }}</a>
+  <article>
+    <h2 class="nadpis-stranky">{{ clanok.nazov }}</h2>
+    <p class="karta-clanku__datum">{{ clanok.datum|datum }}</p>
+    <div class="text-stranky">{{ clanok.text|text }}</div>
+  </article>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}O nás – {{ nazov_zvazu }}{% endblock %}
+{% block uvod %}<div class="banner"><h1 class="banner__nadpis">O nás</h1></div>{% endblock %}
+{% block content %}
+  <h2 class="nadpis-stranky">Úvodné informácie</h2>
+  {% if stranka.text %}
+    <div class="text-stranky">{{ stranka.text|text }}</div>
+  {% endif %}
+
+  <h2 class="nadpis" id="organizacie">Základné organizácie</h2>
+  <ul class="zoznam-zo">
+    {% for zo in organizacie %}
+      <li>
+        <a class="karta-zo" href="{{ url_for('organizacia', slug=zo.slug) }}">
+          <span class="karta-zo__mesto">{{ zo.mesto }}</span>
+          <span class="karta-zo__nazov">{{ zo.nazov }}</span>
+        </a>
+      </li>
+    {% else %}
+      <li class="info">Zatiaľ nie sú evidované žiadne základné organizácie.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ nazov_typu }} – úprava{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('obsah.spravca_obsah') }}">&larr; Späť na obsah stránky</a>
+  <h1 class="nadpis">{% if clanok.id %}Upraviť článok{% else %}Nový článok{% endif %} – {{ nazov_typu }}</h1>
+  <form method="post" class="formular">
+    <label class="pole">
+      <span class="pole__nazov">Nadpis</span>
+      <input type="text" name="nazov" required value="{{ clanok.nazov or '' }}">
+    </label>
+    <label class="pole">
+      <span class="pole__nazov">Dátum</span>
+      <input type="date" name="datum" value="{{ clanok.datum or '' }}">
+    </label>
+    {% if rubriky %}
+      <label class="pole">
+        <span class="pole__nazov">Záložka</span>
+        <select name="rubrika">
+          {% for k, n in rubriky %}<option value="{{ k }}" {% if clanok.rubrika == k %}selected{% endif %}>{{ n }}</option>{% endfor %}
+        </select>
+      </label>
+    {% endif %}
+    {% include "obsah/_napoveda.html" %}
+    <label class="pole">
+      <span class="pole__nazov">Text</span>
+      <textarea name="text" rows="16">{{ clanok.text or '' }}</textarea>
+    </label>
+    <button type="submit" class="tlacidlo">Uložiť</button>
+  </form>
+{% endblock %}

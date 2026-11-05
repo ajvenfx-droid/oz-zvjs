@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ stranka.nazov }} – úprava{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('obsah.spravca_obsah') }}">&larr; Späť na obsah stránky</a>
+  <h1 class="nadpis">Upraviť stránku: {{ stranka.nazov }}</h1>
+  <form method="post" class="formular">
+    {% include "obsah/_napoveda.html" %}
+    <label class="pole">
+      <span class="pole__nazov">Text</span>
+      <textarea name="text" rows="18">{{ stranka.text }}</textarea>
+    </label>
+    <button type="submit" class="tlacidlo">Uložiť</button>
+  </form>
+{% endblock %}

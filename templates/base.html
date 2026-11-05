@@ -4,13 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ nazov_zvazu }}{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=verzia_stylov) }}">
+  <link rel="icon" href="{{ url_for('static', filename=logo_subor) }}">
 </head>
 <body>
-  <header class="hlavicka">
-    <a href="{{ url_for('index') }}" class="hlavicka__nazov">{{ nazov_zvazu }}</a>
-  </header>
-  <nav class="lista-uctu">
+  <div class="lista-uctu">
     {% if prihlaseny_clen %}
       <span>{{ prihlaseny_clen.meno or prihlaseny_clen.cislo }}</span>
       <a href="{{ url_for('ucet.moje_konto') }}">Moje konto</a>
@@ -20,16 +21,47 @@
     {% else %}
       <a href="{{ url_for('ucet.prihlasenie') }}">Prihlásiť sa</a>
     {% endif %}
-  </nav>
+  </div>
+
+  <header class="hlavicka">
+    <div class="hlavicka__vnutro">
+      <a href="{{ url_for('index') }}" class="hlavicka__logo">
+        <img src="{{ url_for('static', filename=logo_subor) }}" alt="Logo OZ ZVJS" width="76" height="100">
+      </a>
+      <input type="checkbox" id="menu-prepinac" class="menu-prepinac">
+      <label for="menu-prepinac" class="menu-tlacidlo" aria-label="Menu"><span></span><span></span><span></span></label>
+      <nav class="menu">
+        <ul>
+          {% for polozka in menu %}
+            <li class="{{ 'ma-podmenu' if polozka.podmenu }}{{ ' aktivna' if polozka.aktivna }}">
+              <a href="{{ polozka.url }}">{{ polozka.nazov }}{% if polozka.podmenu %} <span class="sipka">&#8964;</span>{% endif %}</a>
+              {% if polozka.podmenu %}
+                <ul class="podmenu">
+                  {% for p in polozka.podmenu %}<li><a href="{{ p.url }}">{{ p.nazov }}</a></li>{% endfor %}
+                </ul>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  {% block uvod %}{% endblock %}
+
   <main class="obsah">
     {% with spravy = get_flashed_messages() %}
       {% for s in spravy %}<p class="oznam">{{ s }}</p>{% endfor %}
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
+
   <footer class="paticka">
-    &copy; {{ nazov_zvazu }}
-    · <a href="{{ url_for('anketa.spravca') }}">Správa ankiet</a>
+    <div>&copy; {{ nazov_zvazu }}</div>
+    <div class="paticka__odkazy">
+      <a href="{{ url_for('obsah.stranka', slug='kontakty') }}">Kontakty</a>
+      · <a href="{{ url_for('anketa.spravca') }}">Správa stránky</a>
+    </div>
   </footer>
 </body>
 </html>

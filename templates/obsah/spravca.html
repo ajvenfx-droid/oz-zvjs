@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Obsah stránky – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu</a>
+  <h1 class="nadpis">Obsah stránky</h1>
+
+  <section class="panel">
+    <h2>Stránky</h2>
+    <table class="tabulka">
+      <tbody>
+        {% for s in stranky %}
+          <tr>
+            <td><strong>{{ s.nazov }}</strong>{% if not s.dlzka %} <span class="info">(prázdna)</span>{% endif %}</td>
+            <td class="akcie">
+              <a href="{{ url_for('obsah.uprav_stranku', slug=s.slug) }}">Upraviť</a>
+              {% if s.slug.startswith('dokumenty-') %}<a href="{{ url_for('obsah.dokumenty', kategoria_slug=s.slug[10:]) }}">Zobraziť</a>{% elif s.slug == 'uvod' %}<a href="{{ url_for('index') }}">Zobraziť</a>{% else %}<a href="{{ url_for('obsah.stranka', slug=s.slug) }}">Zobraziť</a>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {% for typ, nazov_typu in typy.items() %}
+    <section class="panel">
+      <div class="riadok-nadpis">
+        <h2>{{ nazov_typu }}</h2>
+        <a class="tlacidlo" href="{{ url_for('obsah.uprav_clanok', typ=typ) }}">+ Nový článok</a>
+      </div>
+      {% set zoznam = clanky|selectattr('typ', 'equalto', typ)|list %}
+      {% if zoznam %}
+        <table class="tabulka">
+          <tbody>
+            {% for c in zoznam %}
+              <tr>
+                <td class="cislo">{{ c.datum|datum }}</td>
+                <td><strong>{{ c.nazov }}</strong></td>
+                <td class="akcie">
+                  <a href="{{ url_for('obsah.clanok', typ=typ, clanok_id=c.id) }}">Zobraziť</a>
+                  <a href="{{ url_for('obsah.uprav_clanok', clanok_id=c.id) }}">Upraviť</a>
+                  <form method="post" action="{{ url_for('obsah.zmaz_clanok', clanok_id=c.id) }}"
+                        onsubmit="return confirm('Naozaj zmazať článok?');">
+                    <button type="submit" class="odkaz-tlacidlo">Zmazať</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="info">Zatiaľ žiadne články.</p>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  <section class="panel">
+    <h2>Dokumenty</h2>
+    <form method="post" action="{{ url_for('obsah.nahraj_dokument') }}" enctype="multipart/form-data" class="formular">
+      <label class="pole">
+        <span class="pole__nazov">Súbor (PDF, Word, Excel, obrázok… do 15 MB)</span>
+        <input type="file" name="subor">
+      </label>
+      <label class="pole">
+        <span class="pole__nazov">alebo odkaz na iný web (napr. zákon na slov-lex.sk)</span>
+        <input type="text" name="odkaz" placeholder="https://">
+      </label>
+      <label class="pole">
+        <span class="pole__nazov">Názov (nepovinné, inak sa použije názov súboru)</span>
+        <input type="text" name="nazov">
+      </label>
+      <label class="pole">
+        <span class="pole__nazov">Kategória (vyberte zo zoznamu alebo napíšte novú)</span>
+        <input type="text" name="kategoria" list="kategorie">
+        <datalist id="kategorie">
+          {% for k in (kategorie_dokumentov + dokumenty|map(attribute='kategoria')|list)|unique %}{% if k %}<option value="{{ k }}">{% endif %}{% endfor %}
+        </datalist>
+      </label>
+      <label class="moznost">
+        <input type="checkbox" name="len_pre_clenov" value="1"> Len pre prihlásených členov
+      </label>
+      <button type="submit" class="tlacidlo">Pridať dokument</button>
+    </form>
+    {% if dokumenty %}
+      <div class="tabulka-obal">
+        <table class="tabulka">
+          <thead><tr><th>Názov</th><th>Kategória</th><th>Prístup</th><th></th></tr></thead>
+          <tbody>
+            {% for d in dokumenty %}
+              <tr>
+                <td><strong>{{ d.nazov }}</strong><br><span class="odkaz-ankety">{% if d.odkaz %}{{ d.odkaz }}{% else %}{{ d.nazov_suboru }} · {{ (d.velkost / 1024)|round(0)|int }} kB{% endif %} · {{ d.datum|datum }}</span></td>
+                <td>{{ d.kategoria or '–' }}</td>
+                <td>{{ 'Len členovia' if d.len_pre_clenov else 'Verejný' }}</td>
+                <td class="akcie">
+                  <a href="{{ d.odkaz or url_for('obsah.stiahni_dokument', dokument_id=d.id, nazov=d.nazov_suboru) }}">Otvoriť</a>
+                  <form method="post" action="{{ url_for('obsah.zmaz_dokument', dokument_id=d.id) }}"
+                        onsubmit="return confirm('Naozaj zmazať dokument?');">
+                    <button type="submit" class="odkaz-tlacidlo">Zmazať</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}
