@@ -6,6 +6,17 @@
     <h2>Údaje</h2>
     <p>Odborárske číslo: <strong>{{ prihlaseny_clen.cislo }}</strong></p>
     {% if prihlaseny_clen.meno %}<p>Meno: <strong>{{ prihlaseny_clen.meno }}</strong></p>{% endif %}
+    {% if prihlaseny_clen.skutocna_rola != 'clen' %}
+      {% set nazov_roly = {'zo': 'správca svojej ZO', 'vedenie': 'predsedníctvo', 'spravca': 'správca stránky'}[prihlaseny_clen.skutocna_rola] %}
+      <form method="post" action="{{ url_for('ucet.prepni_zobrazenie') }}" class="nahratie">
+        <span>Zobrazenie:</span>
+        <label class="moznost"><input type="radio" name="zobrazenie" value="clen" onchange="this.form.submit()"
+          {% if prihlaseny_clen.rola == 'clen' %}checked{% endif %}> ako člen</label>
+        <label class="moznost"><input type="radio" name="zobrazenie" value="spravca" onchange="this.form.submit()"
+          {% if prihlaseny_clen.rola != 'clen' %}checked{% endif %}> ako {{ nazov_roly }}</label>
+        <noscript><button type="submit" class="tlacidlo tlacidlo--sekundarne">Prepnúť</button></noscript>
+      </form>
+    {% endif %}
   </section>
   {% for z in evidencia %}
   <section class="panel">

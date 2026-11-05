@@ -134,8 +134,24 @@ def nacitaj_prihlaseneho():
     ).fetchone()
     if row is None:
         session.pop("clen", None)
+        return
+    clen = dict(row)
+    clen["skutocna_rola"] = clen["rola"]
+    # Predseda ZO, predsedníctvo či správca si môže prepnúť zobrazenie „ako člen“.
+    if clen["rola"] != "clen" and session.get("ako_clen"):
+        clen["rola"] = "clen"
+    g.clen = clen
+
+
+@bp.route("/moje-konto/zobrazenie", methods=["POST"])
+def prepni_zobrazenie():
+    if g.get("clen") is None:
+        return redirect(url_for("ucet.prihlasenie"))
+    if request.form.get("zobrazenie") == "clen":
+        session["ako_clen"] = True
     else:
-        g.clen = row
+        session.pop("ako_clen", None)
+    return redirect(url_for("ucet.moje_konto"))
 
 
 @bp.app_context_processor
