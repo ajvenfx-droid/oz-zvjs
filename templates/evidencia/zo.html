@@ -23,59 +23,77 @@
       {% if moze_menit %}<a href="{{ url_for('anketa.dotazniky_zo', slug=zo.slug) }}">Dotazníky</a>{% endif %}
     </div>
   </div>
+  {% macro vyber_clena(meno_pola, vybrane, prazdne='– nikto –') %}
+    <select name="{{ meno_pola }}">
+      <option value="">{{ prazdne }}</option>
+      {% for c in na_vyber %}
+        {% set cislo = c.udaje['Identifikačné číslo']|replace(' ', '') %}
+        <option value="{{ cislo }}" {% if vybrane == cislo %}selected{% endif %}>
+          {{ c.udaje.get('Priezvisko / Názov poisteného', '') }} {{ c.udaje.get('Meno poisteného', '') }} ({{ cislo }})</option>
+      {% endfor %}
+    </select>
+  {% endmacro %}
+  {% set predseda_zo = 'podpredseda' in nastavuje %}
   <section class="panel" id="struktura">
     <h2>ORGANIZAČNÁ ŠTRUKTÚRA</h2>
+
     <h3>Výbor ZO</h3>
     <p>Predseda: <strong>{{ vedenie.predseda.meno if vedenie.predseda else '–' }}</strong>
       · Podpredseda: <strong>{{ vedenie.podpredseda.meno if vedenie.podpredseda else '–' }}</strong></p>
-    {% for sk, nazov in skupiny.items() %}
-      {% if sk == 'revizna' %}<h3>Revízna komisia</h3>{% else %}<p class="pole__nazov">{{ nazov }}</p>{% endif %}
-      {% if organy[sk] %}
-        <ul class="zoznam-organu">
-          {% for o in organy[sk] %}
-            <li>{{ o.meno }}
-              {% if 'podpredseda' in nastavuje %}
-                <form method="post" action="{{ url_for('evidencia.nastav_organ', slug=zo.slug) }}" style="display:inline">
-                  <input type="hidden" name="skupina" value="{{ sk }}"><input type="hidden" name="cislo" value="{{ o.cislo }}">
-                  <button type="submit" name="akcia" value="odobrat" class="odkaz-tlacidlo">odobrať</button>
-                </form>
-              {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}<p class="info">Zatiaľ nikto.</p>{% endif %}
-      {% if 'podpredseda' in nastavuje %}
-        <form method="post" action="{{ url_for('evidencia.nastav_organ', slug=zo.slug) }}" class="nahratie">
-          <input type="hidden" name="skupina" value="{{ sk }}">
-          <select name="cislo" required>
-            <option value="">– vyberte člena –</option>
-            {% for c in na_vyber %}
-              {% set cislo = c.udaje['Identifikačné číslo']|replace(' ', '') %}
-              <option value="{{ cislo }}">{{ c.udaje.get('Priezvisko / Názov poisteného', '') }} {{ c.udaje.get('Meno poisteného', '') }} ({{ cislo }})</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="tlacidlo tlacidlo--sekundarne">Pridať</button>
-        </form>
-      {% endif %}
-    {% endfor %}
     {% if nastavuje %}
       <form method="post" action="{{ url_for('evidencia.nastav_vedenie', slug=zo.slug) }}" class="formular">
-        {% for f, nazov in [('predseda', 'Predseda'), ('podpredseda', 'Podpredseda')] if f in nastavuje %}
+        {% for f, nazov in [('predseda', 'Predseda ZO'), ('podpredseda', 'Podpredseda ZO')] if f in nastavuje %}
           <label class="pole">
             <span class="pole__nazov">{{ nazov }}</span>
-            <select name="{{ f }}">
-              <option value="">– nikto –</option>
-              {% for c in na_vyber %}
-                {% set cislo = c.udaje['Identifikačné číslo']|replace(' ', '') %}
-                <option value="{{ cislo }}" {% if vedenie[f] and vedenie[f].cislo == cislo %}selected{% endif %}>
-                  {{ c.udaje.get('Priezvisko / Názov poisteného', '') }} {{ c.udaje.get('Meno poisteného', '') }} ({{ cislo }})</option>
-              {% endfor %}
-            </select>
+            {{ vyber_clena(f, vedenie[f].cislo if vedenie[f] else '') }}
           </label>
         {% endfor %}
-        <button type="submit" class="tlacidlo">Uložiť organizačnú štruktúru</button>
+        <button type="submit" class="tlacidlo">Uložiť {{ 'predsedu a podpredsedu' if nastavuje|length > 1 else ('podpredsedu' if predseda_zo else 'predsedu') }}</button>
       </form>
-      <p class="info">{% if 'podpredseda' in nastavuje %}Podpredsedu, výbor ZO a revíznu komisiu vyberá predseda ZO.{% else %}Predsedu vyberá správca, ostatných vyberie predseda ZO.{% endif %}
+    {% endif %}
+
+    <p class="pole__nazov">Členovia výboru ZO</p>
+    {% if organy.vybor %}
+      <ul class="zoznam-organu">
+        {% for o in organy.vybor %}
+          <li>{{ o.meno }}
+            {% if predseda_zo %}
+              <form method="post" action="{{ url_for('evidencia.nastav_organ', slug=zo.slug) }}" style="display:inline">
+                <input type="hidden" name="skupina" value="vybor"><input type="hidden" name="cislo" value="{{ o.cislo }}">
+                <button type="submit" name="akcia" value="odobrat" class="odkaz-tlacidlo">odobrať</button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}<p class="info">Zatiaľ nikto.</p>{% endif %}
+    {% if predseda_zo %}
+      <form method="post" action="{{ url_for('evidencia.nastav_organ', slug=zo.slug) }}" class="nahratie">
+        <input type="hidden" name="skupina" value="vybor">
+        {{ vyber_clena('cislo', '', '– vyberte člena –') }}
+        <button type="submit" class="tlacidlo tlacidlo--sekundarne">Pridať do výboru</button>
+      </form>
+    {% endif %}
+
+    <h3>Revízna komisia</h3>
+    {% for miesto, nazov in rk_miesta %}
+      <p>{{ nazov }}: <strong>{{ organy[miesto][0].meno if organy[miesto] else '–' }}</strong></p>
+    {% endfor %}
+    {% if predseda_zo %}
+      <form method="post" action="{{ url_for('evidencia.nastav_organ', slug=zo.slug) }}" class="formular">
+        <input type="hidden" name="akcia" value="revizna">
+        {% for miesto, nazov in rk_miesta %}
+          <label class="pole">
+            <span class="pole__nazov">{{ nazov }}</span>
+            {{ vyber_clena(miesto, organy[miesto][0].cislo if organy[miesto] else '') }}
+          </label>
+        {% endfor %}
+        <button type="submit" class="tlacidlo">Uložiť revíznu komisiu</button>
+      </form>
+    {% endif %}
+
+    {% if nastavuje %}
+      <p class="info">{% if predseda_zo %}Podpredsedu, výbor ZO a revíznu komisiu vyberá predseda ZO.{% else %}Predsedu vyberá správca, ostatných vyberie predseda ZO.{% endif %}
         Predseda a podpredseda majú prístup na zmeny členov tejto ZO a dostávajú upozornenia, keď si člen zmení údaje.</p>
     {% endif %}
   </section>

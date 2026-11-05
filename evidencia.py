@@ -689,7 +689,8 @@ def zo(slug):
     vsetci = _nacitaj_zo(slug)[2]
     mena = sorted({f"{c['udaje'].get('Priezvisko / Názov poisteného', '')} {c['udaje'].get('Meno poisteného', '')}".strip()
                    for c in vsetci} - {""}, key=abecedne)
-    return render_template("evidencia/zo.html", mena=mena, organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY, zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
+    return render_template("evidencia/zo.html", mena=mena, organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY,
+                           rk_miesta=RK_MIESTA, zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
                            hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny,
                            vedenie=vedenie_zo(get_db(), slug), nastavuje=funkcie_na_nastavenie(slug), na_vyber=sorted(
                                [c for c in vsetci if c["udaje"].get("Identifikačné číslo")],
@@ -698,7 +699,10 @@ def zo(slug):
 
 
 FUNKCIE = ("predseda", "podpredseda")
-SKUPINY = {"vybor": "Členovia výboru ZO", "revizna": "Revízna komisia"}
+SKUPINY = {"vybor": "Členovia výboru ZO"}
+# Revízna komisia má pevné miesta: predseda a dvaja členovia.
+RK_MIESTA = [("rk_predseda", "Predseda revíznej komisie"), ("rk_clen1", "Člen revíznej komisie"),
+             ("rk_clen2", "Člen revíznej komisie")]
 
 
 def _cislo(c):
@@ -713,7 +717,7 @@ def _meno_clena(c):
 def organy_zo(db, slug, clenovia):
     """{skupina: [{cislo, meno}]} pre výbor ZO a revíznu komisiu, zoradené podľa priezviska."""
     podla_cisla = {_cislo(c): c for c in clenovia}
-    vysledok = {k: [] for k in SKUPINY}
+    vysledok = {k: [] for k in list(SKUPINY) + [k for k, _ in RK_MIESTA]}
     for r in db.execute("SELECT skupina, cislo FROM evidencia_organ WHERE zo_slug = ?", (slug,)):
         c = podla_cisla.get(r["cislo"])
         if r["skupina"] in vysledok:
@@ -729,11 +733,21 @@ def nastav_organ(slug):
     """Predseda ZO pridáva a odoberá členov výboru ZO a revíznej komisie."""
     if "podpredseda" not in funkcie_na_nastavenie(slug):
         abort(403)
+    db = get_db()
+    if request.form.get("akcia") == "revizna":
+        platne = {_cislo(c) for c in _nacitaj_zo(slug)[2]} - {""}
+        for miesto, _ in RK_MIESTA:
+            cislo = re.sub(r"\s+", "", request.form.get(miesto, ""))
+            db.execute("DELETE FROM evidencia_organ WHERE zo_slug = ? AND skupina = ?", (slug, miesto))
+            if cislo in platne:
+                db.execute("INSERT INTO evidencia_organ (zo_slug, skupina, cislo) VALUES (?, ?, ?)", (slug, miesto, cislo))
+        db.commit()
+        flash("Revízna komisia bola uložená.")
+        return redirect(url_for("evidencia.zo", slug=slug) + "#struktura")
     skupina = request.form.get("skupina", "")
     cislo = re.sub(r"\s+", "", request.form.get("cislo", ""))
     if skupina not in SKUPINY or not cislo:
         return redirect(url_for("evidencia.zo", slug=slug))
-    db = get_db()
     if request.form.get("akcia") == "odobrat":
         db.execute("DELETE FROM evidencia_organ WHERE zo_slug = ? AND skupina = ? AND cislo = ?", (slug, skupina, cislo))
     elif cislo in {_cislo(c) for c in _nacitaj_zo(slug)[2]}:
