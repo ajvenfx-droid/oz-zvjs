@@ -34,7 +34,7 @@ FARBY = {"zelena": "zelený", "cervena": "červený"}
 # Údaje, ktoré si člen v Moje konto zmeniť nemôže (mení ich len predseda ZO alebo správca).
 NEMENITELNE_CLENOM = {
     "číslo", "Identifikačné číslo", "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia",
-    "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Podporný fond", "Služobné/ zam. číslo",
+    "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Podporný fond",
 }
 
 
