@@ -65,6 +65,7 @@ KRATKE_NAZVY = {
     "Adresa trvalého pobytu – mesto": "Mesto",
     "Adresa trvalého pobytu – PSČ": "PSČ",
     "Dátum vstupu do poistenia": "Vstup do poistenia",
+    "Dátum výstupu z poistenia": "Výstup z poistenia",
 }
 
 
