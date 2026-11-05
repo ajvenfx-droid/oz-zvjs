@@ -48,9 +48,10 @@ Neskôr bude na to správa priamo na stránke.
 
 ## Kontá členov
 
-- Prihlasovacie meno je odborárske číslo zo zoznamu členov (nahráva sa v správe).
-- Správca v časti **Kontá členov** (`/spravca/konta`) vytvorí aktivačné kódy a stiahne ich do Excelu.
-- Člen na `/aktivacia` zadá číslo, kód a zvolí si heslo. Potom sa prihlasuje na `/prihlasenie`.
-- Zabudnuté heslo: správca vydá nový aktivačný kód, staré heslo prestane platiť.
+- Prihlasovacie meno je odborárske číslo, heslo je číslo zamestnaneckého alebo služobného preukazu.
+- Oboje je v zozname členov (CSV: odborárske číslo; meno; číslo preukazu), ktorý sa nahráva v správe.
+  Číslo preukazu sa ukladá len ako HMAC odtlačok, nie čitateľne.
+- Člen si v **Moje konto** môže nastaviť vlastné heslo. Zabudnuté heslo obnoví správca v **Kontá členov**
+  (`/spravca/konta`), potom platí znova číslo preukazu.
 - Po 5 nesprávnych pokusoch sa konto na 15 minút zamkne.
 - Každé konto má rolu (zatiaľ len `clen`), ďalšie práva pribudnú neskôr.

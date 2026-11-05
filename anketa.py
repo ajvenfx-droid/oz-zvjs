@@ -4,6 +4,8 @@ Ankety nie sú anonymné: pri každom hlase sa ukladá odborárske číslo
 a správca vo výsledkoch vidí, kto ako hlasoval.
 """
 import csv
+import hashlib
+import hmac
 import io
 import re
 import secrets
@@ -100,6 +102,9 @@ def init_db(db):
         );
         """
     )
+    stlpce = [r["name"] for r in db.execute("PRAGMA table_info(clen)")]
+    if "preukaz_hash" not in stlpce:
+        db.execute("ALTER TABLE clen ADD COLUMN preukaz_hash TEXT NOT NULL DEFAULT ''")
     if nastavenie(db, "prva_anketa_vlozena") is None:
         if db.execute("SELECT COUNT(*) FROM anketa").fetchone()[0] == 0:
             uloz_anketu(db, None, PRVA_ANKETA["nazov"], PREDVOLENY_UVOD, "", PRVA_ANKETA["otazky"])
@@ -128,6 +133,16 @@ def secret_key(db):
         nastav(db, "secret_key", kluc)
         db.commit()
     return kluc
+
+
+def normalizuj_preukaz(cislo):
+    return re.sub(r"\s+", "", cislo).upper()
+
+
+def hash_preukazu(db, cislo_preukazu):
+    """Číslo preukazu sa neukladá čitateľne, len ako HMAC s tajným kľúčom stránky."""
+    kluc = secret_key(db).encode()
+    return hmac.new(kluc, normalizuj_preukaz(cislo_preukazu).encode(), hashlib.sha256).hexdigest()
 
 
 # --- pomocné funkcie --------------------------------------------------------
@@ -376,16 +391,24 @@ def nahraj_clenov():
         cislo = riadok[0].strip()
         if not cislo or not any(z.isdigit() for z in cislo):
             continue  # prázdny riadok alebo hlavička
-        meno = " ".join(s.strip() for s in riadok[1:] if s.strip())
-        clenovia[cislo] = meno
+        meno = riadok[1].strip() if len(riadok) > 1 else ""
+        preukaz = normalizuj_preukaz(riadok[2]) if len(riadok) > 2 else ""
+        clenovia[cislo] = (meno, preukaz)
     if not clenovia:
         flash("V súbore sa nenašlo žiadne odborárske číslo. Čísla musia byť v prvom stĺpci.")
         return redirect(url_for("anketa.spravca"))
     db = get_db()
     db.execute("DELETE FROM clen")
-    db.executemany("INSERT INTO clen (cislo, meno) VALUES (?, ?)", clenovia.items())
+    db.executemany(
+        "INSERT INTO clen (cislo, meno, preukaz_hash) VALUES (?, ?, ?)",
+        [(c, m, hash_preukazu(db, p) if p else "") for c, (m, p) in clenovia.items()],
+    )
     db.commit()
-    flash(f"Zoznam členov bol nahradený. Počet platných čísel: {len(clenovia)}.")
+    bez_preukazu = sum(1 for m, p in clenovia.values() if not p)
+    sprava = f"Zoznam členov bol nahradený. Počet platných čísel: {len(clenovia)}."
+    if bez_preukazu:
+        sprava += f" Bez čísla preukazu (nemôžu sa prihlásiť): {bez_preukazu}."
+    flash(sprava)
     return redirect(url_for("anketa.spravca"))
 
 

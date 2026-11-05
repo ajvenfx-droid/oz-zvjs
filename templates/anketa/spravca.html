@@ -44,7 +44,7 @@
 
   <section class="panel">
     <h2>Kontá členov</h2>
-    <p>Aktivačné kódy na prvé prihlásenie a obnovenie zabudnutého hesla.</p>
+    <p>Prehľad prihlasovania členov a obnovenie zabudnutého hesla.</p>
     <a class="tlacidlo" href="{{ url_for('ucet.spravca_konta') }}">Spravovať kontá</a>
   </section>
 
@@ -52,8 +52,10 @@
     <h2>Zoznam platných odborárskych čísel</h2>
     <p>Aktuálne je v zozname <strong>{{ pocet_clenov }}</strong> čísel.
       {% if pocet_clenov == 0 %}<span class="varovanie">Kým zoznam nenahráte, nikto nemôže hlasovať.</span>{% endif %}</p>
-    <p class="info">Súbor CSV (v Exceli „Uložiť ako“ → „CSV (oddelený bodkočiarkou)“). V prvom stĺpci odborárske číslo,
-      v druhom stĺpci môže byť meno. Nahratím sa celý doterajší zoznam nahradí; už odovzdané hlasy ostanú.</p>
+    <p class="info">Súbor CSV (v Exceli „Uložiť ako“ → „CSV (oddelený bodkočiarkou)“) s troma stĺpcami:
+      <strong>odborárske číslo</strong>, <strong>meno</strong>, <strong>číslo zamestnaneckého alebo služobného preukazu</strong>.
+      Odborárske číslo je prihlasovacie meno, číslo preukazu je heslo. Číslo preukazu sa na stránke neukladá čitateľne.
+      Nahratím sa celý doterajší zoznam nahradí; už odovzdané hlasy a vlastné heslá členov ostanú.</p>
     <form method="post" action="{{ url_for('anketa.nahraj_clenov') }}" enctype="multipart/form-data" class="nahratie">
       <input type="file" name="subor" accept=".csv,.txt" required>
       <button type="submit" class="tlacidlo">Nahrať zoznam</button>

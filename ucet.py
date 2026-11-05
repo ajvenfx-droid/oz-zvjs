@@ -1,17 +1,15 @@
-"""Kontá členov: aktivácia kódom, prihlásenie odborárskym číslom a heslom, Moje konto.
+"""Kontá členov: prihlásenie odborárskym číslom a heslom, Moje konto.
 
 Prihlasovacie meno je odborárske číslo zo zoznamu platných členov (tabuľka clen).
-Pri prvom prihlásení člen zadá aktivačný kód od správcu a nastaví si heslo.
+Kým si člen nenastaví vlastné heslo, heslom je číslo jeho zamestnaneckého
+alebo služobného preukazu zo zoznamu členov.
 """
-import csv
-import io
-import secrets
+import hmac
 from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (
     Blueprint,
-    Response,
     flash,
     g,
     redirect,
@@ -22,7 +20,7 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from anketa import CASOVA_ZONA, len_spravca
+from anketa import CASOVA_ZONA, hash_preukazu, len_spravca
 from db import get_db
 
 bp = Blueprint("ucet", __name__)
@@ -33,9 +31,6 @@ MIN_DLZKA_HESLA = 8
 MAX_POKUSOV = 5  # po toľkých nesprávnych heslách sa konto dočasne zamkne
 ZAMKNUTIE = timedelta(minutes=15)
 
-# Bez znakov, ktoré sa dajú pomýliť (0/O, 1/I/L).
-ZNAKY_KODU = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-
 
 def init_db(db):
     db.executescript(
@@ -43,7 +38,6 @@ def init_db(db):
         CREATE TABLE IF NOT EXISTS ucet (
             cislo TEXT PRIMARY KEY,
             heslo_hash TEXT NOT NULL DEFAULT '',
-            aktivacny_kod TEXT NOT NULL DEFAULT '',
             rola TEXT NOT NULL DEFAULT 'clen',
             zlyhane_pokusy INTEGER NOT NULL DEFAULT 0,
             zamknute_do TEXT NOT NULL DEFAULT ''
@@ -57,24 +51,36 @@ def teraz():
     return datetime.now(CASOVA_ZONA).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def novy_kod():
-    return "".join(secrets.choice(ZNAKY_KODU) for _ in range(8))
-
-
-def normalizuj_kod(kod):
-    return kod.strip().upper().replace(" ", "").replace("-", "")
-
-
-def je_clen(db, cislo):
-    return db.execute("SELECT 1 FROM clen WHERE cislo = ?", (cislo,)).fetchone() is not None
-
-
 def kontrola_hesla(heslo, heslo2):
     if len(heslo) < MIN_DLZKA_HESLA:
         return f"Heslo musí mať aspoň {MIN_DLZKA_HESLA} znakov."
     if heslo != heslo2:
         return "Heslá sa nezhodujú."
     return None
+
+
+def over_heslo(db, clen, ucet, heslo):
+    """Vlastné heslo, ak si ho člen nastavil; inak číslo preukazu zo zoznamu členov."""
+    if ucet is not None and ucet["heslo_hash"]:
+        return check_password_hash(ucet["heslo_hash"], heslo)
+    if not clen["preukaz_hash"] or not heslo.strip():
+        return False
+    return hmac.compare_digest(clen["preukaz_hash"], hash_preukazu(db, heslo))
+
+
+def zaznamenaj_zlyhanie(db, cislo, ucet):
+    pokusy = (ucet["zlyhane_pokusy"] if ucet else 0) + 1
+    zamknute = ""
+    if pokusy >= MAX_POKUSOV:
+        pokusy = 0
+        zamknute = (datetime.now(CASOVA_ZONA) + ZAMKNUTIE).strftime("%Y-%m-%d %H:%M:%S")
+    db.execute(
+        "INSERT INTO ucet (cislo, zlyhane_pokusy, zamknute_do) VALUES (?, ?, ?) "
+        "ON CONFLICT(cislo) DO UPDATE SET zlyhane_pokusy = excluded.zlyhane_pokusy, "
+        "zamknute_do = excluded.zamknute_do",
+        (cislo, pokusy, zamknute),
+    )
+    db.commit()
 
 
 @bp.before_app_request
@@ -85,8 +91,9 @@ def nacitaj_prihlaseneho():
     if not cislo:
         return
     row = get_db().execute(
-        "SELECT c.cislo, c.meno, u.rola FROM clen c JOIN ucet u ON u.cislo = c.cislo "
-        "WHERE c.cislo = ? AND u.heslo_hash != ''",
+        "SELECT c.cislo, c.meno, COALESCE(u.rola, 'clen') AS rola, "
+        "COALESCE(u.heslo_hash, '') != '' AS vlastne_heslo "
+        "FROM clen c LEFT JOIN ucet u ON u.cislo = c.cislo WHERE c.cislo = ?",
         (cislo,),
     ).fetchone()
     if row is None:
@@ -124,73 +131,25 @@ def prihlasenie():
         db = get_db()
         cislo = request.form.get("cislo", "").strip()
         heslo = request.form.get("heslo", "")
+        clen = db.execute("SELECT * FROM clen WHERE cislo = ?", (cislo,)).fetchone()
         ucet = db.execute("SELECT * FROM ucet WHERE cislo = ?", (cislo,)).fetchone()
         if ucet is not None and ucet["zamknute_do"] and teraz() < ucet["zamknute_do"]:
             flash("Konto je pre veľa nesprávnych pokusov dočasne zamknuté. Skúste to o 15 minút.")
-        elif ucet is not None and ucet["heslo_hash"] and je_clen(db, cislo) \
-                and check_password_hash(ucet["heslo_hash"], heslo):
-            db.execute("UPDATE ucet SET zlyhane_pokusy = 0, zamknute_do = '' WHERE cislo = ?", (cislo,))
+        elif clen is not None and over_heslo(db, clen, ucet, heslo):
+            db.execute(
+                "INSERT INTO ucet (cislo) VALUES (?) ON CONFLICT(cislo) DO UPDATE SET "
+                "zlyhane_pokusy = 0, zamknute_do = ''",
+                (cislo,),
+            )
             db.commit()
             session["clen"] = cislo
             session.permanent = True
             return redirect(bezpecny_ciel(request.args.get("dalej", "")))
         else:
-            if ucet is not None:
-                pokusy = ucet["zlyhane_pokusy"] + 1
-                zamknute = ""
-                if pokusy >= MAX_POKUSOV:
-                    pokusy = 0
-                    zamknute = (datetime.now(CASOVA_ZONA) + ZAMKNUTIE).strftime("%Y-%m-%d %H:%M:%S")
-                db.execute(
-                    "UPDATE ucet SET zlyhane_pokusy = ?, zamknute_do = ? WHERE cislo = ?",
-                    (pokusy, zamknute, cislo),
-                )
-                db.commit()
-            if ucet is not None and not ucet["heslo_hash"]:
-                flash("Konto ešte nie je aktivované. Použite prvé prihlásenie s aktivačným kódom.")
-            else:
-                flash("Nesprávne odborárske číslo alebo heslo.")
+            if clen is not None:
+                zaznamenaj_zlyhanie(db, cislo, ucet)
+            flash("Nesprávne odborárske číslo alebo heslo.")
     return render_template("ucet/prihlasenie.html")
-
-
-@bp.route("/aktivacia", methods=["GET", "POST"])
-def aktivacia():
-    if request.method == "POST":
-        db = get_db()
-        f = request.form
-        cislo = f.get("cislo", "").strip()
-        kod = normalizuj_kod(f.get("kod", ""))
-        ucet = db.execute("SELECT * FROM ucet WHERE cislo = ?", (cislo,)).fetchone()
-        if ucet is not None and ucet["zamknute_do"] and teraz() < ucet["zamknute_do"]:
-            flash("Pre veľa nesprávnych pokusov je aktivácia dočasne zamknutá. Skúste to o 15 minút.")
-        elif ucet is None or not ucet["aktivacny_kod"] or not je_clen(db, cislo) \
-                or not secrets.compare_digest(ucet["aktivacny_kod"], kod):
-            if ucet is not None:
-                pokusy = ucet["zlyhane_pokusy"] + 1
-                zamknute = ""
-                if pokusy >= MAX_POKUSOV:
-                    pokusy = 0
-                    zamknute = (datetime.now(CASOVA_ZONA) + ZAMKNUTIE).strftime("%Y-%m-%d %H:%M:%S")
-                db.execute("UPDATE ucet SET zlyhane_pokusy = ?, zamknute_do = ? WHERE cislo = ?",
-                           (pokusy, zamknute, cislo))
-                db.commit()
-            flash("Odborárske číslo alebo aktivačný kód nie je správny. Kód vám vydá predseda ZO.")
-        else:
-            chyba = kontrola_hesla(f.get("heslo", ""), f.get("heslo2", ""))
-            if chyba:
-                flash(chyba)
-            else:
-                db.execute(
-                    "UPDATE ucet SET heslo_hash = ?, aktivacny_kod = '', zlyhane_pokusy = 0, "
-                    "zamknute_do = '' WHERE cislo = ?",
-                    (generate_password_hash(f["heslo"]), cislo),
-                )
-                db.commit()
-                session["clen"] = cislo
-                session.permanent = True
-                flash("Konto je aktivované a ste prihlásený.")
-                return redirect(url_for("ucet.moje_konto"))
-    return render_template("ucet/aktivacia.html")
 
 
 @bp.route("/odhlasenie", methods=["POST"])
@@ -205,17 +164,22 @@ def odhlasenie():
 def moje_konto():
     if request.method == "POST":
         db = get_db()
-        ucet = db.execute("SELECT * FROM ucet WHERE cislo = ?", (g.clen["cislo"],)).fetchone()
+        cislo = g.clen["cislo"]
+        clen = db.execute("SELECT * FROM clen WHERE cislo = ?", (cislo,)).fetchone()
+        ucet = db.execute("SELECT * FROM ucet WHERE cislo = ?", (cislo,)).fetchone()
         f = request.form
-        if not check_password_hash(ucet["heslo_hash"], f.get("stare", "")):
+        if not over_heslo(db, clen, ucet, f.get("stare", "")):
             flash("Súčasné heslo nie je správne.")
         else:
             chyba = kontrola_hesla(f.get("heslo", ""), f.get("heslo2", ""))
             if chyba:
                 flash(chyba)
             else:
-                db.execute("UPDATE ucet SET heslo_hash = ? WHERE cislo = ?",
-                           (generate_password_hash(f["heslo"]), g.clen["cislo"]))
+                db.execute(
+                    "INSERT INTO ucet (cislo, heslo_hash) VALUES (?, ?) "
+                    "ON CONFLICT(cislo) DO UPDATE SET heslo_hash = excluded.heslo_hash",
+                    (cislo, generate_password_hash(f["heslo"])),
+                )
                 db.commit()
                 flash("Heslo bolo zmenené.")
         return redirect(url_for("ucet.moje_konto"))
@@ -225,77 +189,35 @@ def moje_konto():
 # --- správca ----------------------------------------------------------------
 
 
-def prehlad_kont(db):
-    return db.execute(
-        "SELECT c.cislo, c.meno, COALESCE(u.heslo_hash != '', 0) AS aktivne, "
-        "COALESCE(u.aktivacny_kod, '') AS kod FROM clen c "
-        "LEFT JOIN ucet u ON u.cislo = c.cislo ORDER BY c.cislo"
-    ).fetchall()
-
-
 @bp.route("/spravca/konta")
 @len_spravca
 def spravca_konta():
-    konta = prehlad_kont(get_db())
+    konta = get_db().execute(
+        "SELECT c.cislo, c.meno, c.preukaz_hash != '' AS ma_preukaz, "
+        "COALESCE(u.heslo_hash, '') != '' AS vlastne_heslo FROM clen c "
+        "LEFT JOIN ucet u ON u.cislo = c.cislo ORDER BY c.cislo"
+    ).fetchall()
     return render_template(
         "ucet/spravca_konta.html",
         konta=konta,
-        aktivnych=sum(1 for k in konta if k["aktivne"]),
-        s_kodom=sum(1 for k in konta if k["kod"]),
+        vlastnych=sum(1 for k in konta if k["vlastne_heslo"]),
+        bez_preukazu=sum(1 for k in konta if not k["ma_preukaz"] and not k["vlastne_heslo"]),
     )
-
-
-@bp.route("/spravca/konta/kody", methods=["POST"])
-@len_spravca
-def vygeneruj_kody():
-    """Vytvorí aktivačný kód každému členovi, ktorý ešte nemá aktívne konto ani kód."""
-    db = get_db()
-    nove = 0
-    for k in prehlad_kont(db):
-        if not k["aktivne"] and not k["kod"]:
-            db.execute(
-                "INSERT INTO ucet (cislo, aktivacny_kod) VALUES (?, ?) "
-                "ON CONFLICT(cislo) DO UPDATE SET aktivacny_kod = excluded.aktivacny_kod",
-                (k["cislo"], novy_kod()),
-            )
-            nove += 1
-    db.commit()
-    flash(f"Vytvorené nové aktivačné kódy: {nove}.")
-    return redirect(url_for("ucet.spravca_konta"))
 
 
 @bp.route("/spravca/konta/obnovit", methods=["POST"])
 @len_spravca
-def obnov_pristup():
-    """Zabudnuté heslo: zruší heslo člena a vydá mu nový aktivačný kód."""
+def obnov_heslo():
+    """Zabudnuté heslo: zruší vlastné heslo člena, heslom je znova číslo preukazu."""
     db = get_db()
     cislo = request.form.get("cislo", "").strip()
-    if not je_clen(db, cislo):
+    if db.execute("SELECT 1 FROM clen WHERE cislo = ?", (cislo,)).fetchone() is None:
         flash(f"Odborárske číslo {cislo} nie je v zozname členov.")
     else:
-        kod = novy_kod()
         db.execute(
-            "INSERT INTO ucet (cislo, aktivacny_kod) VALUES (?, ?) "
-            "ON CONFLICT(cislo) DO UPDATE SET heslo_hash = '', aktivacny_kod = excluded.aktivacny_kod, "
-            "zlyhane_pokusy = 0, zamknute_do = ''",
-            (cislo, kod),
+            "UPDATE ucet SET heslo_hash = '', zlyhane_pokusy = 0, zamknute_do = '' WHERE cislo = ?",
+            (cislo,),
         )
         db.commit()
-        flash(f"Nový aktivačný kód pre číslo {cislo}: {kod}. Doterajšie heslo už neplatí.")
+        flash(f"Heslo člena {cislo} je obnovené. Prihlási sa číslom svojho preukazu.")
     return redirect(url_for("ucet.spravca_konta"))
-
-
-@bp.route("/spravca/konta/kody.csv")
-@len_spravca
-def export_kodov():
-    out = io.StringIO()
-    w = csv.writer(out, delimiter=";")
-    w.writerow(["Odborárske číslo", "Meno", "Aktivačný kód"])
-    for k in prehlad_kont(get_db()):
-        if k["kod"]:
-            w.writerow([k["cislo"], k["meno"], k["kod"]])
-    return Response(
-        "﻿" + out.getvalue(),
-        mimetype="text/csv; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="aktivacne-kody.csv"'},
-    )

@@ -14,9 +14,8 @@
     <button type="submit" class="tlacidlo">Prihlásiť sa</button>
   </form>
   <div class="panel">
-    <h2>Prihlasujete sa prvýkrát?</h2>
-    <p>Aktivačný kód vám vydá predseda základnej organizácie. S ním si nastavíte vlastné heslo.</p>
-    <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('ucet.aktivacia') }}">Aktivovať konto</a>
-    <p class="info">Zabudli ste heslo? Požiadajte predsedu ZO o nový aktivačný kód.</p>
+    <p>Pri prvom prihlásení je heslom <strong>číslo vášho zamestnaneckého alebo služobného preukazu</strong>.
+      Po prihlásení si ho v časti Moje konto môžete zmeniť na vlastné heslo.</p>
+    <p class="info">Zabudli ste heslo? Požiadajte predsedu ZO o jeho obnovenie.</p>
   </div>
 {% endblock %}

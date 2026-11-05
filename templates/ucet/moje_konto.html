@@ -9,6 +9,9 @@
   </section>
   <section class="panel">
     <h2>Zmena hesla</h2>
+    {% if not prihlaseny_clen.vlastne_heslo %}
+      <p class="varovanie">Prihlasujete sa číslom preukazu. Odporúčame nastaviť si vlastné heslo.</p>
+    {% endif %}
     <form method="post" class="formular formular--uzky">
       <label class="pole">
         <span class="pole__nazov">Súčasné heslo</span>
