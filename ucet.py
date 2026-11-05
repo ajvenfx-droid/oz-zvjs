@@ -450,18 +450,18 @@ def spravca_konta():
     ).fetchall()
     import json
     zo_clena = {}
-    for r in db.execute("SELECT e.id, e.zo_slug, e.udaje, z.mesto FROM evidencia_clen e "
+    for r in db.execute("SELECT e.id, e.zo_slug, e.poradie, e.udaje, z.mesto FROM evidencia_clen e "
                         "JOIN zakladna_organizacia z ON z.slug = e.zo_slug"):
         c = re.sub(r"\s+", "", json.loads(r["udaje"]).get("Identifikačné číslo", ""))
         if c:
-            zo_clena.setdefault(c, (r["mesto"], r["zo_slug"], r["id"]))
+            zo_clena.setdefault(c, (r["mesto"], r["zo_slug"], r["id"], r["poradie"]))
     skupiny = {}
     for k in konta:
-        mesto, slug, eid = zo_clena.get(k["cislo"], ("Bez ZO v evidencii", None, None))
-        skupiny.setdefault(mesto, []).append(dict(k) | {"zo_slug": slug, "evidencia_id": eid})
+        mesto, slug, eid, poradie = zo_clena.get(k["cislo"], ("Bez ZO v evidencii", None, None, 10 ** 9))
+        skupiny.setdefault(mesto, []).append(dict(k) | {"zo_slug": slug, "evidencia_id": eid, "poradie": poradie})
     skupiny = sorted(skupiny.items(), key=lambda x: (x[0] == "Bez ZO v evidencii", abecedne(x[0])))
     for _, clenovia in skupiny:
-        clenovia.sort(key=lambda k: abecedne(k["meno"] or k["cislo"]))
+        clenovia.sort(key=lambda k: (k["poradie"], k["cislo"]))  # poradie ako v nahratom súbore
     return render_template(
         "ucet/spravca_konta.html",
         konta=konta,
