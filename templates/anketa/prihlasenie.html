@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Správa ankiet – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <h1 class="nadpis">Správa ankiet</h1>
+  {% if heslo_nastavene %}
+    <form method="post" class="formular formular--uzky">
+      <label class="pole">
+        <span class="pole__nazov">Heslo správcu</span>
+        <input type="password" name="heslo" required autofocus>
+      </label>
+      <button type="submit" class="tlacidlo">Prihlásiť</button>
+    </form>
+  {% else %}
+    <p>Heslo správcu ešte nie je nastavené. Nastavíte ho v Bash konzole na PythonAnywhere príkazom:</p>
+    <pre class="prikaz">cd ~/oz-zvjs && python3 nastav_heslo.py</pre>
+    <p>Potom na karte Web kliknite na Reload a obnovte túto stránku.</p>
+  {% endif %}
+{% endblock %}

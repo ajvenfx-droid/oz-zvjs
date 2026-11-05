@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Správa ankiet – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <div class="riadok-nadpis">
+    <h1 class="nadpis">Správa ankiet</h1>
+    <form method="post" action="{{ url_for('anketa.odhlasenie') }}">
+      <button type="submit" class="tlacidlo tlacidlo--sekundarne">Odhlásiť</button>
+    </form>
+  </div>
+
+  <section class="panel">
+    <h2>Ankety</h2>
+    <a class="tlacidlo" href="{{ url_for('anketa.uprav_anketu') }}">+ Nová anketa</a>
+    {% if ankety %}
+      <table class="tabulka">
+        <thead><tr><th>Názov</th><th>Stav</th><th>Hlasov</th><th></th></tr></thead>
+        <tbody>
+          {% for a in ankety %}
+            <tr>
+              <td>
+                <strong>{{ a.nazov }}</strong><br>
+                <span class="odkaz-ankety">{{ url_for('anketa.hlasovanie', slug=a.slug, _external=True) }}</span>
+              </td>
+              <td>
+                {% if a.ukoncena %}Ukončená{% elif a.koniec %}Do {{ a.koniec|koniec }}{% else %}Otvorená, bez dátumu ukončenia{% endif %}
+              </td>
+              <td>{{ a.hlasov }}</td>
+              <td class="akcie">
+                <a href="{{ url_for('anketa.vysledky', anketa_id=a.id) }}">Výsledky</a>
+                <a href="{{ url_for('anketa.uprav_anketu', anketa_id=a.id) }}">Upraviť</a>
+                <form method="post" action="{{ url_for('anketa.zmaz_anketu', anketa_id=a.id) }}"
+                      onsubmit="return confirm('Naozaj zmazať anketu „{{ a.nazov }}“ aj so všetkými hlasmi?');">
+                  <button type="submit" class="odkaz-tlacidlo">Zmazať</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="info">Zatiaľ nie je vytvorená žiadna anketa.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Zoznam platných odborárskych čísel</h2>
+    <p>Aktuálne je v zozname <strong>{{ pocet_clenov }}</strong> čísel.
+      {% if pocet_clenov == 0 %}<span class="varovanie">Kým zoznam nenahráte, nikto nemôže hlasovať.</span>{% endif %}</p>
+    <p class="info">Súbor CSV (v Exceli „Uložiť ako“ → „CSV (oddelený bodkočiarkou)“). V prvom stĺpci odborárske číslo,
+      v druhom stĺpci môže byť meno. Nahratím sa celý doterajší zoznam nahradí; už odovzdané hlasy ostanú.</p>
+    <form method="post" action="{{ url_for('anketa.nahraj_clenov') }}" enctype="multipart/form-data" class="nahratie">
+      <input type="file" name="subor" accept=".csv,.txt" required>
+      <button type="submit" class="tlacidlo">Nahrať zoznam</button>
+    </form>
+  </section>
+{% endblock %}

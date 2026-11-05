@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}{{ anketa.nazov }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <h1 class="nadpis">{{ nadpis }}</h1>
+  <p>{{ text }}</p>
+  <p class="info">Anketa: {{ anketa.nazov }}</p>
+  <a class="spat" href="{{ url_for('index') }}">&larr; Späť na úvod</a>
+{% endblock %}

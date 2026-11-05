@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('index') }}">&larr; Späť na zoznam organizácií</a>
+  <h1 class="nadpis-zo">{{ zo.nazov }}</h1>
+  {% if zo.popis %}
+    <div class="popis">{{ zo.popis }}</div>
+  {% else %}
+    <p class="info">Obsah tejto stránky bude spravovať predseda základnej organizácie.</p>
+  {% endif %}
+{% endblock %}

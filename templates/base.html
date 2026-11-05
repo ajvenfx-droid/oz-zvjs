@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ nazov_zvazu }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="hlavicka">
+    <a href="{{ url_for('index') }}" class="hlavicka__nazov">{{ nazov_zvazu }}</a>
+  </header>
+  <main class="obsah">
+    {% with spravy = get_flashed_messages() %}
+      {% for s in spravy %}<p class="oznam">{{ s }}</p>{% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="paticka">
+    &copy; {{ nazov_zvazu }}
+    · <a href="{{ url_for('anketa.spravca') }}">Správa ankiet</a>
+  </footer>
+</body>
+</html>

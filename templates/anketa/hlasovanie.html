@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ anketa.nazov }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <h1 class="nadpis">{{ anketa.nazov }}</h1>
+  {% if anketa.uvod %}<div class="uvod-ankety">{{ anketa.uvod }}</div>{% endif %}
+  {% if anketa.koniec %}<p class="info">Hlasovanie je otvorené do {{ anketa.koniec|koniec }}.</p>{% endif %}
+
+  {% if chyby %}
+    <div class="chyby">{% for c in chyby %}<p>{{ c }}</p>{% endfor %}</div>
+  {% endif %}
+
+  <form method="post" class="formular">
+    <label class="pole">
+      <span class="pole__nazov">Odborárske číslo</span>
+      <input type="text" name="cislo" required autocomplete="off" value="{{ vyplnene.get('cislo', '') }}">
+    </label>
+
+    {% for o in otazky %}
+      {% set pole = 'otazka_' ~ o.id %}
+      <fieldset class="otazka">
+        <legend>{{ o.text }}</legend>
+        {% if o.typ == 'text' %}
+          <textarea name="{{ pole }}" rows="3">{{ vyplnene.get(pole, '') }}</textarea>
+        {% else %}
+          {% if o.typ == 'viac' %}<p class="info">Môžete označiť viac možností.</p>{% endif %}
+          {% for m in o.moznosti %}
+            <label class="moznost">
+              <input type="{{ 'checkbox' if o.typ == 'viac' else 'radio' }}" name="{{ pole }}" value="{{ m.id }}"
+                {% if (m.id|string) in vyplnene.getlist(pole) %}checked{% endif %}
+                {% if o.typ == 'jedna' %}required{% endif %}>
+              {{ m.text }}
+            </label>
+          {% endfor %}
+        {% endif %}
+      </fieldset>
+    {% endfor %}
+
+    <button type="submit" class="tlacidlo">Odoslať hlas</button>
+  </form>
+{% endblock %}

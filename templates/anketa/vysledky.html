@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Výsledky: {{ anketa.nazov }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu ankiet</a>
+  <div class="riadok-nadpis">
+    <h1 class="nadpis">Výsledky: {{ anketa.nazov }}</h1>
+    <a class="tlacidlo" href="{{ url_for('anketa.export', anketa_id=anketa.id) }}">Stiahnuť do Excelu (CSV)</a>
+  </div>
+  <p>Počet hlasujúcich: <strong>{{ hlasov }}</strong>
+    · {% if ukoncena %}Anketa je ukončená.{% elif anketa.koniec %}Hlasovanie prebieha do {{ anketa.koniec|koniec }}.{% else %}Hlasovanie prebieha.{% endif %}</p>
+
+  {% for o in otazky %}
+    <section class="panel">
+      <h2>{{ o.text }}</h2>
+      {% if o.typ == 'text' %}
+        {% if o.texty %}
+          <ul class="texty">{% for t in o.texty %}<li>{{ t }}</li>{% endfor %}</ul>
+        {% else %}
+          <p class="info">Zatiaľ bez odpovedí.</p>
+        {% endif %}
+      {% else %}
+        <table class="tabulka">
+          {% for m in o.moznosti %}
+            <tr>
+              <td class="moznost-nazov">{{ m.text }}</td>
+              <td class="graf"><span class="graf__pruh" style="width: {{ m.percent }}%"></span></td>
+              <td class="cislo">{{ m.pocet }}</td>
+              <td class="cislo">{{ m.percent|string|replace('.', ',') }} %</td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  <section class="panel">
+    <h2>Kto ako hlasoval</h2>
+    {% if hlasujuci %}
+      <div class="tabulka-obal">
+        <table class="tabulka">
+          <thead>
+            <tr><th>Odborárske číslo</th><th>Meno</th><th>Čas</th>{% for o in otazky %}<th>{{ o.text }}</th>{% endfor %}</tr>
+          </thead>
+          <tbody>
+            {% for h in hlasujuci %}
+              <tr>
+                <td>{{ h.cislo }}</td><td>{{ h.meno }}</td><td>{{ h.cas }}</td>
+                {% for o in otazky %}<td>{{ h.odpovede.get(o.id, '') }}</td>{% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="info">Zatiaľ nikto nehlasoval.</p>
+    {% endif %}
+  </section>
+{% endblock %}

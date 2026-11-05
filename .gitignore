@@ -1,0 +1,4 @@
+# Databáza s údajmi členov a hlasmi zostáva len na serveri.
+*.db
+__pycache__/
+venv/
