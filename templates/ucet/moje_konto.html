@@ -46,8 +46,8 @@
     </form>
   </section>
   {% endif %}
-  <section class="panel">
-    <h2>Zmena hesla</h2>
+  <details class="panel">
+    <summary class="rozbalit"><strong>Zmena hesla</strong></summary>
     {% if not prihlaseny_clen.vlastne_heslo %}
       <p class="varovanie">Prihlasujete sa prvotným heslom. Odporúčame nastaviť si vlastné heslo.</p>
     {% endif %}
@@ -67,5 +67,5 @@
       </label>
       <button type="submit" class="tlacidlo">Zmeniť heslo</button>
     </form>
-  </section>
+  </details>
 {% endblock %}

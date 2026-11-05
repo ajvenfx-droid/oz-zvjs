@@ -467,3 +467,5 @@ select { font: inherit; padding: 8px 10px; border: 1px solid #c9c2ad; border-rad
 .legenda--zelena { background: #e3f4c6; }
 .legenda--cervena { background: #fbd3d3; }
 .lista-uctu .verzia { color: #888; font-size: 0.8em; }
+summary.rozbalit { cursor: pointer; color: var(--zlata-tmava, #8a6d0b); font-size: 1.2em; }
+summary.rozbalit strong { font-weight: 600; }
