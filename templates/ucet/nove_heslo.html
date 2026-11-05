@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Nové heslo – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <h1 class="nadpis">Nastavenie nového hesla</h1>
+  <form method="post" class="formular formular--uzky">
+    <label class="pole">
+      <span class="pole__nazov">Nové heslo (aspoň 8 znakov)</span>
+      <input type="password" name="heslo" required minlength="8" autofocus autocomplete="new-password">
+    </label>
+    <label class="pole">
+      <span class="pole__nazov">Zopakujte nové heslo</span>
+      <input type="password" name="heslo2" required minlength="8" autocomplete="new-password">
+    </label>
+    <button type="submit" class="tlacidlo">Nastaviť heslo</button>
+  </form>
+{% endblock %}

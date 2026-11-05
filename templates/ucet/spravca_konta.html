@@ -3,14 +3,42 @@
 {% block content %}
   <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu</a>
   <h1 class="nadpis">Kontá členov</h1>
-  <p>Členov v zozname: <strong>{{ konta|length }}</strong> · s vlastným heslom: <strong>{{ vlastnych }}</strong>
+  <p>Členov v zozname: <strong>{{ konta|length }}</strong> · s vlastným heslom: <strong>{{ vlastnych }}</strong> · so zadaným e-mailom: <strong>{{ s_emailom }}</strong>
     {% if bez_preukazu %}· <span class="varovanie">bez čísla preukazu (nemôžu sa prihlásiť): {{ bez_preukazu }}</span>{% endif %}</p>
   <p class="info">Prihlasovacie meno je odborárske číslo, heslo je číslo preukazu zo zoznamu členov,
     kým si člen nenastaví vlastné heslo. Zoznam členov sa nahráva v správe.</p>
 
   <section class="panel">
+    <h2>Odosielanie e-mailov</h2>
+    {% if email_nastaveny %}
+      <p>E-maily sa posielajú zo schránky <strong>{{ smtp_email }}</strong>.</p>
+    {% else %}
+      <p class="varovanie">Odosielanie e-mailov nie je nastavené, obnova hesla e-mailom zatiaľ nefunguje.</p>
+    {% endif %}
+    <p class="info">Použite samostatnú Gmail schránku zväzu. V nastaveniach Google účtu zapnite dvojstupňové overenie
+      a vytvorte <strong>heslo pre aplikácie</strong> (16 znakov). Sem zadajte to, nie bežné heslo ku Gmailu.</p>
+    <form method="post" action="{{ url_for('ucet.nastav_email') }}" class="formular">
+      <label class="pole">
+        <span class="pole__nazov">Gmail adresa</span>
+        <input type="email" name="smtp_email" required value="{{ smtp_email }}">
+      </label>
+      <label class="pole">
+        <span class="pole__nazov">Heslo pre aplikácie{% if email_nastaveny %} (vyplňte len pri zmene){% endif %}</span>
+        <input type="password" name="smtp_heslo" autocomplete="off" {% if not email_nastaveny %}required{% endif %}>
+      </label>
+      <button type="submit" class="tlacidlo">Uložiť</button>
+    </form>
+    {% if email_nastaveny %}
+      <form method="post" action="{{ url_for('ucet.nastav_email') }}" style="margin-top: 12px">
+        <input type="hidden" name="akcia" value="test">
+        <button type="submit" class="tlacidlo tlacidlo--sekundarne">Poslať skúšobný e-mail</button>
+      </form>
+    {% endif %}
+  </section>
+
+  <section class="panel">
     <h2>Zabudnuté heslo</h2>
-    <p class="info">Zruší vlastné heslo člena. Potom sa znova prihlási číslom svojho preukazu.</p>
+    <p class="info">Ak člen nemá zadaný e-mail: zruší jeho vlastné heslo a potom sa znova prihlási číslom svojho preukazu.</p>
     <form method="post" action="{{ url_for('ucet.obnov_heslo') }}" class="nahratie">
       <input type="text" name="cislo" placeholder="Odborárske číslo" required style="max-width: 220px">
       <button type="submit" class="tlacidlo">Obnoviť heslo</button>
@@ -22,12 +50,13 @@
     {% if konta %}
       <div class="tabulka-obal">
         <table class="tabulka">
-          <thead><tr><th>Odborárske číslo</th><th>Meno</th><th>Prihlasovanie</th></tr></thead>
+          <thead><tr><th>Odborárske číslo</th><th>Meno</th><th>Prihlasovanie</th><th>E-mail</th></tr></thead>
           <tbody>
             {% for k in konta %}
               <tr>
                 <td>{{ k.cislo }}</td><td>{{ k.meno }}</td>
                 <td>{% if k.vlastne_heslo %}Vlastné heslo{% elif k.ma_preukaz %}Číslo preukazu{% else %}<span class="varovanie">Chýba číslo preukazu</span>{% endif %}</td>
+                <td>{{ k.email }}</td>
               </tr>
             {% endfor %}
           </tbody>

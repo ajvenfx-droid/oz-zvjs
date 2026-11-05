@@ -115,7 +115,7 @@ body {
 .pole { display: grid; gap: 6px; }
 .pole__nazov { font-weight: 600; }
 
-input[type="text"], input[type="password"], input[type="datetime-local"], textarea {
+input[type="text"], input[type="email"], input[type="password"], input[type="datetime-local"], textarea {
   font: inherit;
   padding: 8px 10px;
   border: 1px solid #b8c2cf;

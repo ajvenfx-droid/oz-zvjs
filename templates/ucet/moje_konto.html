@@ -8,11 +8,28 @@
     {% if prihlaseny_clen.meno %}<p>Meno: <strong>{{ prihlaseny_clen.meno }}</strong></p>{% endif %}
   </section>
   <section class="panel">
+    <h2>E-mail</h2>
+    {% if not prihlaseny_clen.email %}
+      <p class="varovanie">Zadajte svoj e-mail. Bez neho si nebudete môcť sami obnoviť zabudnuté heslo.</p>
+    {% else %}
+      <p class="info">Na tento e-mail vám pošleme odkaz, ak zabudnete heslo.</p>
+    {% endif %}
+    <form method="post" class="formular formular--uzky">
+      <input type="hidden" name="akcia" value="email">
+      <label class="pole">
+        <span class="pole__nazov">E-mailová adresa</span>
+        <input type="email" name="email" autocomplete="email" value="{{ prihlaseny_clen.email }}">
+      </label>
+      <button type="submit" class="tlacidlo">Uložiť e-mail</button>
+    </form>
+  </section>
+  <section class="panel">
     <h2>Zmena hesla</h2>
     {% if not prihlaseny_clen.vlastne_heslo %}
       <p class="varovanie">Prihlasujete sa číslom preukazu. Odporúčame nastaviť si vlastné heslo.</p>
     {% endif %}
     <form method="post" class="formular formular--uzky">
+      <input type="hidden" name="akcia" value="heslo">
       <label class="pole">
         <span class="pole__nazov">Súčasné heslo</span>
         <input type="password" name="stare" required autocomplete="current-password">

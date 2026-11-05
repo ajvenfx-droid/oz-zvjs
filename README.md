@@ -36,6 +36,7 @@ Databáza SQLite sa vytvorí automaticky pri prvom spustení.
 - `db.py` – pripojenie k databáze
 - `anketa.py` – ankety pre členov
 - `ucet.py` – kontá a prihlasovanie členov
+- `posta.py` – posielanie e-mailov
 - `nastav_heslo.py` – nastavenie hesla správcu ankiet
 - `templates/` – HTML šablóny stránok
 - `static/style.css` – vzhľad
@@ -51,7 +52,10 @@ Neskôr bude na to správa priamo na stránke.
 - Prihlasovacie meno je odborárske číslo, heslo je číslo zamestnaneckého alebo služobného preukazu.
 - Oboje je v zozname členov (CSV: odborárske číslo; meno; číslo preukazu), ktorý sa nahráva v správe.
   Číslo preukazu sa ukladá len ako HMAC odtlačok, nie čitateľne.
-- Člen si v **Moje konto** môže nastaviť vlastné heslo. Zabudnuté heslo obnoví správca v **Kontá členov**
-  (`/spravca/konta`), potom platí znova číslo preukazu.
+- Člen si v **Moje konto** môže nastaviť vlastné heslo a zadať e-mail.
+- Zabudnuté heslo: na `/zabudnute-heslo` príde na e-mail člena odkaz platný 1 hodinu.
+  E-maily sa posielajú cez Gmail (`smtp.gmail.com:587`, jediný SMTP povolený pre bezplatný PythonAnywhere);
+  schránka a heslo pre aplikácie sa nastavujú v **Kontá členov** (`/spravca/konta`).
+- Člen bez e-mailu: správca mu v **Kontá členov** obnoví heslo, potom platí znova číslo preukazu.
 - Po 5 nesprávnych pokusoch sa konto na 15 minút zamkne.
 - Každé konto má rolu (zatiaľ len `clen`), ďalšie práva pribudnú neskôr.

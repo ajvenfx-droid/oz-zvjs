@@ -2,6 +2,7 @@
 import os
 
 from flask import Flask, abort, render_template
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import anketa
 import ucet
@@ -21,6 +22,8 @@ POCIATOCNE_ZO = [
 ]
 
 app = Flask(__name__)
+# PythonAnywhere beží za proxy; vďaka tomu majú odkazy v e-mailoch správne https://.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Mení sa pri každej zmene style.css, aby si prehliadače stiahli nový vzhľad.
 VERZIA_STYLOV = int(os.path.getmtime(os.path.join(app.static_folder, "style.css")))
