@@ -18,6 +18,24 @@
       </form>
     {% endif %}
   </section>
+  {% if dotazniky %}
+  <section class="panel" id="dotazniky">
+    <h2>Dotazníky</h2>
+    <table class="tabulka">
+      <tbody>
+        {% for d in dotazniky %}
+          <tr>
+            <td><a href="{{ url_for('anketa.dotaznik', anketa_id=d.anketa.id) }}"><strong>{{ d.anketa.nazov }}</strong></a>
+              {% if d.zo_mesto %}<br><span class="info">ZO {{ d.zo_mesto }}</span>{% endif %}</td>
+            <td>{% if d.stav == 'odoslany' %}<span class="ok">Odoslaný</span>{% elif d.stav == 'rozpracovany' %}<span class="varovanie">Rozpracovaný, treba potvrdiť</span>{% else %}<span class="varovanie">Nevyplnený</span>{% endif %}
+              {% if d.anketa.koniec and not d.ukoncena and d.stav != 'odoslany' %}<br><span class="info">do {{ d.anketa.koniec|koniec }}</span>{% endif %}</td>
+            <td class="akcie"><a class="tlacidlo{% if d.stav == 'odoslany' %} tlacidlo--sekundarne{% endif %}" href="{{ url_for('anketa.dotaznik', anketa_id=d.anketa.id) }}">{{ 'Pozrieť odpovede' if d.stav == 'odoslany' else ('Pokračovať' if d.stav == 'rozpracovany' else 'Vyplniť') }}</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
   {% for z in evidencia %}
   <section class="panel">
     <h2>Moje údaje v evidencii – ZO {{ z.mesto }}</h2>

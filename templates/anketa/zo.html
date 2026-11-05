@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Dotazníky ZO {{ mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('evidencia.zo', slug=slug) }}">&larr; Členovia ZO {{ mesto }}</a>
+  <div class="riadok-nadpis">
+    <h1 class="nadpis">Dotazníky ZO {{ mesto }}</h1>
+    <a class="tlacidlo" href="{{ url_for('anketa.uprav_anketu') }}">+ Nový dotazník</a>
+  </div>
+  <p class="info">Dotazník uvidia členovia ZO {{ mesto }} po prihlásení v Moje konto.</p>
+  {% if ankety %}
+    <table class="tabulka">
+      <thead><tr><th>Názov</th><th>Stav</th><th>Odoslaných</th><th></th></tr></thead>
+      <tbody>
+        {% for a in ankety %}
+          <tr>
+            <td><strong>{{ a.nazov }}</strong></td>
+            <td>{% if a.ukoncena %}Ukončený{% elif a.koniec %}Do {{ a.koniec|koniec }}{% else %}Otvorený{% endif %}</td>
+            <td>{{ a.hlasov }}</td>
+            <td class="akcie">
+              <a href="{{ url_for('anketa.vysledky', anketa_id=a.id) }}">Výsledky</a>
+              <a href="{{ url_for('anketa.uprav_anketu', anketa_id=a.id) }}">Upraviť</a>
+              <form method="post" action="{{ url_for('anketa.zmaz_anketu', anketa_id=a.id) }}"
+                    onsubmit="return confirm('Naozaj zmazať dotazník „{{ a.nazov }}“ aj so všetkými odpoveďami?');">
+                <button type="submit" class="odkaz-tlacidlo">Zmazať</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="info">Zatiaľ nie je vytvorený žiadny dotazník.</p>
+  {% endif %}
+{% endblock %}

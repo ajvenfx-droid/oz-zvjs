@@ -473,3 +473,7 @@ summary.rozbalit strong { font-weight: 600; }
 .foto-clena { max-width: 220px; max-height: 280px; border-radius: 6px; border: 1px solid #e5dcc3; display: block; margin-bottom: 12px; }
 .zoznam-organu { margin: 4px 0 8px; padding-left: 20px; }
 #struktura h3 { margin: 14px 0 6px; }
+/* Hlavičky stĺpcov evidencie sa zalomia do dvoch riadkov, údaje zostanú v jednom. */
+.tabulka--evidencia th { white-space: normal; min-width: 70px; max-width: 120px; line-height: 1.25; vertical-align: bottom; font-size: 0.8rem; }
+.tabulka--evidencia th, .tabulka--evidencia td { padding: 6px 6px; }
+.ok { color: #1d6b2a; font-weight: 600; }

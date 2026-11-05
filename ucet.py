@@ -282,7 +282,9 @@ def moje_konto():
                 db.commit()
                 flash("Heslo bolo zmenené.")
         return redirect(url_for("ucet.moje_konto"))
-    return render_template("ucet/moje_konto.html", evidencia=moje_udaje(get_db(), g.clen["cislo"]))
+    from anketa import dotazniky_clena
+    return render_template("ucet/moje_konto.html", evidencia=moje_udaje(get_db(), g.clen["cislo"]),
+                           dotazniky=dotazniky_clena(get_db(), g.clen["cislo"]))
 
 
 def moje_udaje(db, cislo):

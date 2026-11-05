@@ -46,10 +46,10 @@ PRVA_ANKETA = {
 }
 
 PREDVOLENY_UVOD = (
-    "Na hlasovanie zadajte svoje odborárske číslo. Každý člen môže hlasovať iba raz.\n\n"
-    "Hlasovanie nie je anonymné: vaše odborárske číslo sa uloží spolu s vašou odpoveďou "
-    "a správca ankety uvidí, ako ste hlasovali. Údaje slúžia iba na vyhodnotenie tejto "
-    "ankety v rámci odborovej organizácie a nebudú poskytnuté tretím stranám."
+    "Dotazník môžete vyplniť len raz. Kým ho nepotvrdíte a neodošlete, odpovede môžete meniť.\n\n"
+    "Pri otázkach označených ako anonymné nikto neuvidí, ako ste odpovedali, zobrazí sa len súhrn. "
+    "Pri ostatných otázkach vedenie ZO uvidí aj vaše odpovede. Údaje slúžia iba na vyhodnotenie "
+    "tohto dotazníka v rámci odborovej organizácie a nebudú poskytnuté tretím stranám."
 )
 
 
@@ -110,6 +110,12 @@ def init_db(db):
     if "zo_slug" not in [r["name"] for r in db.execute("PRAGMA table_info(anketa)")]:
         # Anketa len pre členov jednej ZO (prázdne = pre všetkých).
         db.execute("ALTER TABLE anketa ADD COLUMN zo_slug TEXT NOT NULL DEFAULT ''")
+    if "anonymna" not in [r["name"] for r in db.execute("PRAGMA table_info(otazka)")]:
+        # Pri anonymnej otázke sa vo výsledkoch neukazuje, kto ako odpovedal.
+        db.execute("ALTER TABLE otazka ADD COLUMN anonymna INTEGER NOT NULL DEFAULT 0")
+    if "potvrdene" not in [r["name"] for r in db.execute("PRAGMA table_info(hlas)")]:
+        # 0 = rozpracovaný dotazník (člen ho ešte môže meniť), 1 = potvrdený a uzavretý.
+        db.execute("ALTER TABLE hlas ADD COLUMN potvrdene INTEGER NOT NULL DEFAULT 1")
     if nastavenie(db, "prva_anketa_vlozena") is None:
         if db.execute("SELECT COUNT(*) FROM anketa").fetchone()[0] == 0:
             uloz_anketu(db, None, PRVA_ANKETA["nazov"], PREDVOLENY_UVOD, "", PRVA_ANKETA["otazky"])
@@ -181,6 +187,9 @@ def vytvor_slug(db, nazov, anketa_id=None):
         slug, i = f"{zaklad}-{i}", i + 1
 
 
+ANONYMNA_ZNACKA = re.compile(r"\[\s*anonym\w*\s*\]", re.I)
+
+
 def rozober_otazky(text):
     """Prevedie text otázok na zoznam (text, typ, možnosti).
 
@@ -199,7 +208,9 @@ def rozober_otazky(text):
         elif riadok[0] in "-+":
             raise ValueError(f"Možnosť „{riadok}“ nepatrí k žiadnej otázke.")
         else:
-            otazky.append({"text": riadok, "typ": TYP_JEDNA, "moznosti": []})
+            anonymna = bool(ANONYMNA_ZNACKA.search(riadok))
+            riadok = ANONYMNA_ZNACKA.sub("", riadok).strip()
+            otazky.append({"text": riadok, "typ": TYP_JEDNA, "moznosti": [], "anonymna": anonymna})
     for o in otazky:
         o["moznosti"] = [m for m in o["moznosti"] if m]
         if not o["moznosti"]:
@@ -229,8 +240,8 @@ def uloz_anketu(db, anketa_id, nazov, uvod, koniec, otazky_text, menit_otazky=Tr
         db.execute("UPDATE anketa SET otazky_text = ? WHERE id = ?", (otazky_text, anketa_id))
         for i, o in enumerate(otazky):
             cur = db.execute(
-                "INSERT INTO otazka (anketa_id, poradie, text, typ) VALUES (?, ?, ?, ?)",
-                (anketa_id, i, o["text"], o["typ"]),
+                "INSERT INTO otazka (anketa_id, poradie, text, typ, anonymna) VALUES (?, ?, ?, ?, ?)",
+                (anketa_id, i, o["text"], o["typ"], int(o["anonymna"])),
             )
             db.executemany(
                 "INSERT INTO moznost (otazka_id, poradie, text) VALUES (?, ?, ?)",
@@ -284,71 +295,145 @@ def nacitaj_anketu(db, anketa_id):
 # --- hlasovanie -------------------------------------------------------------
 
 
-@bp.route("/<slug>", methods=["GET", "POST"])
+@bp.route("/<slug>")
 def hlasovanie(slug):
-    db = get_db()
-    anketa = db.execute("SELECT * FROM anketa WHERE slug = ?", (slug,)).fetchone()
+    """Odkaz na anketu: dotazník sa vypĺňa po prihlásení vo vlastnom konte."""
+    anketa = get_db().execute("SELECT id FROM anketa WHERE slug = ?", (slug,)).fetchone()
     if anketa is None:
         abort(404)
-    otazky = nacitaj_otazky(db, anketa["id"])
-    if je_ukoncena(anketa):
-        return render_template("anketa/sprava.html", anketa=anketa, nadpis="Anketa je ukončená",
-                               text="Hlasovanie v tejto ankete sa už skončilo.")
+    return redirect(url_for("anketa.dotaznik", anketa_id=anketa["id"]))
 
-    chyby, vyplnene = [], request.form
+
+# --- dotazník v konte člena -------------------------------------------------
+
+
+def zo_clena(db, cislo):
+    """ZO, v ktorých evidencii je člen s týmto odborárskym číslom."""
+    cislo = re.sub(r"\s+", "", cislo or "")
+    if not cislo:
+        return set()
+    return {r["zo_slug"] for r in db.execute("SELECT zo_slug, udaje FROM evidencia_clen WHERE udaje LIKE ?",
+                                             (f"%{cislo}%",))
+            if re.sub(r"\s+", "", json.loads(r["udaje"]).get("Identifikačné číslo", "")) == cislo}
+
+
+def moze_vyplnit(db, anketa, cislo):
+    return not anketa["zo_slug"] or anketa["zo_slug"] in zo_clena(db, cislo)
+
+
+def dotazniky_clena(db, cislo):
+    """Dotazníky pre člena: otvorené aj tie, ktoré už odoslal. [{anketa, stav, ukoncena, zo_mesto}]"""
+    moje_zo = zo_clena(db, cislo)
+    vysledok = []
+    for a in db.execute("SELECT * FROM anketa ORDER BY id DESC"):
+        if a["zo_slug"] and a["zo_slug"] not in moje_zo:
+            continue
+        h = db.execute("SELECT potvrdene FROM hlas WHERE anketa_id = ? AND cislo = ?", (a["id"], cislo)).fetchone()
+        stav = "nevyplneny" if h is None else ("odoslany" if h["potvrdene"] else "rozpracovany")
+        if je_ukoncena(a) and stav != "odoslany":
+            continue
+        vysledok.append({"anketa": a, "stav": stav, "ukoncena": je_ukoncena(a), "zo_mesto": mesto_zo(db, a["zo_slug"])})
+    return vysledok
+
+
+def moje_odpovede(db, hlas_id):
+    """{otazka_id: [id možnosti alebo text]}"""
+    odp = {}
+    for r in db.execute("SELECT otazka_id, moznost_id, text FROM odpoved WHERE hlas_id = ?", (hlas_id,)):
+        odp.setdefault(r["otazka_id"], []).append(r["moznost_id"] if r["moznost_id"] is not None else r["text"])
+    return odp
+
+
+def text_odpovedi(anketa, otazky, odpovede):
+    riadky = [anketa["nazov"], ""]
+    for o in otazky:
+        hodnoty = odpovede.get(o["id"], [])
+        if o["typ"] == TYP_TEXT:
+            odpoved = hodnoty[0] if hodnoty else "–"
+        else:
+            odpoved = ", ".join(m["text"] for m in o["moznosti"] if m["id"] in hodnoty) or "–"
+        riadky += [o["text"], "  " + odpoved, ""]
+    return "\n".join(riadky)
+
+
+@bp.route("/dotaznik/<int:anketa_id>", methods=["GET", "POST"])
+def dotaznik(anketa_id):
+    clen = g.get("clen")
+    if clen is None:
+        return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+    db = get_db()
+    anketa = nacitaj_anketu(db, anketa_id)
+    cislo = clen["cislo"]
+    if not moze_vyplnit(db, anketa, cislo):
+        return render_template("anketa/sprava.html", anketa=anketa, nadpis="Dotazník nie je pre vás",
+                               text=f"Tento dotazník je len pre členov ZO {mesto_zo(db, anketa['zo_slug'])}.")
+    otazky = nacitaj_otazky(db, anketa_id)
+    hlas = db.execute("SELECT * FROM hlas WHERE anketa_id = ? AND cislo = ?", (anketa_id, cislo)).fetchone()
+    odpovede = moje_odpovede(db, hlas["id"]) if hlas else {}
+    uzavrety = bool(hlas and hlas["potvrdene"])
+    ukoncena = je_ukoncena(anketa)
+    chyby = []
+
     if request.method == "POST":
-        cislo = request.form.get("cislo", "").strip()
-        clen = db.execute("SELECT * FROM clen WHERE cislo = ?", (cislo,)).fetchone()
-        if not cislo:
-            chyby.append("Zadajte svoje odborárske číslo.")
-        elif clen is None:
-            chyby.append("Toto odborárske číslo nie je v zozname platných členov.")
-        elif anketa["zo_slug"] and not je_clenom_zo(db, cislo, anketa["zo_slug"]):
-            chyby.append(f"Táto anketa je len pre členov ZO {mesto_zo(db, anketa['zo_slug'])}.")
-        elif db.execute(
-            "SELECT 1 FROM hlas WHERE anketa_id = ? AND cislo = ?", (anketa["id"], cislo)
-        ).fetchone():
-            return render_template("anketa/sprava.html", anketa=anketa, nadpis="Už ste hlasovali",
-                                   text=f"S odborárskym číslom {cislo} už bolo v tejto ankete hlasované. "
-                                        "Hlasovať je možné iba raz.")
-
-        odpovede = []
+        akcia = request.form.get("akcia")
+        if akcia == "email":
+            email = clen.get("email", "")
+            if not uzavrety:
+                flash("E-mailom si môžete poslať až odoslaný dotazník.")
+            elif not email:
+                flash("V konte nemáte e-mail.")
+            else:
+                from posta import je_nastavena, posli
+                if not je_nastavena(db):
+                    flash("Odosielanie e-mailov zatiaľ nie je na stránke nastavené.")
+                else:
+                    try:
+                        posli(db, email, f"Vaše odpovede: {anketa['nazov']}", text_odpovedi(anketa, otazky, odpovede))
+                        flash(f"Odpovede boli poslané na {email}.")
+                    except Exception:
+                        flash("E-mail sa nepodarilo odoslať, skúste to neskôr.")
+            return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
+        if uzavrety or ukoncena:
+            flash("Dotazník je už uzavretý, odpovede sa nedajú meniť.")
+            return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
+        nove = []
         for o in otazky:
             pole = f"otazka_{o['id']}"
-            platne = {str(m["id"]) for m in o["moznosti"]}
             if o["typ"] == TYP_TEXT:
                 text = request.form.get(pole, "").strip()
                 if text:
-                    odpovede.append((o["id"], None, text[:2000]))
+                    nove.append((o["id"], None, text[:2000]))
             else:
+                platne = {str(m["id"]) for m in o["moznosti"]}
                 vybrane = [v for v in request.form.getlist(pole) if v in platne]
                 if o["typ"] == TYP_JEDNA:
                     vybrane = vybrane[:1]
-                if not vybrane:
+                if not vybrane and akcia == "potvrdit":
                     chyby.append(f"Odpovedzte na otázku „{o['text']}“.")
-                odpovede += [(o["id"], int(v), "") for v in vybrane]
-
+                nove += [(o["id"], int(v), "") for v in vybrane]
+        odpovede = {}
+        for oid, mid, text in nove:
+            odpovede.setdefault(oid, []).append(mid if mid is not None else text)
         if not chyby:
-            try:
-                cur = db.execute(
-                    "INSERT INTO hlas (anketa_id, cislo, cas) VALUES (?, ?, ?)",
-                    (anketa["id"], cislo, datetime.now(CASOVA_ZONA).strftime("%Y-%m-%d %H:%M:%S")),
-                )
-            except Exception:
-                db.rollback()
-                return render_template("anketa/sprava.html", anketa=anketa, nadpis="Už ste hlasovali",
-                                       text="S týmto odborárskym číslom už bolo hlasované.")
-            db.executemany(
-                "INSERT INTO odpoved (hlas_id, otazka_id, moznost_id, text) VALUES (?, ?, ?, ?)",
-                [(cur.lastrowid, *o) for o in odpovede],
-            )
+            cas = datetime.now(CASOVA_ZONA).strftime("%Y-%m-%d %H:%M:%S")
+            potvrdit = int(akcia == "potvrdit")
+            if hlas is None:
+                hlas_id = db.execute("INSERT INTO hlas (anketa_id, cislo, cas, potvrdene) VALUES (?, ?, ?, ?)",
+                                     (anketa_id, cislo, cas, potvrdit)).lastrowid
+            else:
+                hlas_id = hlas["id"]
+                db.execute("UPDATE hlas SET cas = ?, potvrdene = ? WHERE id = ?", (cas, potvrdit, hlas_id))
+                db.execute("DELETE FROM odpoved WHERE hlas_id = ?", (hlas_id,))
+            db.executemany("INSERT INTO odpoved (hlas_id, otazka_id, moznost_id, text) VALUES (?, ?, ?, ?)",
+                           [(hlas_id, *o) for o in nove])
             db.commit()
-            return render_template("anketa/sprava.html", anketa=anketa, nadpis="Ďakujeme za hlas",
-                                   text="Váš hlas bol zaznamenaný.")
+            flash("Dotazník bol odoslaný a uzavretý. Ďakujeme." if potvrdit
+                  else "Odpovede sú uložené. Dotazník môžete ešte meniť, nakoniec ho potvrďte a odošlite.")
+            return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
 
-    return render_template("anketa/hlasovanie.html", anketa=anketa, otazky=otazky,
-                           zo_mesto=mesto_zo(db, anketa["zo_slug"]),
-                           chyby=chyby, vyplnene=vyplnene)
+    return render_template("anketa/dotaznik.html", anketa=anketa, otazky=otazky, odpovede=odpovede,
+                           uzavrety=uzavrety, ukoncena=ukoncena, chyby=chyby, hlas=hlas,
+                           zo_mesto=mesto_zo(db, anketa["zo_slug"]))
 
 
 # --- správca ----------------------------------------------------------------
@@ -358,6 +443,22 @@ def je_spravca():
     """Správca: prihlásený heslom správcu alebo člen s prístupom „správca stránky“."""
     clen = g.get("clen")
     return bool(session.get("spravca")) or (clen is not None and clen["rola"] == "spravca")
+
+
+def spravovana_zo():
+    """ZO, ktorej dotazníky spravuje prihlásený predseda alebo podpredseda ZO."""
+    clen = g.get("clen")
+    if clen is not None and clen["rola"] == "zo" and clen.get("zo_slug"):
+        return clen["zo_slug"]
+    return None
+
+
+def moze_spravovat(zo_slug):
+    return je_spravca() or (bool(zo_slug) and zo_slug == spravovana_zo())
+
+
+def spat_na_zoznam(zo_slug):
+    return url_for("anketa.spravca") if je_spravca() else url_for("anketa.dotazniky_zo", slug=zo_slug)
 
 
 def len_spravca(f):
@@ -400,6 +501,22 @@ def spravca():
     ]
     pocet_clenov = db.execute("SELECT COUNT(*) FROM clen").fetchone()[0]
     return render_template("anketa/spravca.html", ankety=ankety, pocet_clenov=pocet_clenov)
+
+
+@bp.route("/zo/<slug>")
+def dotazniky_zo(slug):
+    """Dotazníky jednej ZO pre jej predsedu a podpredsedu (aj pre správcu)."""
+    if g.get("clen") is None and not je_spravca():
+        return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+    if not moze_spravovat(slug):
+        abort(403)
+    db = get_db()
+    mesto = mesto_zo(db, slug)
+    if not mesto:
+        abort(404)
+    ankety = [{**dict(a), "hlasov": pocet_odoslanych(db, a["id"]), "ukoncena": je_ukoncena(a)}
+              for a in db.execute("SELECT * FROM anketa WHERE zo_slug = ? ORDER BY id DESC", (slug,))]
+    return render_template("anketa/zo.html", ankety=ankety, slug=slug, mesto=mesto)
 
 
 @bp.route("/spravca/clenovia", methods=["POST"])
@@ -447,10 +564,18 @@ def nahraj_clenov():
 
 @bp.route("/spravca/nova", methods=["GET", "POST"])
 @bp.route("/spravca/<int:anketa_id>/upravit", methods=["GET", "POST"])
-@len_spravca
 def uprav_anketu(anketa_id=None):
     db = get_db()
     anketa = nacitaj_anketu(db, anketa_id) if anketa_id else None
+    # Predseda / podpredseda ZO spravuje len dotazníky svojej ZO.
+    pevna_zo = None if je_spravca() else spravovana_zo()
+    if not je_spravca():
+        if pevna_zo is None:
+            if g.get("clen") is None:
+                return redirect(url_for("anketa.prihlasenie", dalej=request.path))
+            abort(403)
+        if anketa is not None and anketa["zo_slug"] != pevna_zo:
+            abort(403)
     ma_hlasy = bool(anketa_id) and pocet_hlasov(db, anketa_id) > 0
     if request.method == "POST":
         f = request.form
@@ -463,23 +588,23 @@ def uprav_anketu(anketa_id=None):
                 datetime.strptime(koniec, "%Y-%m-%dT%H:%M")
             anketa_id = uloz_anketu(db, anketa_id, nazov, f.get("uvod", "").strip(), koniec,
                                     f.get("otazky", ""), menit_otazky=not ma_hlasy)
-            zo_slug = f.get("zo_slug", "")
+            zo_slug = pevna_zo or f.get("zo_slug", "")
             db.execute("UPDATE anketa SET zo_slug = ? WHERE id = ?",
                        (zo_slug if mesto_zo(db, zo_slug) else "", anketa_id))
         except ValueError as e:
             db.rollback()
             flash(str(e) if "does not match" not in str(e) else "Neplatný dátum ukončenia.")
             return render_template("anketa/uprava.html", anketa=f, ma_hlasy=ma_hlasy, nova=anketa is None,
-                                   organizacie=_organizacie(db))
+                                   organizacie=_organizacie(db), pevna_zo=pevna_zo, spat=spat_na_zoznam(pevna_zo))
         db.commit()
-        flash("Anketa bola uložená.")
-        return redirect(url_for("anketa.spravca"))
+        flash("Dotazník bol uložený.")
+        return redirect(spat_na_zoznam(pevna_zo))
     if anketa is None:
-        anketa = {"nazov": "", "uvod": PREDVOLENY_UVOD, "koniec": "", "otazky": "", "zo_slug": ""}
+        anketa = {"nazov": "", "uvod": PREDVOLENY_UVOD, "koniec": "", "otazky": "", "zo_slug": pevna_zo or ""}
     else:
         anketa = {**dict(anketa), "otazky": anketa["otazky_text"]}
     return render_template("anketa/uprava.html", anketa=anketa, ma_hlasy=ma_hlasy, nova=anketa_id is None,
-                           organizacie=_organizacie(db))
+                           organizacie=_organizacie(db), pevna_zo=pevna_zo, spat=spat_na_zoznam(pevna_zo))
 
 
 def _organizacie(db):
@@ -488,33 +613,40 @@ def _organizacie(db):
 
 
 @bp.route("/spravca/<int:anketa_id>/zmazat", methods=["POST"])
-@len_spravca
 def zmaz_anketu(anketa_id):
     db = get_db()
-    nacitaj_anketu(db, anketa_id)
+    anketa = _anketa_na_spravu(db, anketa_id)
     db.execute("DELETE FROM anketa WHERE id = ?", (anketa_id,))
     db.commit()
-    flash("Anketa bola zmazaná.")
-    return redirect(url_for("anketa.spravca"))
+    flash("Dotazník bol zmazaný.")
+    return redirect(spat_na_zoznam(anketa["zo_slug"]))
+
+
+def pocet_odoslanych(db, anketa_id):
+    return db.execute("SELECT COUNT(*) FROM hlas WHERE anketa_id = ? AND potvrdene = 1", (anketa_id,)).fetchone()[0]
 
 
 def vysledky_ankety(db, anketa_id):
+    """Súhrn len z odoslaných (potvrdených) dotazníkov; pri anonymných otázkach bez mien."""
     otazky = nacitaj_otazky(db, anketa_id)
-    hlasov = pocet_hlasov(db, anketa_id)
+    hlasov = pocet_odoslanych(db, anketa_id)
     for o in otazky:
         for m in o["moznosti"]:
             m["pocet"] = db.execute(
-                "SELECT COUNT(*) FROM odpoved WHERE moznost_id = ?", (m["id"],)
+                "SELECT COUNT(*) FROM odpoved d JOIN hlas h ON h.id = d.hlas_id "
+                "WHERE d.moznost_id = ? AND h.potvrdene = 1", (m["id"],)
             ).fetchone()[0]
             m["percent"] = round(100 * m["pocet"] / hlasov, 1) if hlasov else 0
-        o["texty"] = [r["text"] for r in db.execute(
-            "SELECT text FROM odpoved WHERE otazka_id = ? AND moznost_id IS NULL ORDER BY id",
+        texty = [r["text"] for r in db.execute(
+            "SELECT d.text FROM odpoved d JOIN hlas h ON h.id = d.hlas_id "
+            "WHERE d.otazka_id = ? AND d.moznost_id IS NULL AND h.potvrdene = 1 ORDER BY d.id",
             (o["id"],),
         )]
+        o["texty"] = sorted(texty, key=str.lower) if o["anonymna"] else texty
     hlasujuci = []
     for h in db.execute(
         "SELECT h.*, COALESCE(c.meno, '') AS meno FROM hlas h "
-        "LEFT JOIN clen c ON c.cislo = h.cislo WHERE h.anketa_id = ? ORDER BY h.cas",
+        "LEFT JOIN clen c ON c.cislo = h.cislo WHERE h.anketa_id = ? AND h.potvrdene = 1 ORDER BY h.cas",
         (anketa_id,),
     ):
         odpovede = {}
@@ -525,30 +657,50 @@ def vysledky_ankety(db, anketa_id):
             (h["id"],),
         ):
             odpovede.setdefault(r["otazka_id"], []).append(r["text"])
-        hlasujuci.append({**dict(h), "odpovede": {k: ", ".join(v) for k, v in odpovede.items()}})
+        anonymne = {o["id"] for o in otazky if o["anonymna"]}
+        hlasujuci.append({**dict(h), "odpovede": {k: ", ".join(v) for k, v in odpovede.items() if k not in anonymne}})
     return otazky, hlasov, hlasujuci
 
 
+def ucast(db, anketa):
+    """(oprávnených členov, rozpracovaných dotazníkov)"""
+    if anketa["zo_slug"]:
+        opravnenych = db.execute("SELECT COUNT(*) FROM evidencia_clen WHERE zo_slug = ?", (anketa["zo_slug"],)).fetchone()[0]
+    else:
+        opravnenych = db.execute("SELECT COUNT(*) FROM clen").fetchone()[0]
+    rozpracovanych = db.execute("SELECT COUNT(*) FROM hlas WHERE anketa_id = ? AND potvrdene = 0",
+                                (anketa["id"],)).fetchone()[0]
+    return opravnenych, rozpracovanych
+
+
+def _anketa_na_spravu(db, anketa_id):
+    anketa = nacitaj_anketu(db, anketa_id)
+    if not moze_spravovat(anketa["zo_slug"]):
+        abort(403)
+    return anketa
+
+
 @bp.route("/spravca/<int:anketa_id>/vysledky")
-@len_spravca
 def vysledky(anketa_id):
     db = get_db()
-    anketa = nacitaj_anketu(db, anketa_id)
+    anketa = _anketa_na_spravu(db, anketa_id)
     otazky, hlasov, hlasujuci = vysledky_ankety(db, anketa_id)
+    opravnenych, rozpracovanych = ucast(db, anketa)
     return render_template("anketa/vysledky.html", anketa=anketa, otazky=otazky, hlasov=hlasov,
-                           hlasujuci=hlasujuci, ukoncena=je_ukoncena(anketa))
+                           hlasujuci=hlasujuci, ukoncena=je_ukoncena(anketa), opravnenych=opravnenych,
+                           rozpracovanych=rozpracovanych, zo_mesto=mesto_zo(db, anketa["zo_slug"]),
+                           spat=spat_na_zoznam(anketa["zo_slug"]))
 
 
 @bp.route("/spravca/<int:anketa_id>/export.csv")
-@len_spravca
 def export(anketa_id):
     db = get_db()
-    anketa = nacitaj_anketu(db, anketa_id)
+    anketa = _anketa_na_spravu(db, anketa_id)
     otazky, hlasov, hlasujuci = vysledky_ankety(db, anketa_id)
     out = io.StringIO()
     w = csv.writer(out, delimiter=";")
     w.writerow([anketa["nazov"]])
-    w.writerow(["Počet hlasujúcich", hlasov])
+    w.writerow(["Počet odoslaných dotazníkov", hlasov])
     w.writerow([])
     w.writerow(["Súhrn"])
     for o in otazky:
@@ -562,9 +714,10 @@ def export(anketa_id):
                 w.writerow([m["text"], m["pocet"], str(m["percent"]).replace(".", ",")])
         w.writerow([])
     w.writerow(["Hlasy jednotlivých členov"])
-    w.writerow(["Odborárske číslo", "Meno", "Čas hlasovania"] + [o["text"] for o in otazky])
+    menovite = [o for o in otazky if not o["anonymna"]]
+    w.writerow(["Odborárske číslo", "Meno", "Čas odoslania"] + [o["text"] for o in menovite])
     for h in hlasujuci:
-        w.writerow([h["cislo"], h["meno"], h["cas"]] + [h["odpovede"].get(o["id"], "") for o in otazky])
+        w.writerow([h["cislo"], h["meno"], h["cas"]] + [h["odpovede"].get(o["id"], "") for o in menovite])
     nazov_suboru = f"vysledky-{anketa['slug']}.csv"
     # BOM na začiatku, aby Excel správne zobrazil diakritiku.
     return Response(

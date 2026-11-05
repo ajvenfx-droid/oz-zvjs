@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ anketa.nazov }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('ucet.moje_konto') }}#dotazniky">&larr; Moje konto</a>
+  <h1 class="nadpis">{{ anketa.nazov }}</h1>
+  {% if anketa.uvod %}<div class="uvod-ankety">{{ anketa.uvod }}</div>{% endif %}
+  {% if zo_mesto %}<p class="info">Dotazník pre členov ZO {{ zo_mesto }}.</p>{% endif %}
+  {% if anketa.koniec and not ukoncena %}<p class="info">Vyplniť ho môžete do {{ anketa.koniec|koniec }}.</p>{% endif %}
+
+  {% if uzavrety %}
+    <p class="ok">Dotazník ste odoslali {{ hlas.cas[8:10] }}.{{ hlas.cas[5:7] }}.{{ hlas.cas[:4] }} o {{ hlas.cas[11:16] }}. Odpovede sa už nedajú meniť.</p>
+  {% elif ukoncena %}
+    <p class="varovanie">Vypĺňanie dotazníka sa už skončilo.</p>
+  {% elif hlas %}
+    <p class="varovanie">Dotazník je rozpracovaný. Kým ho nepotvrdíte a neodošlete, nezapočíta sa.</p>
+  {% endif %}
+
+  {% if chyby %}
+    <div class="chyby">{% for c in chyby %}<p>{{ c }}</p>{% endfor %}</div>
+  {% endif %}
+
+  {% set zamknute = uzavrety or ukoncena %}
+  <form method="post" class="formular" id="dotaznik">
+    {% for o in otazky %}
+      {% set pole = 'otazka_' ~ o.id %}
+      {% set moje = odpovede.get(o.id, []) %}
+      <fieldset class="otazka">
+        <legend>{{ loop.index }}. {{ o.text }}</legend>
+        {% if o.anonymna %}<p class="info">Anonymná otázka: nikto neuvidí, ako ste odpovedali.</p>{% endif %}
+        {% if o.typ == 'text' %}
+          <textarea name="{{ pole }}" rows="3" {% if zamknute %}disabled{% endif %}>{{ moje[0] if moje else '' }}</textarea>
+        {% else %}
+          {% if o.typ == 'viac' %}<p class="info">Môžete označiť viac možností.</p>{% endif %}
+          {% for m in o.moznosti %}
+            <label class="moznost">
+              <input type="{{ 'checkbox' if o.typ == 'viac' else 'radio' }}" name="{{ pole }}" value="{{ m.id }}"
+                {% if m.id in moje %}checked{% endif %} {% if zamknute %}disabled{% endif %}>
+              {{ m.text }}
+            </label>
+          {% endfor %}
+        {% endif %}
+      </fieldset>
+    {% endfor %}
+
+    {% if not zamknute %}
+      <div class="akcie">
+        <button type="submit" name="akcia" value="ulozit" class="tlacidlo tlacidlo--sekundarne">Uložiť rozpracované</button>
+        <button type="submit" name="akcia" value="potvrdit" class="tlacidlo"
+                onclick="return confirm('Potvrdiť a odoslať dotazník? Potom už odpovede nebude možné zmeniť.');">Potvrdiť a odoslať</button>
+      </div>
+    {% endif %}
+  </form>
+
+  {% if uzavrety %}
+    <form method="post" style="margin-top: 16px">
+      <button type="submit" name="akcia" value="email" class="tlacidlo tlacidlo--sekundarne">Poslať si odpovede e-mailom</button>
+    </form>
+  {% endif %}
+{% endblock %}

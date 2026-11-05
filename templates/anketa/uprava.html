@@ -1,32 +1,34 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Nová anketa' if nova else 'Úprava ankety' }} – {{ nazov_zvazu }}{% endblock %}
+{% block title %}{{ 'Nový dotazník' if nova else 'Úprava dotazníka' }} – {{ nazov_zvazu }}{% endblock %}
 {% block content %}
-  <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu ankiet</a>
-  <h1 class="nadpis">{{ 'Nová anketa' if nova else 'Úprava ankety' }}</h1>
+  <a class="spat" href="{{ spat }}">&larr; Späť na dotazníky</a>
+  <h1 class="nadpis">{{ 'Nový dotazník' if nova else 'Úprava dotazníka' }}</h1>
   <form method="post" class="formular">
     <label class="pole">
-      <span class="pole__nazov">Názov ankety</span>
+      <span class="pole__nazov">Názov dotazníka</span>
       <input type="text" name="nazov" required value="{{ anketa.nazov }}">
     </label>
     <label class="pole">
       <span class="pole__nazov">Úvodný text (vrátane informácie o spracovaní údajov)</span>
       <textarea name="uvod" rows="6">{{ anketa.uvod }}</textarea>
     </label>
+    {% if not pevna_zo %}
     <label class="pole">
-      <span class="pole__nazov">Kto môže hlasovať</span>
+      <span class="pole__nazov">Kto môže dotazník vyplniť</span>
       <select name="zo_slug">
         <option value="">všetci členovia OZ</option>
         {% for z in organizacie %}<option value="{{ z.slug }}" {% if anketa.zo_slug == z.slug %}selected{% endif %}>len členovia ZO {{ z.mesto }}</option>{% endfor %}
       </select>
     </label>
+    {% endif %}
     <label class="pole">
-      <span class="pole__nazov">Koniec hlasovania (nepovinné)</span>
+      <span class="pole__nazov">Koniec vypĺňania (nepovinné)</span>
       <input type="datetime-local" name="koniec" value="{{ anketa.koniec }}">
     </label>
     <label class="pole">
       <span class="pole__nazov">Otázky</span>
       {% if ma_hlasy %}
-        <span class="varovanie">V ankete už niekto hlasoval, preto otázky nie je možné meniť.</span>
+        <span class="varovanie">Dotazník už niekto začal vypĺňať, preto otázky nie je možné meniť.</span>
         <textarea rows="10" disabled>{{ anketa.otazky }}</textarea>
       {% else %}
         <textarea name="otazky" rows="10" required>{{ anketa.otazky }}</textarea>
@@ -39,14 +41,19 @@
           <li><code>- možnosť</code> – člen vyberie jednu možnosť</li>
           <li><code>+ možnosť</code> – člen môže vybrať viac možností</li>
           <li>otázka bez možností – člen napíše vlastnú odpoveď</li>
+          <li><code>[anonymná]</code> na konci otázky – pri tejto otázke sa vo výsledkoch neukáže, kto ako odpovedal, len súhrn</li>
         </ul>
         <pre>Nákup hodiniek na plaváreň
 - 1 ks
 - 2 ks
 - 3 ks
+Ste spokojný s prácou výboru? [anonymná]
+- áno
+- skôr áno
+- nie
 Máte ďalšie návrhy?</pre>
       </div>
     {% endif %}
-    <button type="submit" class="tlacidlo">Uložiť anketu</button>
+    <button type="submit" class="tlacidlo">Uložiť dotazník</button>
   </form>
 {% endblock %}

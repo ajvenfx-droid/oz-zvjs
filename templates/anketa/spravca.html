@@ -15,11 +15,12 @@
   </section>
 
   <section class="panel">
-    <h2>Ankety</h2>
-    <a class="tlacidlo" href="{{ url_for('anketa.uprav_anketu') }}">+ Nová anketa</a>
+    <h2>Dotazníky a ankety</h2>
+    <p class="info">Členovia ich vypĺňajú po prihlásení v Moje konto. Dotazníky svojej ZO môže vytvárať aj jej predseda a podpredseda.</p>
+    <a class="tlacidlo" href="{{ url_for('anketa.uprav_anketu') }}">+ Nový dotazník</a>
     {% if ankety %}
       <table class="tabulka">
-        <thead><tr><th>Názov</th><th>Stav</th><th>Hlasov</th><th></th></tr></thead>
+        <thead><tr><th>Názov</th><th>Stav</th><th>Odoslaných</th><th></th></tr></thead>
         <tbody>
           {% for a in ankety %}
             <tr>
@@ -44,7 +45,7 @@
         </tbody>
       </table>
     {% else %}
-      <p class="info">Zatiaľ nie je vytvorená žiadna anketa.</p>
+      <p class="info">Zatiaľ nie je vytvorený žiadny dotazník.</p>
     {% endif %}
   </section>
 
