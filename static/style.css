@@ -471,3 +471,5 @@ summary.rozbalit { cursor: pointer; color: var(--zlata-tmava, #8a6d0b); font-siz
 summary.rozbalit strong { font-weight: 600; }
 .skupina-zo { border-bottom: 1px solid #e5dcc3; padding: 10px 0; }
 .foto-clena { max-width: 220px; max-height: 280px; border-radius: 6px; border: 1px solid #e5dcc3; display: block; margin-bottom: 12px; }
+.zoznam-organu { margin: 4px 0 8px; padding-left: 20px; }
+#struktura h3 { margin: 14px 0 6px; }

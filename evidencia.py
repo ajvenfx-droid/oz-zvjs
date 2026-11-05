@@ -92,6 +92,16 @@ def init_db(db):
     )
     db.execute(
         """
+        CREATE TABLE IF NOT EXISTS evidencia_organ (
+            zo_slug TEXT NOT NULL,
+            skupina TEXT NOT NULL,
+            cislo TEXT NOT NULL,
+            PRIMARY KEY (zo_slug, skupina, cislo)
+        )
+        """
+    )
+    db.execute(
+        """
         CREATE TABLE IF NOT EXISTS evidencia_foto (
             kluc TEXT PRIMARY KEY,
             typ TEXT NOT NULL,
@@ -600,7 +610,7 @@ def zo(slug):
     zmeny = [dict(r) | {"zmeny": json.loads(r["zmeny"])} for r in get_db().execute(
         "SELECT cas, meno, cislo, zmeny FROM evidencia_zmena WHERE zo_slug = ? ORDER BY id DESC LIMIT 30", (slug,))]
     vsetci = _nacitaj_zo(slug)[2]
-    return render_template("evidencia/zo.html", zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
+    return render_template("evidencia/zo.html", organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY, zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
                            hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny,
                            vedenie=vedenie_zo(get_db(), slug), nastavuje=funkcie_na_nastavenie(slug), na_vyber=sorted(
                                [c for c in vsetci if c["udaje"].get("Identifikačné číslo")],
@@ -609,6 +619,48 @@ def zo(slug):
 
 
 FUNKCIE = ("predseda", "podpredseda")
+SKUPINY = {"vybor": "Členovia výboru ZO", "revizna": "Revízna komisia"}
+
+
+def _cislo(c):
+    return re.sub(r"\s+", "", c["udaje"].get("Identifikačné číslo", ""))
+
+
+def _meno_clena(c):
+    u = c["udaje"]
+    return f"{u.get('Meno poisteného', '')} {u.get('Priezvisko / Názov poisteného', '')}".strip()
+
+
+def organy_zo(db, slug, clenovia):
+    """{skupina: [{cislo, meno}]} pre výbor ZO a revíznu komisiu, zoradené podľa priezviska."""
+    podla_cisla = {_cislo(c): c for c in clenovia}
+    vysledok = {k: [] for k in SKUPINY}
+    for r in db.execute("SELECT skupina, cislo FROM evidencia_organ WHERE zo_slug = ?", (slug,)):
+        c = podla_cisla.get(r["cislo"])
+        if r["skupina"] in vysledok:
+            vysledok[r["skupina"]].append({"cislo": r["cislo"], "meno": _meno_clena(c) if c else r["cislo"],
+                                           "kluc": abecedne(c["udaje"].get("Priezvisko / Názov poisteného", "")) if c else ""})
+    for zoznam in vysledok.values():
+        zoznam.sort(key=lambda x: x["kluc"])
+    return vysledok
+
+
+@bp.route("/<slug>/struktura", methods=["POST"])
+def nastav_organ(slug):
+    """Predseda ZO pridáva a odoberá členov výboru ZO a revíznej komisie."""
+    if "podpredseda" not in funkcie_na_nastavenie(slug):
+        abort(403)
+    skupina = request.form.get("skupina", "")
+    cislo = re.sub(r"\s+", "", request.form.get("cislo", ""))
+    if skupina not in SKUPINY or not cislo:
+        return redirect(url_for("evidencia.zo", slug=slug))
+    db = get_db()
+    if request.form.get("akcia") == "odobrat":
+        db.execute("DELETE FROM evidencia_organ WHERE zo_slug = ? AND skupina = ? AND cislo = ?", (slug, skupina, cislo))
+    elif cislo in {_cislo(c) for c in _nacitaj_zo(slug)[2]}:
+        db.execute("INSERT OR IGNORE INTO evidencia_organ (zo_slug, skupina, cislo) VALUES (?, ?, ?)", (slug, skupina, cislo))
+    db.commit()
+    return redirect(url_for("evidencia.zo", slug=slug) + "#struktura")
 
 
 def vedenie_zo(db, slug):

@@ -19,10 +19,41 @@
       <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Archív odídených</a>
     </div>
   </div>
-  <section class="panel">
+  <section class="panel" id="struktura">
     <h2>ORGANIZAČNÁ ŠTRUKTÚRA</h2>
+    <h3>Výbor ZO</h3>
     <p>Predseda: <strong>{{ vedenie.predseda.meno if vedenie.predseda else '–' }}</strong>
       · Podpredseda: <strong>{{ vedenie.podpredseda.meno if vedenie.podpredseda else '–' }}</strong></p>
+    {% for sk, nazov in skupiny.items() %}
+      {% if sk == 'revizna' %}<h3>Revízna komisia</h3>{% else %}<p class="pole__nazov">{{ nazov }}</p>{% endif %}
+      {% if organy[sk] %}
+        <ul class="zoznam-organu">
+          {% for o in organy[sk] %}
+            <li>{{ o.meno }}
+              {% if 'podpredseda' in nastavuje %}
+                <form method="post" action="{{ url_for('evidencia.nastav_organ', slug=zo.slug) }}" style="display:inline">
+                  <input type="hidden" name="skupina" value="{{ sk }}"><input type="hidden" name="cislo" value="{{ o.cislo }}">
+                  <button type="submit" name="akcia" value="odobrat" class="odkaz-tlacidlo">odobrať</button>
+                </form>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}<p class="info">Zatiaľ nikto.</p>{% endif %}
+      {% if 'podpredseda' in nastavuje %}
+        <form method="post" action="{{ url_for('evidencia.nastav_organ', slug=zo.slug) }}" class="nahratie">
+          <input type="hidden" name="skupina" value="{{ sk }}">
+          <select name="cislo" required>
+            <option value="">– vyberte člena –</option>
+            {% for c in na_vyber %}
+              {% set cislo = c.udaje['Identifikačné číslo']|replace(' ', '') %}
+              <option value="{{ cislo }}">{{ c.udaje.get('Priezvisko / Názov poisteného', '') }} {{ c.udaje.get('Meno poisteného', '') }} ({{ cislo }})</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="tlacidlo tlacidlo--sekundarne">Pridať</button>
+        </form>
+      {% endif %}
+    {% endfor %}
     {% if nastavuje %}
       <form method="post" action="{{ url_for('evidencia.nastav_vedenie', slug=zo.slug) }}" class="formular">
         {% for f, nazov in [('predseda', 'Predseda'), ('podpredseda', 'Podpredseda')] if f in nastavuje %}
@@ -40,8 +71,8 @@
         {% endfor %}
         <button type="submit" class="tlacidlo">Uložiť organizačnú štruktúru</button>
       </form>
-      <p class="info">{% if 'podpredseda' in nastavuje %}Podpredsedu vyberá predseda ZO.{% else %}Predsedu vyberá správca, ostatné funkcie vyberie predseda ZO.{% endif %}
-        Vybraní dostanú prístup na zmeny členov tejto ZO a upozornenia, keď si člen zmení údaje.</p>
+      <p class="info">{% if 'podpredseda' in nastavuje %}Podpredsedu, výbor ZO a revíznu komisiu vyberá predseda ZO.{% else %}Predsedu vyberá správca, ostatných vyberie predseda ZO.{% endif %}
+        Predseda a podpredseda majú prístup na zmeny členov tejto ZO a dostávajú upozornenia, keď si člen zmení údaje.</p>
     {% endif %}
   </section>
   {% if zmeny %}
