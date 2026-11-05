@@ -30,6 +30,9 @@
               <td class="cislo">{{ m.pocet }}</td>
               <td class="cislo">{{ m.percent|string|replace('.', ',') }} %</td>
             </tr>
+            {% if m.vpisy %}
+              <tr><td colspan="4"><ul class="texty">{% for v in m.vpisy %}<li>{{ v }}</li>{% endfor %}</ul></td></tr>
+            {% endif %}
           {% endfor %}
         </table>
       {% endif %}

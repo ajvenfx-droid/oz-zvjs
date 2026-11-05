@@ -478,3 +478,11 @@ summary.rozbalit strong { font-weight: 600; }
 .tabulka--evidencia th, .tabulka--evidencia td { padding: 6px 6px; }
 .ok { color: #1d6b2a; font-weight: 600; }
 .anonymne-volba { margin-top: 8px; font-size: 0.9rem; color: #555; }
+.editor-otazka { margin-bottom: 16px; }
+.moznost-riadok { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+.moznost-riadok input { flex: 1; max-width: 520px; }
+.editor-akcie { margin-top: 8px; display: flex; gap: 16px; }
+#pridat-otazku { margin-bottom: 16px; }
+.vpis-volba { white-space: nowrap; font-size: 0.85rem; color: #555; }
+.vpis { margin-left: 8px; max-width: 320px; display: inline-block; }
+.editor-otazka legend { font-weight: 700; }

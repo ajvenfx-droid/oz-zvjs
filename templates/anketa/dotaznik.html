@@ -36,6 +36,11 @@
               <input type="{{ 'checkbox' if o.typ == 'viac' else 'radio' }}" name="{{ pole }}" value="{{ m.id }}"
                 {% if m.id in moje %}checked{% endif %} {% if zamknute %}disabled{% endif %}>
               {{ m.text }}
+              {% if m.vpisovat %}
+                <input type="text" name="vpis_{{ m.id }}" class="vpis" value="{{ vpisy.get(m.id, '') }}" placeholder="napíšte…" maxlength="500"
+                       {% if zamknute %}disabled{% endif %}
+                       oninput="if (this.value) { var r = this.parentNode.querySelector('input[type=radio],input[type=checkbox]'); r.checked = true; }">
+              {% endif %}
             </label>
           {% endfor %}
         {% endif %}

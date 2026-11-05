@@ -25,35 +25,140 @@
       <span class="pole__nazov">Koniec vypĺňania (nepovinné)</span>
       <input type="datetime-local" name="koniec" value="{{ anketa.koniec }}">
     </label>
-    <label class="pole">
+    <div class="pole">
       <span class="pole__nazov">Otázky</span>
       {% if ma_hlasy %}
         <span class="varovanie">Dotazník už niekto začal vypĺňať, preto otázky nie je možné meniť.</span>
         <textarea rows="10" disabled>{{ anketa.otazky }}</textarea>
       {% else %}
-        <textarea name="otazky" rows="10" required>{{ anketa.otazky }}</textarea>
+        <textarea name="otazky" id="otazky-text" hidden>{{ anketa.otazky }}</textarea>
+        <div id="editor-otazok"></div>
+        <button type="button" class="tlacidlo tlacidlo--sekundarne" id="pridat-otazku">+ Pridať otázku</button>
       {% endif %}
-    </label>
-    {% if not ma_hlasy %}
-      <div class="napoveda">
-        <strong>Ako písať otázky:</strong> každá otázka na samostatný riadok, pod ňu možnosti.
-        <ul>
-          <li><code>- možnosť</code> – člen vyberie jednu možnosť</li>
-          <li><code>+ možnosť</code> – člen môže vybrať viac možností</li>
-          <li>otázka bez možností – člen napíše vlastnú odpoveď</li>
-          <li><code>[anonymná]</code> na konci otázky – pri tejto otázke sa vo výsledkoch neukáže, kto ako odpovedal, len súhrn</li>
-        </ul>
-        <pre>Nákup hodiniek na plaváreň
-- 1 ks
-- 2 ks
-- 3 ks
-Ste spokojný s prácou výboru? [anonymná]
-- áno
-- skôr áno
-- nie
-Máte ďalšie návrhy?</pre>
-      </div>
-    {% endif %}
+    </div>
     <button type="submit" class="tlacidlo">Uložiť dotazník</button>
   </form>
+  {% if not ma_hlasy %}
+  <template id="sablona-otazky">
+    <fieldset class="otazka editor-otazka">
+      <legend>Otázka <span class="cislo-otazky"></span></legend>
+      <label class="pole">
+        <span class="pole__nazov">Text otázky</span>
+        <textarea class="text-otazky" rows="2"></textarea>
+      </label>
+      <label class="pole">
+        <span class="pole__nazov">Typ odpovede</span>
+        <select class="typ-otazky">
+          <option value="jedna">člen vyberie jednu možnosť</option>
+          <option value="viac">člen môže vybrať viac možností</option>
+          <option value="text">člen napíše vlastnú odpoveď</option>
+        </select>
+      </label>
+      <div class="moznosti-obal">
+        <span class="pole__nazov">Možnosti odpovede</span>
+        <div class="moznosti"></div>
+        <button type="button" class="odkaz-tlacidlo pridat-moznost">+ Pridať možnosť</button>
+      </div>
+      <label class="moznost"><input type="checkbox" class="anonymna-otazka"> Anonymná otázka (vo výsledkoch len súhrn, bez mien)</label>
+      <div class="akcie editor-akcie">
+        <button type="button" class="odkaz-tlacidlo hore">↑ vyššie</button>
+        <button type="button" class="odkaz-tlacidlo dole">↓ nižšie</button>
+        <button type="button" class="odkaz-tlacidlo zmazat-otazku">Odstrániť otázku</button>
+      </div>
+    </fieldset>
+  </template>
+  <script>
+  (function () {
+    var text = document.getElementById("otazky-text");
+    var editor = document.getElementById("editor-otazok");
+    var sablona = document.getElementById("sablona-otazky");
+    var ZNACKA = /\[\s*anonym\w*\s*\]/i;
+    var VPISAT = /\[\s*vp[ií]sa[tť]\s*\]/i;
+
+    function rozober(t) {
+      var otazky = [];
+      t.split(/\r?\n/).forEach(function (r) {
+        r = r.trim();
+        if (!r) return;
+        if ((r[0] === "-" || r[0] === "+") && otazky.length) {
+          var o = otazky[otazky.length - 1];
+          var mt = r.slice(1).trim();
+          o.moznosti.push({ text: mt.replace(VPISAT, "").trim(), vpisovat: VPISAT.test(mt) });
+          if (r[0] === "+") o.typ = "viac";
+          else if (o.typ === "text") o.typ = "jedna";
+        } else {
+          otazky.push({ text: r.replace(ZNACKA, "").trim(), anonymna: ZNACKA.test(r), typ: "text", moznosti: [] });
+        }
+      });
+      otazky.forEach(function (o) { if (o.moznosti.length && o.typ === "text") o.typ = "jedna"; });
+      return otazky;
+    }
+
+    function pridajMoznost(karta, m) {
+      m = m || { text: "", vpisovat: false };
+      var riadok = document.createElement("div");
+      riadok.className = "moznost-riadok";
+      riadok.innerHTML = '<input type="text" class="text-moznosti" placeholder="Text možnosti"> <label class="vpis-volba"><input type="checkbox" class="vpisovat"> s vpisovaním</label> <button type="button" class="odkaz-tlacidlo" title="Odstrániť možnosť">✕</button>';
+      riadok.querySelector(".text-moznosti").value = m.text || "";
+      riadok.querySelector(".vpisovat").checked = !!m.vpisovat;
+      riadok.querySelector("button").onclick = function () { riadok.remove(); };
+      karta.querySelector(".moznosti").appendChild(riadok);
+    }
+
+    function prepocitaj() {
+      editor.querySelectorAll(".cislo-otazky").forEach(function (el, i) { el.textContent = i + 1; });
+    }
+
+    function pridajOtazku(o) {
+      var karta = sablona.content.firstElementChild.cloneNode(true);
+      o = o || { text: "", anonymna: false, typ: "jedna", moznosti: [] };
+      karta.querySelector(".text-otazky").value = o.text;
+      karta.querySelector(".typ-otazky").value = o.typ;
+      karta.querySelector(".anonymna-otazka").checked = o.anonymna;
+      (o.moznosti.length ? o.moznosti : (o.typ === "text" ? [] : [null, null])).forEach(function (m) { pridajMoznost(karta, m); });
+      var obal = karta.querySelector(".moznosti-obal");
+      var typ = karta.querySelector(".typ-otazky");
+      function zobraz() {
+        obal.hidden = typ.value === "text";
+        if (!obal.hidden && !karta.querySelectorAll(".moznost-riadok").length) { pridajMoznost(karta); pridajMoznost(karta); }
+      }
+      typ.onchange = zobraz; zobraz();
+      karta.querySelector(".pridat-moznost").onclick = function () { pridajMoznost(karta); };
+      karta.querySelector(".zmazat-otazku").onclick = function () { karta.remove(); prepocitaj(); };
+      karta.querySelector(".hore").onclick = function () { if (karta.previousElementSibling) editor.insertBefore(karta, karta.previousElementSibling); prepocitaj(); };
+      karta.querySelector(".dole").onclick = function () { if (karta.nextElementSibling) editor.insertBefore(karta.nextElementSibling, karta); prepocitaj(); };
+      editor.appendChild(karta);
+      prepocitaj();
+    }
+
+    var nacitane = rozober(text.value);
+    if (nacitane.length) nacitane.forEach(pridajOtazku); else pridajOtazku();
+    document.getElementById("pridat-otazku").onclick = function () { pridajOtazku(); };
+
+    text.form.addEventListener("submit", function (e) {
+      var riadky = [], chyba = "";
+      editor.querySelectorAll(".editor-otazka").forEach(function (karta, i) {
+        var otazka = karta.querySelector(".text-otazky").value.replace(/\s+/g, " ").trim().replace(/^[-+]+\s*/, "");
+        if (!otazka) return;
+        var typ = karta.querySelector(".typ-otazky").value;
+        riadky.push(otazka + (karta.querySelector(".anonymna-otazka").checked ? " [anonymná]" : ""));
+        if (typ !== "text") {
+          var moznosti = [];
+          karta.querySelectorAll(".moznost-riadok").forEach(function (r) {
+            var v = r.querySelector(".text-moznosti").value.replace(/\s+/g, " ").trim().replace(/^[-+]+\s*/, "");
+            var vp = r.querySelector(".vpisovat").checked;
+            if (!v && vp) v = "Iné";
+            if (v) moznosti.push(v + (vp ? " [vpísať]" : ""));
+          });
+          if (moznosti.length < 2 && !chyba) chyba = "Otázka " + (i + 1) + " musí mať aspoň dve možnosti odpovede.";
+          moznosti.forEach(function (m) { riadky.push((typ === "viac" ? "+ " : "- ") + m); });
+        }
+        riadky.push("");
+      });
+      if (chyba) { e.preventDefault(); alert(chyba); return; }
+      text.value = riadky.join("\n");
+    });
+  })();
+  </script>
+  {% endif %}
 {% endblock %}

@@ -119,6 +119,9 @@ def init_db(db):
     if "anonymna" not in [r["name"] for r in db.execute("PRAGMA table_info(odpoved)")]:
         # Člen si môže zvoliť, že jeho odpoveď na otázku bude anonymná.
         db.execute("ALTER TABLE odpoved ADD COLUMN anonymna INTEGER NOT NULL DEFAULT 0")
+    if "vpisovat" not in [r["name"] for r in db.execute("PRAGMA table_info(moznost)")]:
+        # Možnosť, pri ktorej člen dopíše vlastný text (napr. „Iné: …“).
+        db.execute("ALTER TABLE moznost ADD COLUMN vpisovat INTEGER NOT NULL DEFAULT 0")
     if nastavenie(db, "prva_anketa_vlozena") is None:
         if db.execute("SELECT COUNT(*) FROM anketa").fetchone()[0] == 0:
             uloz_anketu(db, None, PRVA_ANKETA["nazov"], PREDVOLENY_UVOD, "", PRVA_ANKETA["otazky"])
@@ -191,6 +194,7 @@ def vytvor_slug(db, nazov, anketa_id=None):
 
 
 ANONYMNA_ZNACKA = re.compile(r"\[\s*anonym\w*\s*\]", re.I)
+VPISAT_ZNACKA = re.compile(r"\[\s*vp[ií]sa[tť]\s*\]", re.I)
 
 
 def rozober_otazky(text):
@@ -205,7 +209,9 @@ def rozober_otazky(text):
         if not riadok:
             continue
         if riadok[0] in "-+" and otazky:
-            otazky[-1]["moznosti"].append(riadok[1:].strip())
+            moznost = riadok[1:].strip()
+            otazky[-1]["moznosti"].append({"text": VPISAT_ZNACKA.sub("", moznost).strip(),
+                                           "vpisovat": bool(VPISAT_ZNACKA.search(moznost))})
             if riadok[0] == "+":
                 otazky[-1]["typ"] = TYP_VIAC
         elif riadok[0] in "-+":
@@ -215,13 +221,11 @@ def rozober_otazky(text):
             riadok = ANONYMNA_ZNACKA.sub("", riadok).strip()
             otazky.append({"text": riadok, "typ": TYP_JEDNA, "moznosti": [], "anonymna": anonymna})
     for o in otazky:
-        o["moznosti"] = [m for m in o["moznosti"] if m]
+        o["moznosti"] = [m for m in o["moznosti"] if m["text"] or m["vpisovat"]]
         if not o["moznosti"]:
             o["typ"] = TYP_TEXT
         elif len(o["moznosti"]) < 2:
             raise ValueError(f"Otázka „{o['text']}“ musí mať aspoň dve možnosti.")
-    if not otazky:
-        raise ValueError("Anketa musí mať aspoň jednu otázku.")
     return otazky
 
 
@@ -247,8 +251,8 @@ def uloz_anketu(db, anketa_id, nazov, uvod, koniec, otazky_text, menit_otazky=Tr
                 (anketa_id, i, o["text"], o["typ"], int(o["anonymna"])),
             )
             db.executemany(
-                "INSERT INTO moznost (otazka_id, poradie, text) VALUES (?, ?, ?)",
-                [(cur.lastrowid, j, m) for j, m in enumerate(o["moznosti"])],
+                "INSERT INTO moznost (otazka_id, poradie, text, vpisovat) VALUES (?, ?, ?, ?)",
+                [(cur.lastrowid, j, m["text"] or "Iné", int(m["vpisovat"])) for j, m in enumerate(o["moznosti"])],
             )
     return anketa_id
 
@@ -388,6 +392,8 @@ def dotazniky_clena(db, cislo):
     for a in db.execute("SELECT * FROM anketa ORDER BY id DESC"):
         if a["zo_slug"] and a["zo_slug"] not in moje_zo:
             continue
+        if not db.execute("SELECT 1 FROM otazka WHERE anketa_id = ?", (a["id"],)).fetchone():
+            continue  # rozpracovaný dotazník bez otázok členom neukazujeme
         h = db.execute("SELECT potvrdene FROM hlas WHERE anketa_id = ? AND cislo = ?", (a["id"], cislo)).fetchone()
         stav = "nevyplneny" if h is None else ("odoslany" if h["potvrdene"] else "rozpracovany")
         if je_ukoncena(a) and stav != "odoslany":
@@ -397,23 +403,27 @@ def dotazniky_clena(db, cislo):
 
 
 def moje_odpovede(db, hlas_id):
-    """({otazka_id: [id možnosti alebo text]}, {otazka_id, na ktoré člen odpovedal anonymne})"""
-    odp, anonymne = {}, set()
+    """({otazka_id: [id možnosti alebo text]}, {otazka_id odpovedaných anonymne}, {moznost_id: vpísaný text})"""
+    odp, anonymne, vpisy = {}, set(), {}
     for r in db.execute("SELECT otazka_id, moznost_id, text, anonymna FROM odpoved WHERE hlas_id = ?", (hlas_id,)):
         odp.setdefault(r["otazka_id"], []).append(r["moznost_id"] if r["moznost_id"] is not None else r["text"])
+        if r["moznost_id"] is not None and r["text"]:
+            vpisy[r["moznost_id"]] = r["text"]
         if r["anonymna"]:
             anonymne.add(r["otazka_id"])
-    return odp, anonymne
+    return odp, anonymne, vpisy
 
 
-def text_odpovedi(anketa, otazky, odpovede):
+def text_odpovedi(anketa, otazky, odpovede, vpisy=None):
+    vpisy = vpisy or {}
     riadky = [anketa["nazov"], ""]
     for o in otazky:
         hodnoty = odpovede.get(o["id"], [])
         if o["typ"] == TYP_TEXT:
             odpoved = hodnoty[0] if hodnoty else "–"
         else:
-            odpoved = ", ".join(m["text"] for m in o["moznosti"] if m["id"] in hodnoty) or "–"
+            odpoved = ", ".join(m["text"] + (f": {vpisy[m['id']]}" if vpisy.get(m["id"]) else "")
+                                for m in o["moznosti"] if m["id"] in hodnoty) or "–"
         riadky += [o["text"], "  " + odpoved, ""]
     return "\n".join(riadky)
 
@@ -430,8 +440,11 @@ def dotaznik(anketa_id):
         return render_template("anketa/sprava.html", anketa=anketa, nadpis="Dotazník nie je pre vás",
                                text=f"Tento dotazník je len pre členov ZO {mesto_zo(db, anketa['zo_slug'])}.")
     otazky = nacitaj_otazky(db, anketa_id)
+    if not otazky:
+        return render_template("anketa/sprava.html", anketa=anketa, nadpis="Dotazník sa pripravuje",
+                               text="Tento dotazník zatiaľ nemá otázky.")
     hlas = db.execute("SELECT * FROM hlas WHERE anketa_id = ? AND cislo = ?", (anketa_id, cislo)).fetchone()
-    odpovede, anonymne = moje_odpovede(db, hlas["id"]) if hlas else ({}, set())
+    odpovede, anonymne, vpisy = moje_odpovede(db, hlas["id"]) if hlas else ({}, set(), {})
     uzavrety = bool(hlas and hlas["potvrdene"])
     ukoncena = je_ukoncena(anketa)
     chyby = []
@@ -450,7 +463,7 @@ def dotaznik(anketa_id):
                     flash("Odosielanie e-mailov zatiaľ nie je na stránke nastavené.")
                 else:
                     try:
-                        posli(db, email, f"Vaše odpovede: {anketa['nazov']}", text_odpovedi(anketa, otazky, odpovede))
+                        posli(db, email, f"Vaše odpovede: {anketa['nazov']}", text_odpovedi(anketa, otazky, odpovede, vpisy))
                         flash(f"Odpovede boli poslané na {email}.")
                     except Exception:
                         flash("E-mail sa nepodarilo odoslať, skúste to neskôr.")
@@ -473,10 +486,14 @@ def dotaznik(anketa_id):
                     vybrane = vybrane[:1]
                 if not vybrane and akcia == "potvrdit":
                     chyby.append(f"Odpovedzte na otázku „{o['text']}“.")
-                nove += [(o["id"], int(v), "") for v in vybrane]
-        odpovede = {}
+                vpisovacie = {str(m["id"]) for m in o["moznosti"] if m["vpisovat"]}
+                nove += [(o["id"], int(v), request.form.get(f"vpis_{v}", "").strip()[:500] if v in vpisovacie else "")
+                         for v in vybrane]
+        odpovede, vpisy = {}, {}
         for oid, mid, text in nove:
             odpovede.setdefault(oid, []).append(mid if mid is not None else text)
+            if mid is not None and text:
+                vpisy[mid] = text
         if not chyby:
             cas = datetime.now(CASOVA_ZONA).strftime("%Y-%m-%d %H:%M:%S")
             potvrdit = int(akcia == "potvrdit")
@@ -495,7 +512,7 @@ def dotaznik(anketa_id):
             return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
 
     return render_template("anketa/dotaznik.html", anketa=anketa, otazky=otazky, odpovede=odpovede,
-                           uzavrety=uzavrety, ukoncena=ukoncena, chyby=chyby, hlas=hlas, anonymne=anonymne,
+                           uzavrety=uzavrety, ukoncena=ukoncena, chyby=chyby, hlas=hlas, anonymne=anonymne, vpisy=vpisy,
                            zo_mesto=mesto_zo(db, anketa["zo_slug"]))
 
 
@@ -700,6 +717,9 @@ def vysledky_ankety(db, anketa_id):
                 "WHERE d.moznost_id = ? AND h.potvrdene = 1", (m["id"],)
             ).fetchone()[0]
             m["percent"] = round(100 * m["pocet"] / hlasov, 1) if hlasov else 0
+            m["vpisy"] = sorted((r["text"] for r in db.execute(
+                "SELECT d.text FROM odpoved d JOIN hlas h ON h.id = d.hlas_id "
+                "WHERE d.moznost_id = ? AND h.potvrdene = 1 AND d.text != ''", (m["id"],))), key=str.lower)
         texty = [r["text"] for r in db.execute(
             "SELECT d.text FROM odpoved d JOIN hlas h ON h.id = d.hlas_id "
             "WHERE d.otazka_id = ? AND d.moznost_id IS NULL AND h.potvrdene = 1 ORDER BY d.id",
@@ -714,7 +734,8 @@ def vysledky_ankety(db, anketa_id):
     ):
         odpovede, skryte = {}, set()
         for r in db.execute(
-            "SELECT o.otazka_id, COALESCE(m.text, o.text) AS text, o.anonymna FROM odpoved o "
+            "SELECT o.otazka_id, CASE WHEN m.id IS NULL THEN o.text WHEN o.text != '' THEN m.text || ': ' || o.text "
+            "ELSE m.text END AS text, o.anonymna FROM odpoved o "
             "LEFT JOIN moznost m ON m.id = o.moznost_id WHERE o.hlas_id = ? "
             "ORDER BY m.poradie",
             (h["id"],),
@@ -778,6 +799,8 @@ def export(anketa_id):
             w.writerow(["Možnosť", "Počet", "Percent"])
             for m in o["moznosti"]:
                 w.writerow([m["text"], m["pocet"], str(m["percent"]).replace(".", ",")])
+                for v in m["vpisy"]:
+                    w.writerow(["", "", "", v])
         w.writerow([])
     w.writerow(["Hlasy jednotlivých členov"])
     menovite = [o for o in otazky if not o["anonymna"]]
