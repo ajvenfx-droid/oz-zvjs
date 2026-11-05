@@ -35,7 +35,7 @@ FARBY = {"zelena": "zelený", "cervena": "červený"}
 # Údaje, ktoré si člen v Moje konto zmeniť nemôže (mení ich len predseda ZO alebo správca).
 NEMENITELNE_CLENOM = {
     "číslo", "Identifikačné číslo", "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia",
-    "Dátum vstupu do odborov", "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Podporný fond", "Predchádzajúce mená",
+    "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Podporný fond", "Predchádzajúce mená",
 }
 
 
@@ -43,9 +43,19 @@ VSTUP_ODBORY = "Dátum vstupu do odborov"
 VSTUP_ODBORY_VZOR = re.compile(r"vstup\w*\s+do\s+odbor\w*\D{0,10}?(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{4})", re.I)
 
 
+VSTUP = "Dátum vstupu do poistenia"
+
+
 def vstup_do_odborov(udaje):
-    """Začiatok členstva v odboroch: z poznámky v Exceli, inak dátum vstupu do poistenia."""
-    return udaje.get(VSTUP_ODBORY) or udaje.get("Dátum vstupu do poistenia", "")
+    """Začiatok členstva v odboroch = dátum vstupu do poistenia (skorší dátum z poznámky ho už prepísal)."""
+    return udaje.get(VSTUP, "")
+
+
+def skorsi_vstup(stare, nove):
+    """Dátum vstupu sa pri novom nahratí neposunie na neskorší (napr. štvrťročný zoznam bez poznámok)."""
+    d_stare, d_nove = _den(stare.get(VSTUP)), _den(nove.get(VSTUP))
+    if d_stare and (not d_nove or d_stare < d_nove):
+        nove[VSTUP] = stare[VSTUP]
 
 
 def menitelne_clenom(stlpce):
@@ -55,7 +65,7 @@ def menitelne_clenom(stlpce):
 STANDARDNE_STLPCE = [
     "Identifikačné číslo", "Titul", "Meno poisteného", "Priezvisko / Názov poisteného", "Titul za menom",
     "Dátum narodenia", "Adresa trvalého pobytu – ulica, číslo domu", "Adresa trvalého pobytu – mesto",
-    "Adresa trvalého pobytu – PSČ", "Dátum vstupu do poistenia", "Dátum vstupu do odborov", "Dátum výstupu z poistenia",
+    "Adresa trvalého pobytu – PSČ", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia",
     "E-mail", "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Kontakt", "Služobné/ zam. číslo", "Podporný fond",
     "Predchádzajúce mená",
 ]
@@ -161,6 +171,14 @@ def synchronizuj_prihlasovanie(db):
     from anketa import hash_preukazu
 
     archivuj_cervenych(db)
+    # Verzia 1.031 ukladala dátum z poznámky zvlášť; skorší z nich sa presunie do dátumu vstupu do poistenia.
+    for r in db.execute("SELECT id, udaje FROM evidencia_clen WHERE udaje LIKE ?", (f'%"{VSTUP_ODBORY}"%',)).fetchall():
+        u = json.loads(r["udaje"])
+        skorsi_vstup({VSTUP: u.pop(VSTUP_ODBORY, "")}, u)
+        db.execute("UPDATE evidencia_clen SET udaje = ? WHERE id = ?", (json.dumps(u, ensure_ascii=False), r["id"]))
+    for r in db.execute("SELECT zo_slug, stlpce FROM evidencia_stlpce WHERE stlpce LIKE ?", (f'%"{VSTUP_ODBORY}"%',)).fetchall():
+        db.execute("UPDATE evidencia_stlpce SET stlpce = ? WHERE zo_slug = ?",
+                   (json.dumps([x for x in json.loads(r["stlpce"]) if x != VSTUP_ODBORY], ensure_ascii=False), r["zo_slug"]))
     z_evidencie = {}
     for (u,) in db.execute("SELECT udaje FROM evidencia_clen"):
         u = json.loads(u)
@@ -309,7 +327,7 @@ def precitaj_subor(nazov, data):
             for (pr, _), text in poznamky.items():
                 m = VSTUP_ODBORY_VZOR.search(text or "") if pr == r else None
                 if m:
-                    udaje[VSTUP_ODBORY] = f"{int(m.group(1)):02d}.{int(m.group(2)):02d}.{m.group(3)}"
+                    skorsi_vstup({VSTUP: f"{int(m.group(1)):02d}.{int(m.group(2)):02d}.{m.group(3)}"}, udaje)
             clenovia.append((farby[r] if r < len(farby) else "", udaje))
         vysledok[slug] = ([st for _, st in stlpce], clenovia)
     return vysledok
@@ -531,6 +549,7 @@ def prehlad():
                     if k in existujuce:
                         stare = json.loads(existujuce[k]["udaje"])
                         povodne_udaje = dict(stare)
+                        skorsi_vstup(stare, udaje)
                         stare.update(udaje)
                         zapamataj_mena(povodne_udaje, stare)
                         db.execute("UPDATE evidencia_clen SET udaje = ?, farba = ? WHERE id = ?",
@@ -558,8 +577,7 @@ def prehlad():
                 for _, u in clenovia:
                     if kluc_clena(u) in predtym and kluc_clena(u).startswith("id:"):
                         zapamataj_mena(predtym[kluc_clena(u)], u)
-                        if predtym[kluc_clena(u)].get(VSTUP_ODBORY) and not u.get(VSTUP_ODBORY):
-                            u[VSTUP_ODBORY] = predtym[kluc_clena(u)][VSTUP_ODBORY]
+                        skorsi_vstup(predtym[kluc_clena(u)], u)
                 db.execute("DELETE FROM evidencia_clen WHERE zo_slug = ?", (slug,))
                 db.executemany(
                     "INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
@@ -866,7 +884,7 @@ def zmazat(slug):
 # --- archív odídených členov -------------------------------------------------
 
 ARCHIV_STLPCE = ["Identifikačné číslo", "Titul", "Meno poisteného", "Priezvisko / Názov poisteného",
-                 "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum vstupu do odborov", "Dátum výstupu z poistenia"]
+                 "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia"]
 
 
 def _archiv(slug=None):
