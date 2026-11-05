@@ -486,3 +486,10 @@ summary.rozbalit strong { font-weight: 600; }
 .vpis-volba { white-space: nowrap; font-size: 0.85rem; color: #555; }
 .vpis { margin-left: 8px; max-width: 320px; display: inline-block; }
 .editor-otazka legend { font-weight: 700; }
+.podotazka { margin-left: 28px; border-left: 4px solid #8a6d0b; }
+.editor-otazka.podotazka { margin-left: 28px; }
+.podmienka-otazky select { max-width: 100%; }
+.suhrn-otazky .suhrn-text { font-weight: 600; margin: 0 0 4px; white-space: pre-wrap; }
+.suhrn-otazky .suhrn-moznosti { margin: 6px 0 0 18px; }
+.editor-akcie .tlacidlo.hotovo { padding: 6px 14px; }
+[hidden] { display: none !important; }

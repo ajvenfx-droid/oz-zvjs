@@ -24,7 +24,7 @@
     {% for o in otazky %}
       {% set pole = 'otazka_' ~ o.id %}
       {% set moje = odpovede.get(o.id, []) %}
-      <fieldset class="otazka">
+      <fieldset class="otazka{% if o.rodic %} podotazka{% endif %}"{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id }}"{% endif %} data-otazka="{{ o.id }}">
         <legend>{{ loop.index }}. {{ o.text }}</legend>
         {% if o.anonymna %}<p class="info">Anonymná otázka: nikto neuvidí, ako ste odpovedali.</p>{% endif %}
         {% if o.typ == 'text' %}
@@ -61,6 +61,29 @@
       </div>
     {% endif %}
   </form>
+
+  <script>
+  (function () {
+    var form = document.getElementById("dotaznik");
+    var zamknute = {{ 'true' if zamknute else 'false' }};
+    function prepni() {
+      var viditelne = {};
+      form.querySelectorAll("fieldset[data-otazka]").forEach(function (f) {
+        var ok = true;
+        if (f.dataset.akOtazka) {
+          var rodic = form.querySelector('fieldset[data-otazka="' + f.dataset.akOtazka + '"]');
+          var volba = rodic && rodic.querySelector('input[name="otazka_' + f.dataset.akOtazka + '"][value="' + f.dataset.akMoznost + '"]');
+          ok = viditelne[f.dataset.akOtazka] && volba && volba.checked;
+        }
+        viditelne[f.dataset.otazka] = ok;
+        f.hidden = !ok;
+        if (!zamknute) f.querySelectorAll("input, textarea").forEach(function (el) { el.disabled = !ok; });
+      });
+    }
+    form.addEventListener("change", prepni);
+    prepni();
+  })();
+  </script>
 
   {% if uzavrety %}
     <form method="post" style="margin-top: 16px">

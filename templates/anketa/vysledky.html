@@ -15,6 +15,7 @@
   {% for o in otazky %}
     <section class="panel">
       <h2>{{ loop.index }}. {{ o.text }}{% if o.anonymna %} <span class="info">(anonymná)</span>{% endif %}</h2>
+      {% if o.rodic %}<p class="info">Podotázka – len pre tých, čo v otázke {{ o.rodic.cislo }} zvolili „{{ o.rodic.moznost.text }}“. Odpovedalo: {{ o.odpovedalo }}.</p>{% endif %}
       {% if o.typ == 'text' %}
         {% if o.texty %}
           <ul class="texty">{% for t in o.texty %}<li>{{ t }}</li>{% endfor %}</ul>
