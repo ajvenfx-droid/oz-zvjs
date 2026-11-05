@@ -163,16 +163,84 @@ RADA_TEXT = (
     "## Radu predsedov Odborového zväzu ZVJS tvoria:"
     "\na) zástupcovia každej základnej organizácie, ktorými sú spravidla predsedovia základných organizácií"
     "\nb) členovia predsedníctva"
-    "\n\n## Základné organizácie Odborového zväzu Zboru väzenskej a justičnej stráže pri:"
+    "\n\nZákladné organizácie Odborového zväzu Zboru väzenskej a justičnej stráže pri:"
     "\n\n## Generálnom riaditeľstve Zboru väzenskej a justičnej stráže"
     "\npredsedníčka: Božena MAREČKOVÁ"
     "\nemail: bozena.mareckova@zvjs.sk"
     "\n\n## Ústave na výkon trestu odňatia slobody a Ústave na výkon väzby v Leopoldove"
     "\npredseda: Lukáš MALICH"
     "\nemail: lukas.malich@zvjs.sk"
+    "\n\n## Ústave na výkon väzby a Ústave na výkon trestu odňatia slobody v Banskej Bystrici"
+    "\npredseda: Mgr. Ivan CHROMEK"
+    "\nemail: ivan.chromek@zvjs.sk"
+    "\n\n## Ústave na výkon väzby a Ústave na výkon trestu odňatia slobody v Nitre"
+    "\npredseda: Mgr. Ľubor HUPKA"
+    "\nemail: lubor.hupka@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody v Banskej Bystrici – Kráľovej"
+    "\npredseda: Mgr. Martin BIELIK"
+    "\nemail: martin.bielik@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody v Nitre – Chrenovej"
+    "\npredsedníčka: Mgr. Monika ČERENKOVÁ"
+    "\nemail: monika.cerenkova@zvjs.sk"
+    "\n\n## Ústave na výkon väzby a Ústave na výkon trestu odňatia slobody v Bratislave"
+    "\npredsedníčka: Renáta HALÁNOVÁ"
+    "\nemail: renata.halanova@zvjs.sk"
+    "\n\n## Ústave na výkon väzby v Prešove a oddelení výkonu trestu v Sabinove"
+    "\npredsedníčka: Bc. Bibiana VARKONDY"
+    "\nemail: varkondyb@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody v Dubnici nad Váhom"
+    "\npredseda: Miroslav PČOLA"
+    "\nemail: zoozdn@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody v Ružomberku"
+    "\npredseda: Milan URBAN"
+    "\nemail: milan.urban@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody v Hrnčiarovciach nad Parnou"
+    "\npredseda: Jozef ŠMIDOVIČ"
+    "\nemail: jozef.smidovic@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody pre mladistvých v Sučanoch"
+    "\npredsedníčka: Mgr. Jana RUFUSOVÁ"
+    "\nemail: jana.rufusova@zvjs.sk; zoozsu@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody a Ústave na výkon väzby v Ilave"
+    "\npredseda: Mgr. Martin ČURI"
+    "\nemail: martin.curi@zvjs.sk"
+    "\n\n## Nemocnici pre obvinených a odsúdených a Ústave na výkon trestu odňatia slobody v Trenčíne"
+    "\npredseda: Anton BALÁŽ"
+    "\nemail: Anton.Balaz@zvjs.sk"
+    "\n\n## Ústave na výkon väzby a Ústave na výkon trestu odňatia slobody v Košiciach"
+    "\npredseda: Vladimir MARINČIN"
+    "\nemail: vladimir.marincin@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody v Želiezovciach"
+    "\npredsedníčka: Kornélia NAGYOVÁ"
+    "\nemail: kornelia.nagyova@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody v Košiciach – Šaci"
+    "\npredseda: Ing. František KLIK"
+    "\nemail: frantisek.klik@zvjs.sk"
+    "\n\n## Ústave na výkon väzby a Ústave na výkon trestu odňatia slobody v Žiline"
+    "\npredsedníčka: JUDr. Lucia HOLIENKOVÁ"
+    "\nemail: lucia.holienkova@zvjs.sk"
+    "\n\n## Ústave na výkon trestu odňatia slobody v Levoči"
+    "\npredseda: Bc. Martin JURČO"
+    "\nemail: martin.jurco@zvjs.sk"
 )
 
-PREDVOLENE_TEXTY = {"predsednictvo": PREDSEDNICTVO_TEXT, "rada-predsedov": RADA_TEXT, "podporny-fond": PODPORNY_FOND_TEXT, "benefity": BENEFITY_TEXT, "uvod": UVODNY_TEXT, "o-nas": O_NAS_TEXT, "bozp": BOZP_TEXT,
+REVIZNA_TEXT = (
+    "Revíznu komisiu Odborového zväzu ZVJS tvoria členovia zväzu v zmysle Čl. 10 Stanov OZ ZVJS."
+    "\n\n## Predsedníčka revíznej komisie Odborového zväzu"
+    "\nMUDr. Dáša BACHLEDOVÁ"
+    "\nemail: Dasa.Bachledova@zvjs.sk"
+    "\n\n## Členka revíznej komisie Odborového zväzu"
+    "\nDarina VACHALÍKOVÁ"
+    "\nemail: darina.vachalikova@zvjs.sk"
+    "\n\n## Členka revíznej komisie Odborového zväzu"
+    "\nIng. Eva BOBÁKOVÁ"
+    "\nemail: eva.bobakova@zvjs.sk"
+)
+
+# Predvolené texty z predchádzajúcej verzie (ešte bez záznamu v nastaveniach).
+STARE_TEXTY = {"rada-predsedov": '## Radu predsedov Odborového zväzu ZVJS tvoria:\na) zástupcovia každej základnej organizácie, ktorými sú spravidla predsedovia základných organizácií\nb) členovia predsedníctva\n\n## Základné organizácie Odborového zväzu Zboru väzenskej a justičnej stráže pri:\n\n## Generálnom riaditeľstve Zboru väzenskej a justičnej stráže\npredsedníčka: Božena MAREČKOVÁ\nemail: bozena.mareckova@zvjs.sk\n\n## Ústave na výkon trestu odňatia slobody a Ústave na výkon väzby v Leopoldove\npredseda: Lukáš MALICH\nemail: lukas.malich@zvjs.sk'}
+
+PREDVOLENE_TEXTY = {"predsednictvo": PREDSEDNICTVO_TEXT, "rada-predsedov": RADA_TEXT,
+                    "revizna-komisia": REVIZNA_TEXT, "podporny-fond": PODPORNY_FOND_TEXT, "benefity": BENEFITY_TEXT, "uvod": UVODNY_TEXT, "o-nas": O_NAS_TEXT, "bozp": BOZP_TEXT,
                     "dokumenty-plan-zasadnuti": PLAN_TEXT}
 
 # Podmenu „Dokumenty“ ako na ozzvjs.sk: (slug, názov, skupiny dokumentov na tej stránke).
@@ -281,10 +349,19 @@ def init_db(db):
         )
         nastav(db, "predpisy_vlozene", "1")
     for slug, nazov, len_clenovia in STRANKY:
+        predvoleny = PREDVOLENE_TEXTY.get(slug, "")
         db.execute(
             "INSERT OR IGNORE INTO stranka (slug, nazov, text, len_pre_clenov) VALUES (?, ?, ?, ?)",
-            (slug, nazov, PREDVOLENE_TEXTY.get(slug, ""), int(len_clenovia)),
+            (slug, nazov, predvoleny, int(len_clenovia)),
         )
+        # Nový predvolený text sa doplní, len ak stránku zatiaľ nikto neupravil.
+        kluc = "predvoleny_text_" + slug
+        if predvoleny and nastavenie(db, kluc) != predvoleny:
+            db.execute(
+                "UPDATE stranka SET text = ? WHERE slug = ? AND (text = '' OR text = ?)",
+                (predvoleny, slug, nastavenie(db, kluc) or STARE_TEXTY.get(slug, "")),
+            )
+            nastav(db, kluc, predvoleny)
     db.commit()
 
 
