@@ -31,12 +31,15 @@ CISLO_ZOZNAMU = {
 
 FARBY = {"zelena": "zelený", "cervena": "červený"}
 
-# Údaje, ktoré si člen môže sám zmeniť v Moje konto (ostatné mení len predseda ZO alebo správca).
-MENITELNE_CLENOM = [
-    "Titul", "Priezvisko / Názov poisteného", "Titul za menom",
-    "Adresa trvalého pobytu – ulica, číslo domu", "Adresa trvalého pobytu – mesto",
-    "Adresa trvalého pobytu – PSČ", "E-mail", "Kontakt",
-]
+# Údaje, ktoré si člen v Moje konto zmeniť nemôže (mení ich len predseda ZO alebo správca).
+NEMENITELNE_CLENOM = {
+    "číslo", "Identifikačné číslo", "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia",
+    "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Podporný fond", "Služobné/ zam. číslo",
+}
+
+
+def menitelne_clenom(stlpce):
+    return [s for s in stlpce if s not in NEMENITELNE_CLENOM and s.lower() != "číslo"]
 
 # Stĺpce, ktoré má každá ZO, aj keď ich v nahratom súbore nie je (dajú sa doplniť ručne).
 STANDARDNE_STLPCE = [

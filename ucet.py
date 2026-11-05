@@ -250,15 +250,13 @@ def moje_konto():
                 db.commit()
                 flash("Heslo bolo zmenené.")
         return redirect(url_for("ucet.moje_konto"))
-    from evidencia import MENITELNE_CLENOM
-    return render_template("ucet/moje_konto.html", evidencia=moje_udaje(get_db(), g.clen["cislo"]),
-                           menitelne_clenom=MENITELNE_CLENOM)
+    return render_template("ucet/moje_konto.html", evidencia=moje_udaje(get_db(), g.clen["cislo"]))
 
 
 def moje_udaje(db, cislo):
     """Záznamy prihláseného člena v evidencii: [{id, zo_slug, mesto, polia: [(stĺpec, hodnota, menitelne)]}]."""
     import json
-    from evidencia import MENITELNE_CLENOM
+    from evidencia import STANDARDNE_STLPCE, menitelne_clenom
     vysledok = []
     for r in db.execute(
             "SELECT e.id, e.zo_slug, e.udaje, z.mesto, s.stlpce FROM evidencia_clen e "
@@ -267,13 +265,14 @@ def moje_udaje(db, cislo):
         udaje = json.loads(r["udaje"])
         if re.sub(r"\s+", "", udaje.get("Identifikačné číslo", "")) != cislo:
             continue
-        poradie = json.loads(r["stlpce"]) if r["stlpce"] else []
-        stlpce = [s for s in poradie if s in udaje or s in MENITELNE_CLENOM]
-        stlpce += [s for s in udaje if s not in stlpce]
-        stlpce += [s for s in MENITELNE_CLENOM if s not in stlpce]
-        polia = [(s, udaje.get(s, ""), s in MENITELNE_CLENOM) for s in stlpce
-                 if s.lower() != "číslo" and (udaje.get(s) or s in MENITELNE_CLENOM)]
-        vysledok.append({"id": r["id"], "zo_slug": r["zo_slug"], "mesto": r["mesto"], "polia": polia})
+        poradie = STANDARDNE_STLPCE + [s for s in (json.loads(r["stlpce"]) if r["stlpce"] else [])
+                                       if s not in STANDARDNE_STLPCE]
+        stlpce = poradie + [s for s in udaje if s not in poradie]
+        menitelne = menitelne_clenom(stlpce)
+        polia = [(s, udaje.get(s, ""), menitelne.index(s) if s in menitelne else None) for s in stlpce
+                 if s.lower() != "číslo" and (udaje.get(s) or s in menitelne)]
+        vysledok.append({"id": r["id"], "zo_slug": r["zo_slug"], "mesto": r["mesto"], "polia": polia,
+                         "menitelne": menitelne})
     return vysledok
 
 
@@ -293,7 +292,7 @@ def emaily_predsedov(db, zo_slug):
 
 def uloz_moje_udaje(db, clen, f):
     import json
-    from evidencia import MENITELNE_CLENOM, kluc_clena, synchronizuj_prihlasovanie
+    from evidencia import kluc_clena, synchronizuj_prihlasovanie
     zaznamy = moje_udaje(db, clen["cislo"])
     zaznam = next((z for z in zaznamy if str(z["id"]) == f.get("zaznam")), None)
     if zaznam is None:
@@ -301,7 +300,7 @@ def uloz_moje_udaje(db, clen, f):
     r = db.execute("SELECT udaje FROM evidencia_clen WHERE id = ?", (zaznam["id"],)).fetchone()
     udaje = json.loads(r["udaje"])
     zmeny = []
-    for i, st in enumerate(MENITELNE_CLENOM):
+    for i, st in enumerate(zaznam["menitelne"]):
         nove = f.get(f"st_{i}", "").strip()
         if nove != udaje.get(st, ""):
             if st == "E-mail" and nove and not EMAIL_VZOR.match(nove):

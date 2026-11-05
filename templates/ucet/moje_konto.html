@@ -14,11 +14,11 @@
     <form method="post" class="formular">
       <input type="hidden" name="akcia" value="udaje">
       <input type="hidden" name="zaznam" value="{{ z.id }}">
-      {% for nazov, hodnota, menitelne in z.polia %}
-        {% if menitelne %}
+      {% for nazov, hodnota, index in z.polia %}
+        {% if index is not none %}
           <label class="pole">
             <span class="pole__nazov">{{ nazov }}</span>
-            <input type="{{ 'email' if nazov == 'E-mail' else 'text' }}" name="st_{{ menitelne_clenom.index(nazov) }}" value="{{ hodnota }}">
+            <input type="{{ 'email' if nazov == 'E-mail' else 'text' }}" name="st_{{ index }}" value="{{ hodnota }}">
           </label>
         {% else %}
           <p class="pole"><span class="pole__nazov">{{ nazov }}</span><br><strong>{{ hodnota }}</strong></p>
