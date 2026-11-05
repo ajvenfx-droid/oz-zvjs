@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Archív odídených členov – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  {% if zo %}
+    <a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+    <h1 class="nadpis">Archív odídených – ZO {{ zo.mesto }}</h1>
+  {% else %}
+    <a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>
+    <h1 class="nadpis">Archív odídených členov – celé Slovensko</h1>
+  {% endif %}
+  <p class="info">Do archívu sa člen dostane automaticky, keď ho vymažete z evidencie alebo keď pri nahratí nového
+    zoznamu (Nahradiť) v ňom už nie je. Ak sa v novom zozname znova objaví, z archívu sa sám vyradí.</p>
+  <p>Počet: <strong>{{ zaznamy|length }}</strong></p>
+  {% if zaznamy %}
+    <div class="tabulka-obal">
+      <table class="tabulka tabulka--evidencia">
+        <thead><tr>{% if not zo %}<th>ZO</th>{% endif %}{% for s in stlpce %}<th>{{ s }}</th>{% endfor %}<th>V archíve od</th><th>Dôvod</th>{% if zo and moze_menit %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+          {% for z in zaznamy %}
+            <tr class="{{ 'riadok--' ~ z.farba if z.farba }}">
+              {% if not zo %}<td><a href="{{ url_for('evidencia.archiv_zo', slug=z.zo_slug) }}">{{ z.mesto }}</a></td>{% endif %}
+              {% for s in stlpce %}<td>{{ z.udaje.get(s, '') }}</td>{% endfor %}
+              <td>{{ z.archivovane }}</td><td>{{ z.dovod }}</td>
+              {% if zo and moze_menit %}
+                <td><form method="post" action="{{ url_for('evidencia.archiv_obnovit', slug=zo.slug, zaznam_id=z.id) }}"
+                      onsubmit="return confirm('Vrátiť tohto člena medzi členov?');">
+                  <button type="submit" class="odkaz-tlacidlo">Vrátiť</button></form></td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="info">Archív je zatiaľ prázdny.</p>
+  {% endif %}
+{% endblock %}

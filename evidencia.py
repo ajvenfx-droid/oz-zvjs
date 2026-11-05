@@ -90,6 +90,19 @@ def init_db(db):
     )
     db.execute(
         """
+        CREATE TABLE IF NOT EXISTS evidencia_archiv (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            zo_slug TEXT NOT NULL,
+            kluc TEXT NOT NULL,
+            farba TEXT NOT NULL DEFAULT '',
+            udaje TEXT NOT NULL,
+            archivovane TEXT NOT NULL,
+            dovod TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    db.execute(
+        """
         CREATE TABLE IF NOT EXISTS evidencia_zmena (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             zo_slug TEXT NOT NULL,
@@ -269,6 +282,27 @@ def kluc_clena(udaje):
     return "meno:" + "|".join(casti).lower()
 
 
+def kluce_osoby(udaje):
+    """Kľúče, podľa ktorých sa ten istý človek spozná aj medzi rôznymi verziami súboru."""
+    casti = [v for k, v in udaje.items() if any(s in k.lower() for s in ("meno", "priezvisko", "narodenia"))
+             and "identifikačné" not in k.lower()]
+    return {kluc_clena(udaje), "meno:" + "|".join(casti).lower()}
+
+
+def archivuj(db, zo_slug, kluc, farba, udaje_json, dovod):
+    db.execute("INSERT INTO evidencia_archiv (zo_slug, kluc, farba, udaje, archivovane, dovod) "
+               "VALUES (?, ?, ?, ?, ?, ?)",
+               (zo_slug, kluc, farba, udaje_json, datetime.now().strftime("%d.%m.%Y"), dovod))
+
+
+def vyrad_z_archivu(db, zo_slug, udaje):
+    """Člen sa vrátil (je znova v zozname) – z archívu tejto ZO ho vyradí."""
+    kluce = kluce_osoby(udaje)
+    for r in db.execute("SELECT id, udaje FROM evidencia_archiv WHERE zo_slug = ?", (zo_slug,)).fetchall():
+        if kluce & kluce_osoby(json.loads(r["udaje"])):
+            db.execute("DELETE FROM evidencia_archiv WHERE id = ?", (r["id"],))
+
+
 def abecedne(text):
     """Kľúč na zoradenie podľa slovenskej abecedy (diakritika až za základným písmenom)."""
     import unicodedata
@@ -348,6 +382,7 @@ def prehlad():
         spojit = request.form.get("rezim") == "spojit"
         teraz = datetime.now().strftime("%d.%m.%Y %H:%M")
         spolu = 0
+        archivovanych = 0
         for slug, (stlpce, clenovia) in obsah.items():
             if spojit:
                 povodne = db.execute("SELECT stlpce FROM evidencia_stlpce WHERE zo_slug = ?", (slug,)).fetchone()
@@ -372,6 +407,18 @@ def prehlad():
                                    (slug, dalsie, k, farba, json.dumps(udaje, ensure_ascii=False)))
                 stlpce = vsetky
             else:
+                nove_kluce = set()
+                for _, u in clenovia:
+                    nove_kluce |= kluce_osoby(u)
+                odisli = 0
+                for r in db.execute("SELECT kluc, farba, udaje FROM evidencia_clen WHERE zo_slug = ?",
+                                    (slug,)).fetchall():
+                    if not (kluce_osoby(json.loads(r["udaje"])) & nove_kluce):
+                        archivuj(db, slug, r["kluc"], r["farba"], r["udaje"], "nie je v novom zozname")
+                        odisli += 1
+                archivovanych += odisli
+                for _, u in clenovia:
+                    vyrad_z_archivu(db, slug, u)
                 db.execute("DELETE FROM evidencia_clen WHERE zo_slug = ?", (slug,))
                 db.executemany(
                     "INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
@@ -387,7 +434,8 @@ def prehlad():
         db.commit()
         synchronizuj_prihlasovanie(db)
         flash(f"Nahraté: {len(obsah)} ZO, spolu {spolu} členov "
-              f"({'údaje spojené s doterajšími' if spojit else 'zoznamy týchto ZO nahradené'}).")
+              f"({'údaje spojené s doterajšími' if spojit else 'zoznamy týchto ZO nahradené'})."
+              + (f" Do archívu odídených presunutých: {archivovanych}." if archivovanych else ""))
         return redirect(url_for("evidencia.prehlad"))
 
     organizacie = db.execute(
@@ -419,32 +467,99 @@ def _nacitaj_zo(slug):
     return zo, stlpce, clenovia, (st["nahrate"] if st else None)
 
 
+ZORADENIA = {
+    "subor": "ako v súbore",
+    "abeceda": "podľa abecedy (priezvisko)",
+    "cislo": "podľa identifikačného čísla",
+    "vstup": "podľa dátumu vstupu",
+}
+
+
+def _datum(text):
+    m = re.match(r"\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})", text or "")
+    return (int(m.group(3)), int(m.group(2)), int(m.group(1))) if m else (9999, 0, 0)
+
+
+def _vyber(clenovia):
+    """Vyhľadávanie a zoradenie podľa parametrov v adrese (spoločné pre tabuľku aj export)."""
+    hladat = request.args.get("hladat", "").strip().lower()
+    if hladat:
+        clenovia = [c for c in clenovia if any(hladat in v.lower() for v in c["udaje"].values())]
+    zoradit = request.args.get("zoradit", "subor")
+    if zoradit == "abeceda":
+        clenovia = sorted(clenovia, key=lambda c: (abecedne(c["udaje"].get("Priezvisko / Názov poisteného", "")),
+                                                   abecedne(c["udaje"].get("Meno poisteného", ""))))
+    elif zoradit == "cislo":
+        clenovia = sorted(clenovia, key=lambda c: (len(c["udaje"].get("Identifikačné číslo", "")) or 99,
+                                                   c["udaje"].get("Identifikačné číslo", "")))
+    elif zoradit == "vstup":
+        clenovia = sorted(clenovia, key=lambda c: _datum(c["udaje"].get("Dátum vstupu do poistenia", "")))
+    else:
+        zoradit = "subor"
+    return clenovia, hladat, zoradit
+
+
 @bp.route("/<slug>")
 @vyzaduj()
 def zo(slug):
     zo, stlpce, clenovia, nahrate = _nacitaj_zo(slug)
-    hladat = request.args.get("hladat", "").strip().lower()
-    if hladat:
-        clenovia = [c for c in clenovia if any(hladat in v.lower() for v in c["udaje"].values())]
+    clenovia, hladat, zoradit = _vyber(clenovia)
     zmeny = [dict(r) | {"zmeny": json.loads(r["zmeny"])} for r in get_db().execute(
         "SELECT cas, meno, cislo, zmeny FROM evidencia_zmena WHERE zo_slug = ? ORDER BY id DESC LIMIT 30", (slug,))]
     return render_template("evidencia/zo.html", zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
-                           hladat=hladat, farby=FARBY, zmeny=zmeny)
+                           hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny)
 
 
 @bp.route("/<slug>/export.csv")
 @vyzaduj()
 def export(slug):
     zo, stlpce, clenovia, _ = _nacitaj_zo(slug)
+    clenovia, _, _ = _vyber(clenovia)
     vystup = io.StringIO()
     w = csv.writer(vystup, delimiter=";")
     w.writerow(["Farba"] + stlpce)
     for c in clenovia:
         w.writerow([FARBY.get(c["farba"], "")] + [c["udaje"].get(s, "") for s in stlpce])
     return Response(
-        "﻿" + vystup.getvalue(),
+        "\ufeff" + vystup.getvalue(),
         mimetype="text/csv",
         headers={"Content-Disposition": f'attachment; filename="clenovia-{slug}.csv"'},
+    )
+
+
+@bp.route("/<slug>/export.xlsx")
+@vyzaduj()
+def export_xlsx(slug):
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+    except ImportError:
+        flash("Na serveri chýba knižnica pre Excel, stiahnite zoznam ako CSV.")
+        return redirect(url_for("evidencia.zo", slug=slug))
+    zo, stlpce, clenovia, _ = _nacitaj_zo(slug)
+    clenovia, _, _ = _vyber(clenovia)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = zo["mesto"][:31]
+    ws.append(["P. č."] + stlpce)
+    for bunka in ws[1]:
+        bunka.font = Font(bold=True)
+    vypln = {"zelena": PatternFill("solid", fgColor="C6EFCE"), "cervena": PatternFill("solid", fgColor="FFC7CE")}
+    for i, c in enumerate(clenovia, 1):
+        ws.append([i] + [c["udaje"].get(s, "") for s in stlpce])
+        if c["farba"] in vypln:
+            for bunka in ws[ws.max_row]:
+                bunka.fill = vypln[c["farba"]]
+    for stlpec in ws.columns:
+        sirka = max(len(str(b.value or "")) for b in stlpec)
+        ws.column_dimensions[stlpec[0].column_letter].width = min(max(sirka + 2, 6), 45)
+    ws.freeze_panes = "B2"
+    vystup = io.BytesIO()
+    wb.save(vystup)
+    return Response(
+        vystup.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="clenovia-{slug}.xlsx"'},
     )
 
 
@@ -464,10 +579,12 @@ def uprav_clena(slug, clen_id=None):
     if request.method == "POST":
         akcia = request.form.get("akcia")
         if akcia == "zmazat" and clen_id is not None:
+            r = db.execute("SELECT kluc, farba, udaje FROM evidencia_clen WHERE id = ?", (clen_id,)).fetchone()
+            archivuj(db, slug, r["kluc"], r["farba"], r["udaje"], "vymazaný ručne")
             db.execute("DELETE FROM evidencia_clen WHERE id = ?", (clen_id,))
             db.commit()
             synchronizuj_prihlasovanie(db)
-            flash("Člen bol vymazaný z evidencie.")
+            flash("Člen bol vymazaný z evidencie a presunutý do archívu odídených.")
             return redirect(url_for("evidencia.zo", slug=slug))
         udaje = {st: request.form.get(f"st_{i}", "").strip() for i, st in enumerate(stlpce)}
         udaje = {k: v for k, v in udaje.items() if v}
@@ -477,6 +594,7 @@ def uprav_clena(slug, clen_id=None):
                                  (slug,)).fetchone()[0]
             db.execute("INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
                        (slug, poradie, kluc_clena(udaje), farba, json.dumps(udaje, ensure_ascii=False)))
+            vyrad_z_archivu(db, slug, udaje)
         else:
             db.execute("UPDATE evidencia_clen SET kluc = ?, farba = ?, udaje = ? WHERE id = ?",
                        (kluc_clena(udaje), farba, json.dumps(udaje, ensure_ascii=False), clen_id))
@@ -498,3 +616,57 @@ def zmazat(slug):
     synchronizuj_prihlasovanie(db)
     flash("Evidencia členov tejto ZO bola zmazaná.")
     return redirect(url_for("evidencia.prehlad"))
+
+
+# --- archív odídených členov -------------------------------------------------
+
+ARCHIV_STLPCE = ["Identifikačné číslo", "Titul", "Meno poisteného", "Priezvisko / Názov poisteného",
+                 "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia"]
+
+
+def _archiv(slug=None):
+    db = get_db()
+    sql = ("SELECT a.id, a.zo_slug, a.udaje, a.farba, a.archivovane, a.dovod, z.mesto FROM evidencia_archiv a "
+           "JOIN zakladna_organizacia z ON z.slug = a.zo_slug")
+    riadky = db.execute(sql + (" WHERE a.zo_slug = ?" if slug else "") + " ORDER BY a.id DESC",
+                        (slug,) if slug else ()).fetchall()
+    return [dict(r) | {"udaje": json.loads(r["udaje"])} for r in riadky]
+
+
+@bp.route("/archiv")
+def archiv_vsetci():
+    p = pristup()
+    clen = g.get("clen")
+    if p is None:
+        if clen is not None and clen["rola"] == "zo" and clen["zo_slug"]:
+            return redirect(url_for("evidencia.archiv_zo", slug=clen["zo_slug"]))
+        if clen is None and not je_spravca():
+            return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+        abort(403)
+    g.moze_menit = p == "menit"
+    return render_template("evidencia/archiv.html", zo=None, zaznamy=_archiv(), stlpce=ARCHIV_STLPCE)
+
+
+@bp.route("/<slug>/archiv")
+@vyzaduj()
+def archiv_zo(slug):
+    zo, _, _, _ = _nacitaj_zo(slug)
+    return render_template("evidencia/archiv.html", zo=zo, zaznamy=_archiv(slug), stlpce=ARCHIV_STLPCE)
+
+
+@bp.route("/<slug>/archiv/<int:zaznam_id>/obnovit", methods=["POST"])
+@vyzaduj(menit=True)
+def archiv_obnovit(slug, zaznam_id):
+    db = get_db()
+    r = db.execute("SELECT * FROM evidencia_archiv WHERE id = ? AND zo_slug = ?", (zaznam_id, slug)).fetchone()
+    if r is None:
+        abort(404)
+    poradie = db.execute("SELECT COALESCE(MAX(poradie), 0) + 1 FROM evidencia_clen WHERE zo_slug = ?",
+                         (slug,)).fetchone()[0]
+    db.execute("INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
+               (slug, poradie, r["kluc"], r["farba"], r["udaje"]))
+    db.execute("DELETE FROM evidencia_archiv WHERE id = ?", (zaznam_id,))
+    db.commit()
+    synchronizuj_prihlasovanie(db)
+    flash("Člen bol vrátený z archívu medzi členov.")
+    return redirect(url_for("evidencia.archiv_zo", slug=slug))

@@ -7,11 +7,16 @@
   <div class="riadok-nadpis">
     <form method="get" class="nahratie">
       <input type="text" name="hladat" value="{{ hladat }}" placeholder="Hľadať meno, číslo, e-mail…">
+      <select name="zoradit" onchange="this.form.submit()">
+        {% for k, n in zoradenia.items() %}<option value="{{ k }}" {% if zoradit == k %}selected{% endif %}>Zoradiť {{ n }}</option>{% endfor %}
+      </select>
       <button type="submit" class="tlacidlo tlacidlo--sekundarne">Hľadať</button>
     </form>
     <div class="akcie">
       {% if moze_menit %}<a class="tlacidlo" href="{{ url_for('evidencia.uprav_clena', slug=zo.slug) }}">+ Pridať člena</a>{% endif %}
-      <a href="{{ url_for('evidencia.export', slug=zo.slug) }}">Stiahnuť CSV</a>
+      <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.export_xlsx', slug=zo.slug, hladat=hladat or None, zoradit=zoradit) }}">Stiahnuť Excel (.xlsx)</a>
+      <a href="{{ url_for('evidencia.export', slug=zo.slug, hladat=hladat or None, zoradit=zoradit) }}">CSV</a>
+      <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Archív odídených</a>
     </div>
   </div>
   {% if zmeny %}
