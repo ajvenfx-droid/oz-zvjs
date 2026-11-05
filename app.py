@@ -20,6 +20,9 @@ POCIATOCNE_ZO = [
 ]
 
 app = Flask(__name__)
+
+# Mení sa pri každej zmene style.css, aby si prehliadače stiahli nový vzhľad.
+VERZIA_STYLOV = int(os.path.getmtime(os.path.join(app.static_folder, "style.css")))
 app.teardown_appcontext(close_db)
 app.register_blueprint(anketa.bp)
 
@@ -49,7 +52,7 @@ def init_db():
 
 @app.context_processor
 def inject_globals():
-    return {"nazov_zvazu": NAZOV_ZVAZU}
+    return {"nazov_zvazu": NAZOV_ZVAZU, "verzia_stylov": VERZIA_STYLOV}
 
 
 @app.route("/")
