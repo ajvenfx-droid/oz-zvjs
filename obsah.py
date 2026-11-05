@@ -482,7 +482,7 @@ def stranka(slug):
 def o_nas():
     db = get_db()
     organizacie = db.execute(
-        "SELECT slug, mesto, nazov FROM zakladna_organizacia ORDER BY mesto"
+        "SELECT slug, mesto, nazov FROM zakladna_organizacia ORDER BY poradie, mesto"
     ).fetchall()
     return render_template("obsah/o_nas.html", stranka=nacitaj_stranku("o-nas"), organizacie=organizacie)
 
@@ -627,6 +627,25 @@ def nahraj_obrazok(kluc):
     return redirect(url_for("obsah.spravca_obsah"))
 
 
+# --- správa základných organizácií ---
+
+
+@bp.route("/spravca/zo/<slug>", methods=["GET", "POST"])
+@len_spravca
+def uprav_zo(slug):
+    db = get_db()
+    zo = db.execute("SELECT * FROM zakladna_organizacia WHERE slug = ?", (slug,)).fetchone()
+    if zo is None:
+        abort(404)
+    if request.method == "POST":
+        db.execute("UPDATE zakladna_organizacia SET popis = ? WHERE slug = ?",
+                   (request.form.get("popis", "").strip(), slug))
+        db.commit()
+        flash(f"Stránka ZO {zo['mesto']} bola uložená.")
+        return redirect(url_for("obsah.spravca_obsah"))
+    return render_template("obsah/uprava_zo.html", zo=zo)
+
+
 # --- správa obsahu -----------------------------------------------------------
 
 
@@ -645,6 +664,7 @@ def spravca_obsah():
         typy=TYPY_CLANKOV,
         kategorie_dokumentov=VSETKY_SKUPINY,
         nazvy_obrazkov=OBRAZKY,
+        organizacie=db.execute("SELECT slug, mesto FROM zakladna_organizacia ORDER BY poradie, mesto").fetchall(),
     )
 
 

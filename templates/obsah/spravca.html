@@ -42,6 +42,23 @@
     </table>
   </section>
 
+  <section class="panel">
+    <h2>Základné organizácie</h2>
+    <table class="tabulka">
+      <tbody>
+        {% for zo in organizacie %}
+          <tr>
+            <td><strong>{{ zo.mesto }}</strong></td>
+            <td class="akcie">
+              <a href="{{ url_for('obsah.uprav_zo', slug=zo.slug) }}">Upraviť</a>
+              <a href="{{ url_for('organizacia', slug=zo.slug) }}">Zobraziť</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
   {% for typ, nazov_typu in typy.items() %}
     <section class="panel">
       <div class="riadok-nadpis">

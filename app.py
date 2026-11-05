@@ -11,15 +11,66 @@ from db import connect, close_db, get_db
 
 NAZOV_ZVAZU = "ODBOROVÝ ZVÄZ ZBORU VÄZENSKEJ A JUSTIČNEJ STRÁŽE"
 
-# Základné organizácie vložené pri prvom spustení (slug, mesto, plný názov).
+# Základné organizácie (slug, mesto, plný názov, predvolený popis) v poradí ako v Rade predsedov.
+PRI = "ZÁKLADNÁ ORGANIZÁCIA ODBOROVÉHO ZVÄZU ZBORU VÄZENSKEJ A JUSTIČNEJ STRÁŽE PRI "
 POCIATOCNE_ZO = [
-    (
-        "banska-bystrica",
-        "Banská Bystrica",
-        "ZÁKLADNÁ ORGANIZÁCIA ODBOROVÉHO ZVÄZU ZBORU VÄZENSKEJ A JUSTIČNEJ STRÁŽE "
-        "PRI ÚSTAVE NA VÝKON VÄZBY A ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY "
-        "BANSKÁ BYSTRICA",
-    ),
+    ('generalne-riaditelstvo', 'Generálne riaditeľstvo ZVJS',
+     PRI + 'GENERÁLNOM RIADITEĽSTVE ZBORU VÄZENSKEJ A JUSTIČNEJ STRÁŽE',
+     'predsedníčka: Božena MAREČKOVÁ\nemail: bozena.mareckova@zvjs.sk'),
+    ('leopoldov', 'Leopoldov',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY A ÚSTAVE NA VÝKON VÄZBY V LEOPOLDOVE',
+     'predseda: Lukáš MALICH\nemail: lukas.malich@zvjs.sk'),
+    ('banska-bystrica', 'Banská Bystrica',
+     'ZÁKLADNÁ ORGANIZÁCIA ODBOROVÉHO ZVÄZU ZBORU VÄZENSKEJ A JUSTIČNEJ STRÁŽE PRI ÚSTAVE NA VÝKON VÄZBY A ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY BANSKÁ BYSTRICA',
+     'predseda: Mgr. Ivan CHROMEK\nemail: ivan.chromek@zvjs.sk'),
+    ('nitra', 'Nitra',
+     PRI + 'ÚSTAVE NA VÝKON VÄZBY A ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V NITRE',
+     'predseda: Mgr. Ľubor HUPKA\nemail: lubor.hupka@zvjs.sk'),
+    ('banska-bystrica-kralova', 'Banská Bystrica – Kráľová',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V BANSKEJ BYSTRICI – KRÁĽOVEJ',
+     'predseda: Mgr. Martin BIELIK\nemail: martin.bielik@zvjs.sk'),
+    ('nitra-chrenova', 'Nitra – Chrenová',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V NITRE – CHRENOVEJ',
+     'predsedníčka: Mgr. Monika ČERENKOVÁ\nemail: monika.cerenkova@zvjs.sk'),
+    ('bratislava', 'Bratislava',
+     PRI + 'ÚSTAVE NA VÝKON VÄZBY A ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V BRATISLAVE',
+     'predsedníčka: Renáta HALÁNOVÁ\nemail: renata.halanova@zvjs.sk'),
+    ('presov-sabinov', 'Prešov a Sabinov',
+     PRI + 'ÚSTAVE NA VÝKON VÄZBY V PREŠOVE A ODDELENÍ VÝKONU TRESTU V SABINOVE',
+     'predsedníčka: Bc. Bibiana VARKONDY\nemail: varkondyb@zvjs.sk'),
+    ('dubnica-nad-vahom', 'Dubnica nad Váhom',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V DUBNICI NAD VÁHOM',
+     'predseda: Miroslav PČOLA\nemail: zoozdn@zvjs.sk'),
+    ('ruzomberok', 'Ružomberok',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V RUŽOMBERKU',
+     'predseda: Milan URBAN\nemail: milan.urban@zvjs.sk'),
+    ('hrnciarovce-nad-parnou', 'Hrnčiarovce nad Parnou',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V HRNČIAROVCIACH NAD PARNOU',
+     'predseda: Jozef ŠMIDOVIČ\nemail: jozef.smidovic@zvjs.sk'),
+    ('sucany', 'Sučany',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY PRE MLADISTVÝCH V SUČANOCH',
+     'predsedníčka: Mgr. Jana RUFUSOVÁ\nemail: jana.rufusova@zvjs.sk; zoozsu@zvjs.sk'),
+    ('ilava', 'Ilava',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY A ÚSTAVE NA VÝKON VÄZBY V ILAVE',
+     'predseda: Mgr. Martin ČURI\nemail: martin.curi@zvjs.sk'),
+    ('trencin', 'Trenčín',
+     PRI + 'NEMOCNICI PRE OBVINENÝCH A ODSÚDENÝCH A ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V TRENČÍNE',
+     'predseda: Anton BALÁŽ\nemail: Anton.Balaz@zvjs.sk'),
+    ('kosice', 'Košice',
+     PRI + 'ÚSTAVE NA VÝKON VÄZBY A ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V KOŠICIACH',
+     'predseda: Vladimir MARINČIN\nemail: vladimir.marincin@zvjs.sk'),
+    ('zeliezovce', 'Želiezovce',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V ŽELIEZOVCIACH',
+     'predsedníčka: Kornélia NAGYOVÁ\nemail: kornelia.nagyova@zvjs.sk'),
+    ('kosice-saca', 'Košice – Šaca',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V KOŠICIACH – ŠACI',
+     'predseda: Ing. František KLIK\nemail: frantisek.klik@zvjs.sk'),
+    ('zilina', 'Žilina',
+     PRI + 'ÚSTAVE NA VÝKON VÄZBY A ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V ŽILINE',
+     'predsedníčka: JUDr. Lucia HOLIENKOVÁ\nemail: lucia.holienkova@zvjs.sk'),
+    ('levoca', 'Levoča',
+     PRI + 'ÚSTAVE NA VÝKON TRESTU ODŇATIA SLOBODY V LEVOČI',
+     'predseda: Bc. Martin JURČO\nemail: martin.jurco@zvjs.sk'),
 ]
 
 app = Flask(__name__)
@@ -48,10 +99,19 @@ def init_db():
         )
         """
     )
-    db.executemany(
-        "INSERT OR IGNORE INTO zakladna_organizacia (slug, mesto, nazov) VALUES (?, ?, ?)",
-        POCIATOCNE_ZO,
-    )
+    if "poradie" not in [r[1] for r in db.execute("PRAGMA table_info(zakladna_organizacia)")]:
+        db.execute("ALTER TABLE zakladna_organizacia ADD COLUMN poradie INTEGER NOT NULL DEFAULT 0")
+    for poradie, (slug, mesto, nazov, popis) in enumerate(POCIATOCNE_ZO, 1):
+        db.execute(
+            "INSERT OR IGNORE INTO zakladna_organizacia (slug, mesto, nazov, popis) VALUES (?, ?, ?, ?)",
+            (slug, mesto, nazov, popis),
+        )
+        # Popis sa doplní len tam, kde ho ešte nikto nevyplnil.
+        db.execute(
+            "UPDATE zakladna_organizacia SET poradie = ?, popis = CASE WHEN popis = '' THEN ? ELSE popis END "
+            "WHERE slug = ?",
+            (poradie, popis, slug),
+        )
     db.commit()
     anketa.init_db(db)
     ucet.init_db(db)

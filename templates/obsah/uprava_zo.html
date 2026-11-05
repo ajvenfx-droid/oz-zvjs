@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}ZO {{ zo.mesto }} – úprava{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('obsah.spravca_obsah') }}">&larr; Späť na obsah stránky</a>
+  <h1 class="nadpis">Upraviť stránku ZO {{ zo.mesto }}</h1>
+  <p class="info">{{ zo.nazov }}</p>
+  <form method="post" class="formular">
+    {% include "obsah/_napoveda.html" %}
+    <label class="pole">
+      <span class="pole__nazov">Text stránky (výbor, kontakty, oznamy…)</span>
+      <textarea name="popis" rows="18">{{ zo.popis }}</textarea>
+    </label>
+    <button type="submit" class="tlacidlo">Uložiť</button>
+  </form>
+{% endblock %}
