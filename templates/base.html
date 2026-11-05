@@ -48,6 +48,7 @@
   </header>
 
   {% block uvod %}{% endblock %}
+  {% if obrazky.pas %}<style>.banner { background-image: linear-gradient(rgba(60,45,5,.35), rgba(60,45,5,.35)), url('{{ obrazky.pas }}'); }</style>{% endif %}
 
   <main class="obsah">
     {% with spravy = get_flashed_messages() %}

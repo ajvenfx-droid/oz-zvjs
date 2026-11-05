@@ -322,6 +322,12 @@ def init_db(db):
             text TEXT NOT NULL DEFAULT '',
             datum TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS obrazok (
+            kluc TEXT PRIMARY KEY,
+            typ TEXT NOT NULL,
+            data BLOB NOT NULL,
+            verzia INTEGER NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS dokument (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nazov TEXT NOT NULL,
@@ -571,6 +577,56 @@ def stiahni_dokument(dokument_id, nazov):
     )
 
 
+# --- obrázky na pozadí (úvod a pásy s nadpisom) ---
+
+OBRAZKY = {"uvod": "Pozadie úvodu na hlavnej stránke", "pas": "Pozadie pásu s nadpisom na podstránkach"}
+
+
+@bp.app_context_processor
+def inject_obrazky():
+    try:
+        riadky = get_db().execute("SELECT kluc, verzia FROM obrazok").fetchall()
+    except Exception:
+        return {"obrazky": {}}
+    return {"obrazky": {r["kluc"]: url_for("obsah.obrazok", kluc=r["kluc"], v=r["verzia"]) for r in riadky}}
+
+
+@bp.route("/obrazok/<kluc>")
+def obrazok(kluc):
+    r = get_db().execute("SELECT typ, data FROM obrazok WHERE kluc = ?", (kluc,)).fetchone()
+    if r is None:
+        abort(404)
+    return Response(r["data"], mimetype=r["typ"], headers={"Cache-Control": "public, max-age=31536000"})
+
+
+@bp.route("/spravca/obrazok/<kluc>", methods=["POST"])
+@len_spravca
+def nahraj_obrazok(kluc):
+    if kluc not in OBRAZKY:
+        abort(404)
+    db = get_db()
+    if request.form.get("akcia") == "zmazat":
+        db.execute("DELETE FROM obrazok WHERE kluc = ?", (kluc,))
+        db.commit()
+        flash("Obrázok bol odstránený.")
+        return redirect(url_for("obsah.spravca_obsah"))
+    subor = request.files.get("subor")
+    data = subor.read() if subor and subor.filename else b""
+    if not data or not (subor.mimetype or "").startswith("image/"):
+        flash("Vyberte obrázok (JPG alebo PNG).")
+    elif len(data) > 5 * 1024 * 1024:
+        flash("Obrázok je väčší ako 5 MB.")
+    else:
+        db.execute(
+            "INSERT INTO obrazok (kluc, typ, data, verzia) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(kluc) DO UPDATE SET typ = excluded.typ, data = excluded.data, verzia = excluded.verzia",
+            (kluc, subor.mimetype, data, int(datetime.now().timestamp())),
+        )
+        db.commit()
+        flash("Obrázok bol nahraný.")
+    return redirect(url_for("obsah.spravca_obsah"))
+
+
 # --- správa obsahu -----------------------------------------------------------
 
 
@@ -588,6 +644,7 @@ def spravca_obsah():
         ).fetchall(),
         typy=TYPY_CLANKOV,
         kategorie_dokumentov=VSETKY_SKUPINY,
+        nazvy_obrazkov=OBRAZKY,
     )
 
 

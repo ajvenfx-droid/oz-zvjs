@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block uvod %}
-  <section class="hero">
+  <section class="hero{{ ' hero--obrazok' if obrazky.uvod }}"{% if obrazky.uvod %} style="background-image: linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.6)), url('{{ obrazky.uvod }}')"{% endif %}>
     <div class="hero__vnutro">
       <h1 class="hero__nadpis">{{ nazov_zvazu }}</h1>
       {% if uvod.text %}<div class="hero__text">{{ uvod.text|text }}</div>{% endif %}

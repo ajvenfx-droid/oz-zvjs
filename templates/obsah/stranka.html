@@ -1,26 +1,6 @@
 {% extends "base.html" %}
-{% block title %}{{ stranka.nazov }} – {{ nazov_zvazu }}  {% for skupina, zoznam in dokumenty.items() %}
-    <h2 class="podnadpis">{{ skupina }}</h2>
-    <ul class="zoznam-dokumentov">
-      {% for d in zoznam %}
-        <li><a href="{{ d.odkaz or url_for('obsah.stiahni_dokument', dokument_id=d.id, nazov=d.nazov_suboru) }}">{{ d.nazov }}</a></li>
-      {% else %}
-        <li class="info">Zatiaľ bez dokumentov.</li>
-      {% endfor %}
-    </ul>
-  {% endfor %}
-{% endblock %}
-{% block uvod %}<div class="banner"><h1 class="banner__nadpis">{{ stranka.nazov }}</h1></div>  {% for skupina, zoznam in dokumenty.items() %}
-    <h2 class="podnadpis">{{ skupina }}</h2>
-    <ul class="zoznam-dokumentov">
-      {% for d in zoznam %}
-        <li><a href="{{ d.odkaz or url_for('obsah.stiahni_dokument', dokument_id=d.id, nazov=d.nazov_suboru) }}">{{ d.nazov }}</a></li>
-      {% else %}
-        <li class="info">Zatiaľ bez dokumentov.</li>
-      {% endfor %}
-    </ul>
-  {% endfor %}
-{% endblock %}
+{% block title %}{{ stranka.nazov }} – {{ nazov_zvazu }}{% endblock %}
+{% block uvod %}<div class="banner"><h1 class="banner__nadpis">{{ stranka.nazov }}</h1></div>{% endblock %}
 {% block content %}
   {% if stranka.text %}
     <div class="text-stranky">{{ stranka.text|text }}</div>

@@ -132,7 +132,7 @@ a { color: #3b5bdb; }
   background: linear-gradient(135deg, rgba(20, 20, 18, 0.92), rgba(48, 40, 18, 0.88)),
               radial-gradient(circle at 80% 20%, #6b5418, #1d1d1b 60%);
   color: #fff;
-  padding: clamp(48px, 9vw, 110px) 16px;
+  padding: clamp(64px, 12vw, 170px) 16px;
 }
 .hero__vnutro { max-width: 1000px; margin: 0 auto; text-align: center; }
 .hero__nadpis {
@@ -451,3 +451,8 @@ input[readonly] { background: #f2efe6; }
 }
 .zalozky a.aktivna { background: #fff; color: var(--text); font-weight: 600; }
 select { font: inherit; padding: 8px 10px; border: 1px solid #c9c2ad; border-radius: 6px; background: #fff; }
+
+/* Obrázky na pozadí nahraté v správe */
+.hero--obrazok, .banner { background-size: cover; background-position: center; }
+.obrazok-riadok { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--ciara); }
+.obrazok-nahlad { max-width: 320px; max-height: 120px; object-fit: cover; border-radius: 4px; }

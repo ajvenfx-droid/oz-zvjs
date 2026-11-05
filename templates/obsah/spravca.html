@@ -5,6 +5,27 @@
   <h1 class="nadpis">Obsah stránky</h1>
 
   <section class="panel">
+    <h2>Obrázky na pozadí</h2>
+    <p class="info">Na ozzvjs.sk kliknite pravým tlačidlom na obrázok, zvoľte „Uložiť obrázok ako…“ a sem ho nahrajte. Najlepšie široký obrázok JPG do 5 MB.</p>
+    {% for kluc, nazov in nazvy_obrazkov.items() %}
+      <div class="obrazok-riadok">
+        <strong>{{ nazov }}</strong>
+        {% if obrazky[kluc] %}<img src="{{ obrazky[kluc] }}" alt="" class="obrazok-nahlad">{% else %}<span class="info">zatiaľ bez obrázka</span>{% endif %}
+        <form method="post" action="{{ url_for('obsah.nahraj_obrazok', kluc=kluc) }}" enctype="multipart/form-data" class="nahratie">
+          <input type="file" name="subor" accept="image/*" required>
+          <button type="submit" class="tlacidlo">Nahrať</button>
+        </form>
+        {% if obrazky[kluc] %}
+          <form method="post" action="{{ url_for('obsah.nahraj_obrazok', kluc=kluc) }}">
+            <input type="hidden" name="akcia" value="zmazat">
+            <button type="submit" class="odkaz-tlacidlo">Odstrániť obrázok</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </section>
+
+  <section class="panel">
     <h2>Stránky</h2>
     <table class="tabulka">
       <tbody>
