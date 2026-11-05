@@ -112,7 +112,7 @@
     </details>
   {% endif %}
   <p>Počet: <strong>{{ clenovia|length }}</strong>
-  </p>
+    · <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Zobraziť archív odídených</a></p>
   {% if clenovia %}
     <div class="tabulka-obal">
       <table class="tabulka tabulka--evidencia">
