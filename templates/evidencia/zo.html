@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Členovia ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>
+  <h1 class="nadpis">Členovia ZO {{ zo.mesto }}</h1>
+  <p class="info">{{ zo.nazov }}{% if nahrate %} · nahraté {{ nahrate }}{% endif %}</p>
+  <div class="riadok-nadpis">
+    <form method="get" class="nahratie">
+      <input type="text" name="hladat" value="{{ hladat }}" placeholder="Hľadať meno, číslo, e-mail…">
+      <button type="submit" class="tlacidlo tlacidlo--sekundarne">Hľadať</button>
+    </form>
+    <div class="akcie">
+      <a class="tlacidlo" href="{{ url_for('evidencia.uprav_clena', slug=zo.slug) }}">+ Pridať člena</a>
+      <a href="{{ url_for('evidencia.export', slug=zo.slug) }}">Stiahnuť CSV</a>
+    </div>
+  </div>
+  <p>Počet: <strong>{{ clenovia|length }}</strong>
+    <span class="legenda legenda--zelena">zelený</span> <span class="legenda legenda--cervena">červený</span></p>
+  {% if clenovia %}
+    <div class="tabulka-obal">
+      <table class="tabulka tabulka--evidencia">
+        <thead><tr><th>#</th>{% for s in stlpce %}<th>{{ s }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for c in clenovia %}
+            <tr class="{{ 'riadok--' ~ c.farba if c.farba }}">
+              <td><a href="{{ url_for('evidencia.uprav_clena', slug=zo.slug, clen_id=c.id) }}" title="Upraviť">{{ loop.index }}.</a></td>
+              {% for s in stlpce %}<td>{{ c.udaje.get(s, '') }}</td>{% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="info">Zatiaľ bez členov. Nahrajte zoznam v časti Evidencia členov.</p>
+  {% endif %}
+  {% if clenovia and not hladat %}
+    <form method="post" action="{{ url_for('evidencia.zmazat', slug=zo.slug) }}"
+          onsubmit="return confirm('Naozaj zmazať celú evidenciu členov ZO {{ zo.mesto }}?');">
+      <button type="submit" class="odkaz-tlacidlo">Zmazať celú evidenciu tejto ZO</button>
+    </form>
+  {% endif %}
+{% endblock %}

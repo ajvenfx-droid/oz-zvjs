@@ -5,6 +5,7 @@ from flask import Flask, abort, g, render_template, request, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import anketa
+import evidencia
 import obsah
 import ucet
 from db import connect, close_db, get_db
@@ -83,6 +84,7 @@ app.teardown_appcontext(close_db)
 app.register_blueprint(anketa.bp)
 app.register_blueprint(ucet.bp)
 app.register_blueprint(obsah.bp)
+app.register_blueprint(evidencia.bp)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # nahrávané dokumenty
 
 
@@ -116,6 +118,7 @@ def init_db():
     anketa.init_db(db)
     ucet.init_db(db)
     obsah.init_db(db)
+    evidencia.init_db(db)
     app.secret_key = anketa.secret_key(db)
     db.close()
 

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Evidencia členov – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu</a>
+  <h1 class="nadpis">Evidencia členov</h1>
+  <p class="info">Osobné údaje členov vidí len prihlásený správca. Na verejnej stránke sa nezobrazujú.</p>
+
+  <section class="panel">
+    <h2>Nahrať zoznam z Excelu</h2>
+    <p class="info">Súbor .xls alebo .xlsx v tvare „Zoznam poistených“: každá ZO na vlastnom hárku, ktorého názov začína
+      číslom zoznamu (napr. „10.BBVV“). Ostatné hárky sa preskočia. Prenesú sa všetky stĺpce aj zelená a červená farba riadkov.</p>
+    <form method="post" enctype="multipart/form-data" class="formular">
+      <input type="file" name="subor" accept=".xls,.xlsx" required>
+      <label class="moznost"><input type="radio" name="rezim" value="nahradit" checked>
+        Nahradiť zoznam ZO, ktoré sú v súbore</label>
+      <label class="moznost"><input type="radio" name="rezim" value="spojit">
+        Spojiť s doterajšími údajmi (podľa identifikačného čísla; doplní stĺpce a nových členov, nikoho nezmaže)</label>
+      <button type="submit" class="tlacidlo">Nahrať</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Základné organizácie</h2>
+    <table class="tabulka">
+      <thead><tr><th>ZO</th><th class="cislo">Členov</th><th class="cislo">zelených</th><th class="cislo">červených</th><th>Nahraté</th></tr></thead>
+      <tbody>
+        {% for z in organizacie %}
+          <tr>
+            <td><a href="{{ url_for('evidencia.zo', slug=z.slug) }}"><strong>{{ z.mesto }}</strong></a></td>
+            <td class="cislo">{{ z.pocet }}</td>
+            <td class="cislo">{{ z.zelenych or '' }}</td>
+            <td class="cislo">{{ z.cervenych or '' }}</td>
+            <td>{{ z.nahrate or '–' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

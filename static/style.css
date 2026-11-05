@@ -457,3 +457,12 @@ select { font: inherit; padding: 8px 10px; border: 1px solid #c9c2ad; border-rad
 .hero { background-color: #1d1d1b; }
 .obrazok-riadok { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--ciara); }
 .obrazok-nahlad { max-width: 320px; max-height: 120px; object-fit: cover; border-radius: 4px; }
+
+/* Evidencia členov */
+.tabulka--evidencia { font-size: 0.85rem; white-space: nowrap; }
+.tabulka--evidencia th { position: sticky; top: 0; }
+.riadok--zelena td { background: #e3f4c6; }
+.riadok--cervena td { background: #fbd3d3; }
+.legenda { display: inline-block; padding: 0 8px; border-radius: 3px; font-size: 0.85rem; margin-left: 8px; }
+.legenda--zelena { background: #e3f4c6; }
+.legenda--cervena { background: #fbd3d3; }

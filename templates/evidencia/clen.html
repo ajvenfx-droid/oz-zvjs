@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Člen ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+  <h1 class="nadpis">{% if clen_id %}Upraviť člena{% else %}Nový člen{% endif %}</h1>
+  <form method="post" class="formular">
+    {% for s in stlpce %}
+      <label class="pole">
+        <span class="pole__nazov">{{ s }}</span>
+        <input type="text" name="st_{{ loop.index0 }}" value="{{ clen.udaje.get(s, '') }}">
+      </label>
+    {% endfor %}
+    <label class="pole">
+      <span class="pole__nazov">Farba riadku</span>
+      <select name="farba">
+        <option value="">bez farby</option>
+        {% for k, n in farby.items() %}<option value="{{ k }}" {% if clen.farba == k %}selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="tlacidlo">Uložiť</button>
+  </form>
+  {% if clen_id %}
+    <form method="post" onsubmit="return confirm('Naozaj vymazať tohto člena z evidencie?');">
+      <input type="hidden" name="akcia" value="zmazat">
+      <p><button type="submit" class="odkaz-tlacidlo">Vymazať člena z evidencie</button></p>
+    </form>
+  {% endif %}
+{% endblock %}
