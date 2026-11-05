@@ -253,6 +253,63 @@ def uloz_anketu(db, anketa_id, nazov, uvod, koniec, otazky_text, menit_otazky=Tr
     return anketa_id
 
 
+# --- dotazníky zo súborov v repozitári ----------------------------------------
+# Súbor dotazniky/<nazov>.txt: hlavička (nazov:, zo:, koniec:), prázdny riadok, voliteľne
+# úvod medzi riadkami „---“, potom otázky v rovnakom tvare ako vo formulári.
+# Pri spustení stránky sa nový súbor pridá ako dotazník; kým nikto nehlasoval, zmeny v súbore
+# sa prenesú. Dotazník zmazaný na stránke sa znovu nevytvorí.
+
+def precitaj_dotaznik(text):
+    hlavicka, _, telo = text.replace("\r\n", "\n").partition("\n\n")
+    udaje = {}
+    for riadok in hlavicka.splitlines():
+        k, _, v = riadok.partition(":")
+        udaje[k.strip().lower()] = v.strip()
+    uvod = PREDVOLENY_UVOD
+    telo = telo.strip("\n")
+    if telo.startswith("---"):
+        _, uvod, telo = telo.split("---", 2)
+        uvod = uvod.strip()
+    return {"nazov": udaje.get("nazov", ""), "zo": udaje.get("zo", ""), "koniec": udaje.get("koniec", ""),
+            "uvod": uvod, "otazky": telo.strip()}
+
+
+def importuj_dotazniky(db, priecinok):
+    import os
+    if not os.path.isdir(priecinok):
+        return
+    for meno in sorted(os.listdir(priecinok)):
+        if not meno.endswith(".txt"):
+            continue
+        text = open(os.path.join(priecinok, meno), encoding="utf-8").read()
+        odtlacok = hashlib.sha256(text.encode()).hexdigest()
+        kluc = f"dotaznik_subor:{meno}"
+        zaznam = nastavenie(db, kluc)
+        anketa_id, stary = (zaznam.split("|", 1) + [""])[:2] if zaznam else (None, "")
+        if zaznam and stary == odtlacok:
+            continue
+        if anketa_id and db.execute("SELECT 1 FROM anketa WHERE id = ?", (anketa_id,)).fetchone() is None:
+            nastav(db, kluc, f"{anketa_id}|{odtlacok}")  # zmazaný na stránke, nevytvárať znovu
+            continue
+        d = precitaj_dotaznik(text)
+        try:
+            if not d["nazov"]:
+                raise ValueError("chýba názov")
+            if d["koniec"]:
+                datetime.strptime(d["koniec"], "%Y-%m-%dT%H:%M")
+            ma_hlasy = bool(anketa_id) and pocet_hlasov(db, int(anketa_id)) > 0
+            nove_id = uloz_anketu(db, int(anketa_id) if anketa_id else None, d["nazov"], d["uvod"], d["koniec"],
+                                  d["otazky"], menit_otazky=not ma_hlasy)
+        except ValueError as e:
+            db.rollback()
+            print(f"Dotazník {meno} sa nepodarilo načítať: {e}")
+            continue
+        zo = d["zo"] if mesto_zo(db, d["zo"]) else ""
+        db.execute("UPDATE anketa SET zo_slug = ? WHERE id = ?", (zo, nove_id))
+        nastav(db, kluc, f"{nove_id}|{odtlacok}")
+        db.commit()
+
+
 def nacitaj_otazky(db, anketa_id):
     otazky = []
     for o in db.execute(

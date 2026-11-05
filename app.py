@@ -121,6 +121,8 @@ def init_db():
     ucet.init_db(db)
     obsah.init_db(db)
     evidencia.init_db(db)
+    # Dotazníky pripravené ako súbory v priečinku dotazniky/ (pridávajú sa cez GitHub).
+    anketa.importuj_dotazniky(db, os.path.join(os.path.dirname(os.path.abspath(__file__)), "dotazniky"))
     app.secret_key = anketa.secret_key(db)
     db.close()
 
