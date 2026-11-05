@@ -323,6 +323,11 @@ def kluc_clena(udaje):
     return "meno:" + "|".join(casti).lower()
 
 
+def _bez_diakritiky(text):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
+
+
 def _norm(text):
     import unicodedata
     text = "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
@@ -619,9 +624,12 @@ def _datum(text):
 
 def _vyber(clenovia):
     """Vyhľadávanie a zoradenie podľa parametrov v adrese (spoločné pre tabuľku aj export)."""
-    hladat = request.args.get("hladat", "").strip().lower()
+    hladat = request.args.get("hladat", "").strip()
     if hladat:
-        clenovia = [c for c in clenovia if any(hladat in v.lower() for v in c["udaje"].values())]
+        # Každé slovo musí sedieť (napr. „Novák Ján“), bez ohľadu na diakritiku a veľké písmená.
+        slova = [_bez_diakritiky(w) for w in hladat.split()]
+        clenovia = [c for c in clenovia
+                    if all(w in _bez_diakritiky(" ".join(c["udaje"].values())) for w in slova)]
     zoradit = request.args.get("zoradit", "subor")
     if zoradit == "abeceda":
         clenovia = sorted(clenovia, key=lambda c: (abecedne(c["udaje"].get("Priezvisko / Názov poisteného", "")),
@@ -644,7 +652,9 @@ def zo(slug):
     zmeny = [dict(r) | {"zmeny": json.loads(r["zmeny"])} for r in get_db().execute(
         "SELECT cas, meno, cislo, zmeny FROM evidencia_zmena WHERE zo_slug = ? ORDER BY id DESC LIMIT 30", (slug,))]
     vsetci = _nacitaj_zo(slug)[2]
-    return render_template("evidencia/zo.html", organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY, zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
+    mena = sorted({f"{c['udaje'].get('Priezvisko / Názov poisteného', '')} {c['udaje'].get('Meno poisteného', '')}".strip()
+                   for c in vsetci} - {""}, key=abecedne)
+    return render_template("evidencia/zo.html", mena=mena, organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY, zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
                            hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny,
                            vedenie=vedenie_zo(get_db(), slug), nastavuje=funkcie_na_nastavenie(slug), na_vyber=sorted(
                                [c for c in vsetci if c["udaje"].get("Identifikačné číslo")],
