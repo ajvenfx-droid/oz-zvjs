@@ -1,4 +1,7 @@
-"""Evidencia členov podľa základných organizácií – vidí ju len správca.
+"""Evidencia členov podľa základných organizácií.
+
+Prístup: správca všetko; predseda a podpredseda ZO (rola „zo“) prezerá a mení len svoju ZO;
+predsedníctvo (rola „vedenie“) prezerá všetky ZO, ale nič nemení.
 
 Údaje sa nahrávajú zo zoznamov v Exceli (.xls alebo .xlsx) v tvare „Zoznam poistených“:
 každá ZO má vlastný hárok, ktorého názov začína číslom zoznamu (napr. „10.BBVV“).
@@ -10,9 +13,10 @@ import json
 import re
 from datetime import datetime, timedelta
 
-from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
+from functools import wraps
 
-from anketa import len_spravca
+from flask import Blueprint, Response, abort, flash, g, redirect, render_template, request, session, url_for
+
 from db import get_db
 
 bp = Blueprint("evidencia", __name__, url_prefix="/spravca/evidencia")
@@ -188,13 +192,58 @@ def kluc_clena(udaje):
     return "meno:" + "|".join(casti).lower()
 
 
+# --- prístup ------------------------------------------------------------------
+
+
+def pristup(slug=None):
+    """Vráti 'menit', 'citat' alebo None podľa toho, kto je prihlásený."""
+    if session.get("spravca"):
+        return "menit"
+    clen = g.get("clen")
+    if clen is None:
+        return None
+    if clen["rola"] == "vedenie":
+        return "citat"
+    if clen["rola"] == "zo" and slug is not None and clen["zo_slug"] == slug:
+        return "menit"
+    return None
+
+
+def vyzaduj(menit=False):
+    def dekorator(f):
+        @wraps(f)
+        def obal(*args, **kwargs):
+            p = pristup(kwargs.get("slug"))
+            if p is None or (menit and p != "menit"):
+                if not session.get("spravca") and g.get("clen") is None:
+                    return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+                abort(403)
+            g.moze_menit = p == "menit"
+            return f(*args, **kwargs)
+        return obal
+    return dekorator
+
+
+@bp.app_context_processor
+def inject_pristup():
+    return {"moze_menit": g.get("moze_menit", False), "je_spravca": bool(session.get("spravca"))}
+
+
 # --- stránky -----------------------------------------------------------------
 
 
 @bp.route("/", methods=["GET", "POST"])
-@len_spravca
 def prehlad():
     db = get_db()
+    clen = g.get("clen")
+    if not session.get("spravca") and clen is not None and clen["rola"] == "zo" and clen["zo_slug"]:
+        return redirect(url_for("evidencia.zo", slug=clen["zo_slug"]))
+    if request.method == "POST" and not session.get("spravca"):
+        abort(403)
+    if pristup() is None:
+        if g.get("clen") is None:
+            return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+        abort(403)
     if request.method == "POST":
         subor = request.files.get("subor")
         if not subor or not subor.filename:
@@ -285,7 +334,7 @@ def _nacitaj_zo(slug):
 
 
 @bp.route("/<slug>")
-@len_spravca
+@vyzaduj()
 def zo(slug):
     zo, stlpce, clenovia, nahrate = _nacitaj_zo(slug)
     hladat = request.args.get("hladat", "").strip().lower()
@@ -296,7 +345,7 @@ def zo(slug):
 
 
 @bp.route("/<slug>/export.csv")
-@len_spravca
+@vyzaduj()
 def export(slug):
     zo, stlpce, clenovia, _ = _nacitaj_zo(slug)
     vystup = io.StringIO()
@@ -313,7 +362,7 @@ def export(slug):
 
 @bp.route("/<slug>/clen/novy", methods=["GET", "POST"])
 @bp.route("/<slug>/clen/<int:clen_id>", methods=["GET", "POST"])
-@len_spravca
+@vyzaduj(menit=True)
 def uprav_clena(slug, clen_id=None):
     zo, stlpce, _, _ = _nacitaj_zo(slug)
     db = get_db()
@@ -349,8 +398,9 @@ def uprav_clena(slug, clen_id=None):
 
 
 @bp.route("/<slug>/zmazat", methods=["POST"])
-@len_spravca
 def zmazat(slug):
+    if not session.get("spravca"):
+        abort(403)
     db = get_db()
     db.execute("DELETE FROM evidencia_clen WHERE zo_slug = ?", (slug,))
     db.execute("DELETE FROM evidencia_stlpce WHERE zo_slug = ?", (slug,))

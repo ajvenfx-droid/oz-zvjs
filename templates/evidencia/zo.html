@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Členovia ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
 {% block content %}
-  <a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>
+  {% if je_spravca or prihlaseny_clen.rola == 'vedenie' %}<a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>{% endif %}
   <h1 class="nadpis">Členovia ZO {{ zo.mesto }}</h1>
-  <p class="info">{{ zo.nazov }}{% if nahrate %} · nahraté {{ nahrate }}{% endif %}</p>
+  <p class="info">{{ zo.nazov }}{% if nahrate %} · nahraté {{ nahrate }}{% endif %}{% if not moze_menit %} · len prezeranie{% endif %}</p>
   <div class="riadok-nadpis">
     <form method="get" class="nahratie">
       <input type="text" name="hladat" value="{{ hladat }}" placeholder="Hľadať meno, číslo, e-mail…">
       <button type="submit" class="tlacidlo tlacidlo--sekundarne">Hľadať</button>
     </form>
     <div class="akcie">
-      <a class="tlacidlo" href="{{ url_for('evidencia.uprav_clena', slug=zo.slug) }}">+ Pridať člena</a>
+      {% if moze_menit %}<a class="tlacidlo" href="{{ url_for('evidencia.uprav_clena', slug=zo.slug) }}">+ Pridať člena</a>{% endif %}
       <a href="{{ url_for('evidencia.export', slug=zo.slug) }}">Stiahnuť CSV</a>
     </div>
   </div>
@@ -23,7 +23,7 @@
         <tbody>
           {% for c in clenovia %}
             <tr class="{{ 'riadok--' ~ c.farba if c.farba }}">
-              <td><a href="{{ url_for('evidencia.uprav_clena', slug=zo.slug, clen_id=c.id) }}" title="Upraviť">{{ loop.index }}.</a></td>
+              <td>{% if moze_menit %}<a href="{{ url_for('evidencia.uprav_clena', slug=zo.slug, clen_id=c.id) }}" title="Upraviť">{{ loop.index }}.</a>{% else %}{{ loop.index }}.{% endif %}</td>
               {% for s in stlpce %}<td>{{ c.udaje.get(s, '') }}</td>{% endfor %}
             </tr>
           {% endfor %}
@@ -31,9 +31,9 @@
       </table>
     </div>
   {% else %}
-    <p class="info">Zatiaľ bez členov. Nahrajte zoznam v časti Evidencia členov.</p>
+    <p class="info">Zatiaľ bez členov.{% if je_spravca %} Nahrajte zoznam v časti Evidencia členov.{% endif %}</p>
   {% endif %}
-  {% if clenovia and not hladat %}
+  {% if clenovia and not hladat and je_spravca %}
     <form method="post" action="{{ url_for('evidencia.zmazat', slug=zo.slug) }}"
           onsubmit="return confirm('Naozaj zmazať celú evidenciu členov ZO {{ zo.mesto }}?');">
       <button type="submit" class="odkaz-tlacidlo">Zmazať celú evidenciu tejto ZO</button>

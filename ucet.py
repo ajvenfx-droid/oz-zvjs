@@ -37,6 +37,12 @@ ZAMKNUTIE = timedelta(minutes=15)
 PLATNOST_ODKAZU = timedelta(hours=1)  # odkaz na obnovu hesla z e-mailu
 ODSTUP_EMAILOV = timedelta(minutes=5)  # najviac jeden e-mail s obnovou za 5 minút
 
+ROLE = {
+    "clen": "bez prístupu k evidencii",
+    "zo": "predseda / podpredseda ZO – mení členov svojej ZO",
+    "vedenie": "predsedníctvo – prezerá všetky ZO, nemení",
+}
+
 EMAIL_VZOR = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -60,6 +66,8 @@ def init_db(db):
     stlpce = [r["name"] for r in db.execute("PRAGMA table_info(ucet)")]
     if "email" not in stlpce:
         db.execute("ALTER TABLE ucet ADD COLUMN email TEXT NOT NULL DEFAULT ''")
+    if "zo_slug" not in stlpce:
+        db.execute("ALTER TABLE ucet ADD COLUMN zo_slug TEXT NOT NULL DEFAULT ''")
     db.commit()
 
 
@@ -112,7 +120,8 @@ def nacitaj_prihlaseneho():
         return
     row = get_db().execute(
         "SELECT c.cislo, c.meno, COALESCE(u.rola, 'clen') AS rola, "
-        "COALESCE(u.heslo_hash, '') != '' AS vlastne_heslo, COALESCE(u.email, '') AS email "
+        "COALESCE(u.heslo_hash, '') != '' AS vlastne_heslo, COALESCE(u.email, '') AS email, "
+        "COALESCE(u.zo_slug, '') AS zo_slug "
         "FROM clen c LEFT JOIN ucet u ON u.cislo = c.cislo WHERE c.cislo = ?",
         (cislo,),
     ).fetchone()
@@ -315,7 +324,43 @@ def spravca_konta():
         s_emailom=sum(1 for k in konta if k["email"]),
         smtp_email=nastavenie(db, "smtp_email") or "",
         email_nastaveny=posta.je_nastavena(db),
+        role=ROLE,
+        pristupy=db.execute(
+            "SELECT u.cislo, c.meno, u.rola, u.zo_slug, z.mesto FROM ucet u "
+            "JOIN clen c ON c.cislo = u.cislo "
+            "LEFT JOIN zakladna_organizacia z ON z.slug = u.zo_slug "
+            "WHERE u.rola IN ('zo', 'vedenie') ORDER BY u.rola, z.poradie, c.meno"
+        ).fetchall(),
+        organizacie=db.execute(
+            "SELECT slug, mesto FROM zakladna_organizacia ORDER BY poradie, mesto").fetchall(),
     )
+
+
+@bp.route("/spravca/konta/rola", methods=["POST"])
+@len_spravca
+def nastav_rolu():
+    """Prístup člena k evidencii členov: bez prístupu / vedenie ZO (svoja ZO) / predsedníctvo (prezeranie)."""
+    db = get_db()
+    cislo = request.form.get("cislo", "").strip()
+    rola = request.form.get("rola", "clen")
+    zo_slug = request.form.get("zo_slug", "").strip() if rola == "zo" else ""
+    if rola not in ROLE:
+        rola = "clen"
+    clen = db.execute("SELECT meno FROM clen WHERE cislo = ?", (cislo,)).fetchone()
+    if clen is None:
+        flash(f"Odborárske číslo {cislo} nie je v zozname členov.")
+    elif rola == "zo" and db.execute(
+            "SELECT 1 FROM zakladna_organizacia WHERE slug = ?", (zo_slug,)).fetchone() is None:
+        flash("Vyberte základnú organizáciu.")
+    else:
+        db.execute(
+            "INSERT INTO ucet (cislo, rola, zo_slug) VALUES (?, ?, ?) "
+            "ON CONFLICT(cislo) DO UPDATE SET rola = excluded.rola, zo_slug = excluded.zo_slug",
+            (cislo, rola, zo_slug),
+        )
+        db.commit()
+        flash(f"{clen['meno'] or cislo}: {ROLE[rola]}.")
+    return redirect(url_for("ucet.spravca_konta") + "#pristupy")
 
 
 @bp.route("/spravca/email", methods=["POST"])

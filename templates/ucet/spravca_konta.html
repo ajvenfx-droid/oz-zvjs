@@ -36,6 +36,54 @@
     {% endif %}
   </section>
 
+  <section class="panel" id="pristupy">
+    <h2>Prístupy k evidencii členov</h2>
+    <p class="info">Predseda a podpredseda ZO môžu meniť členov svojej ZO. Predsedníctvo (predseda OZ a podpredsedovia)
+      môže prezerať všetky ZO, ale nič nemení. Člen sa prihlási svojím odborárskym číslom a v hornej lište uvidí odkaz Evidencia členov.</p>
+    <form method="post" action="{{ url_for('ucet.nastav_rolu') }}" class="formular">
+      <label class="pole">
+        <span class="pole__nazov">Odborárske číslo</span>
+        <input type="text" name="cislo" required style="max-width: 220px">
+      </label>
+      <label class="pole">
+        <span class="pole__nazov">Prístup</span>
+        <select name="rola">
+          {% for k, n in role.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="pole">
+        <span class="pole__nazov">Základná organizácia (len pre predsedu / podpredsedu ZO)</span>
+        <select name="zo_slug">
+          <option value="">–</option>
+          {% for z in organizacie %}<option value="{{ z.slug }}">{{ z.mesto }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="tlacidlo">Uložiť prístup</button>
+    </form>
+    {% if pristupy %}
+      <div class="tabulka-obal" style="margin-top: 16px">
+        <table class="tabulka">
+          <thead><tr><th>Odborárske číslo</th><th>Meno</th><th>Prístup</th><th></th></tr></thead>
+          <tbody>
+            {% for p in pristupy %}
+              <tr>
+                <td>{{ p.cislo }}</td><td>{{ p.meno }}</td>
+                <td>{% if p.rola == 'zo' %}predseda / podpredseda ZO {{ p.mesto }}{% else %}predsedníctvo – len prezeranie{% endif %}</td>
+                <td>
+                  <form method="post" action="{{ url_for('ucet.nastav_rolu') }}">
+                    <input type="hidden" name="cislo" value="{{ p.cislo }}">
+                    <input type="hidden" name="rola" value="clen">
+                    <button type="submit" class="odkaz-tlacidlo">Zrušiť prístup</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+
   <section class="panel">
     <h2>Zabudnuté heslo</h2>
     <p class="info">Ak člen nemá zadaný e-mail: zruší jeho vlastné heslo a potom sa znova prihlási číslom svojho preukazu.</p>
