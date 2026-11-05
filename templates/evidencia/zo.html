@@ -119,7 +119,7 @@
         <thead><tr><th>#</th>{% for s in stlpce %}<th>{{ s|stlpec }}</th>{% endfor %}</tr></thead>
         <tbody>
           {% for c in clenovia %}
-            <tr class="{{ 'riadok--' ~ c.farba if c.farba }}">
+            <tr>
               <td>{% if moze_menit %}<a href="{{ url_for('evidencia.uprav_clena', slug=zo.slug, clen_id=c.id) }}" title="Upraviť">{{ loop.index }}.</a>{% else %}{{ loop.index }}.{% endif %}</td>
               {% for s in stlpce %}<td>{{ c.udaje.get(s, '') }}</td>{% endfor %}
             </tr>

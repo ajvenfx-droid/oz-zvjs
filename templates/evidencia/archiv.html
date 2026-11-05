@@ -18,7 +18,7 @@
         <thead><tr>{% if not zo %}<th>ZO</th>{% endif %}{% for s in stlpce %}<th>{{ s|stlpec }}</th>{% endfor %}<th>V archíve od</th><th>Dôvod</th>{% if zo and moze_menit %}<th></th>{% endif %}</tr></thead>
         <tbody>
           {% for z in zaznamy %}
-            <tr class="{{ 'riadok--' ~ z.farba if z.farba }}">
+            <tr>
               {% if not zo %}<td><a href="{{ url_for('evidencia.archiv_zo', slug=z.zo_slug) }}">{{ z.mesto }}</a></td>{% endif %}
               {% for s in stlpce %}<td>{{ z.udaje.get(s, '') }}</td>{% endfor %}
               <td>{{ z.archivovane }}</td><td>{{ z.dovod }}</td>
