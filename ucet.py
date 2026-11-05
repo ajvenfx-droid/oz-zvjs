@@ -461,7 +461,7 @@ def spravca_konta():
         skupiny.setdefault(mesto, []).append(dict(k) | {"zo_slug": slug, "evidencia_id": eid, "poradie": poradie})
     skupiny = sorted(skupiny.items(), key=lambda x: (x[0] == "Bez ZO v evidencii", abecedne(x[0])))
     for _, clenovia in skupiny:
-        clenovia.sort(key=lambda k: (k["poradie"], k["cislo"]))  # poradie ako v nahratom súbore
+        clenovia.sort(key=lambda k: (len(k["cislo"]), k["cislo"]))  # podľa odborárskeho čísla
     return render_template(
         "ucet/spravca_konta.html",
         konta=konta,
