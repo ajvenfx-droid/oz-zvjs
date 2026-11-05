@@ -493,3 +493,31 @@ summary.rozbalit strong { font-weight: 600; }
 .suhrn-otazky .suhrn-moznosti { margin: 6px 0 0 18px; }
 .editor-akcie .tlacidlo.hotovo { padding: 6px 14px; }
 [hidden] { display: none !important; }
+
+/* Dotazník – farebné odlíšenie otázok a možností */
+.editor-otazka, #dotaznik .otazka {
+  border: 2px solid var(--zlata);
+  border-top-width: 6px;
+  background: #fffdf6;
+  margin-bottom: 22px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+}
+.editor-otazka:nth-child(even), #dotaznik .otazka:nth-of-type(even) { border-color: #4f7a9a; background: #f5f9fc; }
+.editor-otazka legend, #dotaznik .otazka legend {
+  background: var(--zlata-tmava); color: #fff; padding: 3px 12px; border-radius: 4px; font-size: 1.05rem;
+}
+.editor-otazka:nth-child(even) legend, #dotaznik .otazka:nth-of-type(even) legend { background: #4f7a9a; }
+.editor-otazka.podotazka, #dotaznik .otazka.podotazka { border-color: #6a8f4e; background: #f6faf2; border-left-width: 6px; }
+.editor-otazka.podotazka legend, #dotaznik .otazka.podotazka legend { background: #6a8f4e; }
+.moznosti-obal, .suhrn-moznosti {
+  background: #fff; border: 1px dashed #c9bfa3; border-radius: 6px; padding: 10px 12px; margin: 8px 0 10px;
+}
+.suhrn-moznosti { list-style: disc; padding-left: 30px; margin-left: 0 !important; }
+.moznost-riadok { background: #f3eedf; border-radius: 6px; padding: 6px 8px; }
+.moznost-riadok:nth-child(even) { background: #ebe3cc; }
+#dotaznik .otazka .moznost:not(.anonymne-volba) {
+  background: #fff; border: 1px solid #e2dccb; border-radius: 6px; padding: 8px 12px; margin: 6px 0;
+}
+#dotaznik .otazka .moznost:not(.anonymne-volba):has(input:checked) { background: #fff3cc; border-color: var(--zlata); font-weight: 600; }
+.suhrn-otazky .suhrn-text { font-size: 1.05rem; }
+.suhrn-moznosti:empty { display: none; }
