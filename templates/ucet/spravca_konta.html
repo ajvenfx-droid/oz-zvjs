@@ -77,7 +77,7 @@
         </select>
       </label>
       <label class="pole">
-        <span class="pole__nazov">Základná organizácia (len pre predsedu / podpredsedu ZO)</span>
+        <span class="pole__nazov">Základná organizácia (pre predsedu alebo podpredsedu ZO)</span>
         <select name="zo_slug">
           <option value="">–</option>
           {% for z in organizacie %}<option value="{{ z.slug }}">{{ z.mesto }}</option>{% endfor %}

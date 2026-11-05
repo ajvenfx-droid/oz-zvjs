@@ -46,6 +46,14 @@ ROLE = {
     "vedenie": "predsedníctvo – prezerá všetky ZO, nemení",
     "spravca": "správca stránky – môže všetko",
 }
+# Voľby v správe kont: predsedu a podpredsedu ZO prideľuje správca samostatne.
+VOLBY_PRISTUPU = {
+    "clen": ROLE["clen"],
+    "predseda": "predseda ZO – mení členov svojej ZO",
+    "podpredseda": "podpredseda ZO – mení členov svojej ZO",
+    "vedenie": ROLE["vedenie"],
+    "spravca": ROLE["spravca"],
+}
 
 EMAIL_VZOR = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -485,7 +493,7 @@ def spravca_konta():
         s_emailom=sum(1 for k in konta if k["email"]),
         smtp_email=nastavenie(db, "smtp_email") or "",
         email_nastaveny=posta.je_nastavena(db),
-        role=ROLE,
+        role=VOLBY_PRISTUPU,
         pristupy=db.execute(
             "SELECT u.cislo, c.meno, u.rola, u.zo_slug, u.funkcia, z.mesto FROM ucet u "
             "JOIN clen c ON c.cislo = u.cislo "
@@ -506,6 +514,9 @@ def nastav_rolu():
     kandidati = najdi_cisla(db, zadane)
     cislo = kandidati[0] if kandidati else zadane
     rola = request.form.get("rola", "clen")
+    funkcia = rola if rola in ("predseda", "podpredseda") else ""
+    if funkcia:
+        rola = "zo"
     zo_slug = request.form.get("zo_slug", "").strip() if rola == "zo" else ""
     if rola not in ROLE:
         rola = "clen"
@@ -515,6 +526,19 @@ def nastav_rolu():
     elif rola == "zo" and db.execute(
             "SELECT 1 FROM zakladna_organizacia WHERE slug = ?", (zo_slug,)).fetchone() is None:
         flash("Vyberte základnú organizáciu.")
+    elif funkcia:
+        # Doterajší predseda / podpredseda tej ZO funkciu stratí.
+        db.execute("UPDATE ucet SET funkcia = '', zo_slug = '', "
+                   "rola = CASE WHEN rola = 'zo' THEN 'clen' ELSE rola END "
+                   "WHERE zo_slug = ? AND funkcia = ? AND cislo != ?", (zo_slug, funkcia, cislo))
+        db.execute(
+            "INSERT INTO ucet (cislo, rola, zo_slug, funkcia) VALUES (?, 'zo', ?, ?) "
+            "ON CONFLICT(cislo) DO UPDATE SET zo_slug = excluded.zo_slug, funkcia = excluded.funkcia, "
+            "rola = CASE WHEN ucet.rola IN ('spravca', 'vedenie') THEN ucet.rola ELSE 'zo' END",
+            (cislo, zo_slug, funkcia))
+        db.commit()
+        mesto = db.execute("SELECT mesto FROM zakladna_organizacia WHERE slug = ?", (zo_slug,)).fetchone()["mesto"]
+        flash(f"{clen['meno'] or cislo}: {funkcia} ZO {mesto}.")
     else:
         db.execute(
             "INSERT INTO ucet (cislo, rola, zo_slug) VALUES (?, ?, ?) "
