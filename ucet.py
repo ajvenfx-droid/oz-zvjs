@@ -304,7 +304,7 @@ def moje_udaje(db, cislo):
         stlpce = poradie + [s for s in udaje if s not in poradie]
         menitelne = menitelne_clenom(stlpce)
         polia = [(s, udaje.get(s, ""), menitelne.index(s) if s in menitelne else None) for s in stlpce
-                 if s.lower() != "číslo" and (udaje.get(s) or s in menitelne)]
+                 if s.lower() != "číslo" and s != "Predchádzajúce mená" and (udaje.get(s) or s in menitelne)]
         from evidencia import dlzka_clenstva, obdobia_clenstva
         obdobia = obdobia_clenstva(db, udaje)
         from evidencia import kluc_clena, nacitaj_foto

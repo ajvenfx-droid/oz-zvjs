@@ -639,7 +639,8 @@ def _nacitaj_zo(slug):
         for r in db.execute("SELECT id, farba, udaje FROM evidencia_clen WHERE zo_slug = ? ORDER BY poradie, id",
                             (slug,))
     ]
-    stlpce = [s for s in stlpce if s.lower() != "číslo"]
+    # Predchádzajúce mená si stránka drží v pozadí (spoznanie člena), nezobrazujú sa.
+    stlpce = [s for s in stlpce if s.lower() != "číslo" and s != PREDCHADZAJUCE]
     return zo, stlpce, clenovia, (st["nahrate"] if st else None)
 
 
