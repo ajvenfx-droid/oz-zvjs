@@ -12,7 +12,11 @@
   <form method="post" class="formular">
     <label class="pole">
       <span class="pole__nazov">Odborárske číslo</span>
-      <input type="text" name="cislo" required autocomplete="off" value="{{ vyplnene.get('cislo', '') }}">
+      {% if prihlaseny_clen %}
+        <input type="text" name="cislo" readonly value="{{ prihlaseny_clen.cislo }}">
+      {% else %}
+        <input type="text" name="cislo" required autocomplete="off" value="{{ vyplnene.get('cislo', '') }}">
+      {% endif %}
     </label>
 
     {% for o in otazky %}

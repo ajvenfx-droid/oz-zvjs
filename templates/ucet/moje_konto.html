@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Moje konto – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <h1 class="nadpis">Moje konto</h1>
+  <section class="panel">
+    <h2>Údaje</h2>
+    <p>Odborárske číslo: <strong>{{ prihlaseny_clen.cislo }}</strong></p>
+    {% if prihlaseny_clen.meno %}<p>Meno: <strong>{{ prihlaseny_clen.meno }}</strong></p>{% endif %}
+  </section>
+  <section class="panel">
+    <h2>Zmena hesla</h2>
+    <form method="post" class="formular formular--uzky">
+      <label class="pole">
+        <span class="pole__nazov">Súčasné heslo</span>
+        <input type="password" name="stare" required autocomplete="current-password">
+      </label>
+      <label class="pole">
+        <span class="pole__nazov">Nové heslo (aspoň 8 znakov)</span>
+        <input type="password" name="heslo" required minlength="8" autocomplete="new-password">
+      </label>
+      <label class="pole">
+        <span class="pole__nazov">Zopakujte nové heslo</span>
+        <input type="password" name="heslo2" required minlength="8" autocomplete="new-password">
+      </label>
+      <button type="submit" class="tlacidlo">Zmeniť heslo</button>
+    </form>
+  </section>
+{% endblock %}

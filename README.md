@@ -35,6 +35,7 @@ Databáza SQLite sa vytvorí automaticky pri prvom spustení.
 - `app.py` – aplikácia (Flask)
 - `db.py` – pripojenie k databáze
 - `anketa.py` – ankety pre členov
+- `ucet.py` – kontá a prihlasovanie členov
 - `nastav_heslo.py` – nastavenie hesla správcu ankiet
 - `templates/` – HTML šablóny stránok
 - `static/style.css` – vzhľad
@@ -44,3 +45,12 @@ Databáza SQLite sa vytvorí automaticky pri prvom spustení.
 Zatiaľ sa ZO pridávajú do zoznamu `POCIATOCNE_ZO` v `app.py`
 (skratka do adresy, mesto, plný názov) a vložia sa pri ďalšom spustení.
 Neskôr bude na to správa priamo na stránke.
+
+## Kontá členov
+
+- Prihlasovacie meno je odborárske číslo zo zoznamu členov (nahráva sa v správe).
+- Správca v časti **Kontá členov** (`/spravca/konta`) vytvorí aktivačné kódy a stiahne ich do Excelu.
+- Člen na `/aktivacia` zadá číslo, kód a zvolí si heslo. Potom sa prihlasuje na `/prihlasenie`.
+- Zabudnuté heslo: správca vydá nový aktivačný kód, staré heslo prestane platiť.
+- Po 5 nesprávnych pokusoch sa konto na 15 minút zamkne.
+- Každé konto má rolu (zatiaľ len `clen`), ďalšie práva pribudnú neskôr.

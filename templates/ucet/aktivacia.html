@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Aktivácia konta – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('ucet.prihlasenie') }}">&larr; Späť na prihlásenie</a>
+  <h1 class="nadpis">Aktivácia konta</h1>
+  <p>Zadajte svoje odborárske číslo, aktivačný kód od predsedu ZO a zvoľte si heslo.</p>
+  <form method="post" class="formular formular--uzky">
+    <label class="pole">
+      <span class="pole__nazov">Odborárske číslo</span>
+      <input type="text" name="cislo" required autofocus autocomplete="username" value="{{ request.form.get('cislo', '') }}">
+    </label>
+    <label class="pole">
+      <span class="pole__nazov">Aktivačný kód</span>
+      <input type="text" name="kod" required autocomplete="off" value="{{ request.form.get('kod', '') }}">
+    </label>
+    <label class="pole">
+      <span class="pole__nazov">Nové heslo (aspoň 8 znakov)</span>
+      <input type="password" name="heslo" required minlength="8" autocomplete="new-password">
+    </label>
+    <label class="pole">
+      <span class="pole__nazov">Zopakujte heslo</span>
+      <input type="password" name="heslo2" required minlength="8" autocomplete="new-password">
+    </label>
+    <button type="submit" class="tlacidlo">Aktivovať a prihlásiť</button>
+  </form>
+{% endblock %}

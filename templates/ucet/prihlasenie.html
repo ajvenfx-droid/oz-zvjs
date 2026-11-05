@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Prihlásenie – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <h1 class="nadpis">Prihlásenie člena</h1>
+  <form method="post" class="formular formular--uzky">
+    <label class="pole">
+      <span class="pole__nazov">Odborárske číslo</span>
+      <input type="text" name="cislo" required autofocus autocomplete="username" value="{{ request.form.get('cislo', '') }}">
+    </label>
+    <label class="pole">
+      <span class="pole__nazov">Heslo</span>
+      <input type="password" name="heslo" required autocomplete="current-password">
+    </label>
+    <button type="submit" class="tlacidlo">Prihlásiť sa</button>
+  </form>
+  <div class="panel">
+    <h2>Prihlasujete sa prvýkrát?</h2>
+    <p>Aktivačný kód vám vydá predseda základnej organizácie. S ním si nastavíte vlastné heslo.</p>
+    <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('ucet.aktivacia') }}">Aktivovať konto</a>
+    <p class="info">Zabudli ste heslo? Požiadajte predsedu ZO o nový aktivačný kód.</p>
+  </div>
+{% endblock %}

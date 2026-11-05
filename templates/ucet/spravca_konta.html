@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Kontá členov – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu</a>
+  <h1 class="nadpis">Kontá členov</h1>
+  <p>Členov v zozname: <strong>{{ konta|length }}</strong> · aktivovaných kont: <strong>{{ aktivnych }}</strong>
+    · čaká na aktiváciu s kódom: <strong>{{ s_kodom }}</strong></p>
+
+  <section class="panel">
+    <h2>Aktivačné kódy</h2>
+    <p class="info">Kód sa vytvorí každému členovi zo zoznamu, ktorý ešte nemá konto ani kód.
+      Tabuľku kódov stiahnite a rozdajte členom. Po aktivácii sa kód zmaže.</p>
+    <div class="nahratie">
+      <form method="post" action="{{ url_for('ucet.vygeneruj_kody') }}">
+        <button type="submit" class="tlacidlo">Vytvoriť chýbajúce kódy</button>
+      </form>
+      <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('ucet.export_kodov') }}">Stiahnuť kódy do Excelu (CSV)</a>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Zabudnuté heslo</h2>
+    <p class="info">Člen dostane nový aktivačný kód a jeho doterajšie heslo prestane platiť.</p>
+    <form method="post" action="{{ url_for('ucet.obnov_pristup') }}" class="nahratie">
+      <input type="text" name="cislo" placeholder="Odborárske číslo" required style="max-width: 220px">
+      <button type="submit" class="tlacidlo">Vydať nový kód</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Prehľad</h2>
+    {% if konta %}
+      <div class="tabulka-obal">
+        <table class="tabulka">
+          <thead><tr><th>Odborárske číslo</th><th>Meno</th><th>Stav</th><th>Aktivačný kód</th></tr></thead>
+          <tbody>
+            {% for k in konta %}
+              <tr>
+                <td>{{ k.cislo }}</td><td>{{ k.meno }}</td>
+                <td>{% if k.aktivne %}Aktívne{% elif k.kod %}Čaká na aktiváciu{% else %}Bez kódu{% endif %}</td>
+                <td><code>{{ k.kod }}</code></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="info">Zoznam členov je prázdny. Najprv ho nahrajte v správe.</p>
+    {% endif %}
+  </section>
+{% endblock %}

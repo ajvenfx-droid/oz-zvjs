@@ -10,6 +10,17 @@
   <header class="hlavicka">
     <a href="{{ url_for('index') }}" class="hlavicka__nazov">{{ nazov_zvazu }}</a>
   </header>
+  <nav class="lista-uctu">
+    {% if prihlaseny_clen %}
+      <span>{{ prihlaseny_clen.meno or prihlaseny_clen.cislo }}</span>
+      <a href="{{ url_for('ucet.moje_konto') }}">Moje konto</a>
+      <form method="post" action="{{ url_for('ucet.odhlasenie') }}">
+        <button type="submit" class="odkaz-tlacidlo odkaz-tlacidlo--svetle">Odhlásiť</button>
+      </form>
+    {% else %}
+      <a href="{{ url_for('ucet.prihlasenie') }}">Prihlásiť sa</a>
+    {% endif %}
+  </nav>
   <main class="obsah">
     {% with spravy = get_flashed_messages() %}
       {% for s in spravy %}<p class="oznam">{{ s }}</p>{% endfor %}

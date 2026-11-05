@@ -4,6 +4,7 @@ import os
 from flask import Flask, abort, render_template
 
 import anketa
+import ucet
 from db import connect, close_db, get_db
 
 NAZOV_ZVAZU = "ODBOROVÝ ZVÄZ ZBORU VÄZENSKEJ A JUSTIČNEJ STRÁŽE"
@@ -25,6 +26,7 @@ app = Flask(__name__)
 VERZIA_STYLOV = int(os.path.getmtime(os.path.join(app.static_folder, "style.css")))
 app.teardown_appcontext(close_db)
 app.register_blueprint(anketa.bp)
+app.register_blueprint(ucet.bp)
 
 
 def init_db():
@@ -46,6 +48,7 @@ def init_db():
     )
     db.commit()
     anketa.init_db(db)
+    ucet.init_db(db)
     app.secret_key = anketa.secret_key(db)
     db.close()
 

@@ -331,17 +331,16 @@ def prihlasenie():
     heslo_hash = nastavenie(db, "heslo_spravcu")
     if request.method == "POST" and heslo_hash:
         if check_password_hash(heslo_hash, request.form.get("heslo", "")):
-            session.clear()
             session["spravca"] = True
             dalej = request.args.get("dalej", "")
-            return redirect(dalej if dalej.startswith("/anketa/spravca") else url_for("anketa.spravca"))
+            return redirect(dalej if dalej.startswith(("/anketa/spravca", "/spravca")) else url_for("anketa.spravca"))
         flash("Nesprávne heslo.")
     return render_template("anketa/prihlasenie.html", heslo_nastavene=bool(heslo_hash))
 
 
 @bp.route("/spravca/odhlasenie", methods=["POST"])
 def odhlasenie():
-    session.clear()
+    session.pop("spravca", None)
     return redirect(url_for("index"))
 
 

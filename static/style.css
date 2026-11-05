@@ -211,3 +211,19 @@ input[type="text"], input[type="password"], input[type="datetime-local"], textar
 }
 
 .paticka a { color: var(--sivy); }
+
+/* --- Kontá členov --- */
+.lista-uctu {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: #2b4d7c;
+  color: #fff;
+  font-size: 0.9rem;
+}
+.lista-uctu a { color: #fff; }
+.lista-uctu form { display: inline; }
+.odkaz-tlacidlo--svetle { color: #fff; text-decoration: underline; }
+input[readonly] { background: #eef1f5; }
