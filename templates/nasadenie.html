@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Automatická aktualizácia – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu</a>
+  <h1 class="nadpis">Automatická aktualizácia</h1>
+  <p>Aktuálna verzia: <strong>{{ verzia_stranky }}</strong></p>
+
+  <section class="panel">
+    <h2>Nastavenie na GitHube (raz)</h2>
+    <p>Na github.com otvorte repozitár <strong>oz-zvjs</strong> → <strong>Settings</strong> → <strong>Webhooks</strong> →
+      <strong>Add webhook</strong> a vyplňte:</p>
+    <ul>
+      <li><strong>Payload URL:</strong> <code>{{ adresa }}</code></li>
+      <li><strong>Content type:</strong> application/json</li>
+      <li><strong>Secret:</strong> <code>{{ tajomstvo }}</code></li>
+      <li>ponechajte „Just the push event“ a kliknite <strong>Add webhook</strong></li>
+    </ul>
+    <p class="info">Tajný kľúč nikomu neposielajte. Potom sa stránka po každej zmene na GitHube aktualizuje sama.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Aktualizovať teraz</h2>
+    <form method="post"><button type="submit" class="tlacidlo">Aktualizovať z GitHubu</button></form>
+    {% if posledne %}<p class="info">Posledná automatická aktualizácia: <code>{{ posledne }}</code></p>{% endif %}
+  </section>
+{% endblock %}

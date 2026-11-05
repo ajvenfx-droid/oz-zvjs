@@ -6,6 +6,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 import anketa
 import evidencia
+import nasadenie
 import obsah
 import ucet
 from db import connect, close_db, get_db
@@ -85,6 +86,7 @@ app.register_blueprint(anketa.bp)
 app.register_blueprint(ucet.bp)
 app.register_blueprint(obsah.bp)
 app.register_blueprint(evidencia.bp)
+app.register_blueprint(nasadenie.bp)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # nahrávané dokumenty
 
 
