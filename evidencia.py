@@ -82,6 +82,8 @@ def init_db(db):
         db.execute("ALTER TABLE clen ADD COLUMN z_evidencie INTEGER NOT NULL DEFAULT 0")
     if "email" not in stlpce_clen:
         db.execute("ALTER TABLE clen ADD COLUMN email TEXT NOT NULL DEFAULT ''")
+    if "sluzobne_hash" not in stlpce_clen:
+        db.execute("ALTER TABLE clen ADD COLUMN sluzobne_hash TEXT NOT NULL DEFAULT ''")
     db.commit()
     synchronizuj_prihlasovanie(db)
 
@@ -105,10 +107,10 @@ def synchronizuj_prihlasovanie(db):
     for cislo, (meno, preukaz, email) in z_evidencie.items():
         r = existujuce.get(cislo)
         if r is None:
-            db.execute("INSERT INTO clen (cislo, meno, preukaz_hash, z_evidencie, email) VALUES (?, ?, ?, 1, ?)",
-                       (cislo, meno, preukaz, email))
+            db.execute("INSERT INTO clen (cislo, meno, preukaz_hash, z_evidencie, email, sluzobne_hash) "
+                       "VALUES (?, ?, ?, 1, ?, ?)", (cislo, meno, preukaz, email, preukaz))
             continue
-        db.execute("UPDATE clen SET email = ? WHERE cislo = ?", (email, cislo))
+        db.execute("UPDATE clen SET email = ?, sluzobne_hash = ? WHERE cislo = ?", (email, preukaz, cislo))
         if r["z_evidencie"]:
             db.execute("UPDATE clen SET meno = ?, preukaz_hash = ? WHERE cislo = ?", (meno, preukaz, cislo))
         else:
@@ -116,8 +118,12 @@ def synchronizuj_prihlasovanie(db):
                        "preukaz_hash = CASE WHEN preukaz_hash = '' THEN ? ELSE preukaz_hash END WHERE cislo = ?",
                        (meno, preukaz, cislo))
     for cislo, r in existujuce.items():
-        if r["z_evidencie"] and cislo not in z_evidencie:
+        if cislo in z_evidencie:
+            continue
+        if r["z_evidencie"]:
             db.execute("DELETE FROM clen WHERE cislo = ?", (cislo,))
+        else:
+            db.execute("UPDATE clen SET email = '', sluzobne_hash = '' WHERE cislo = ?", (cislo,))
     db.commit()
 
 

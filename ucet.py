@@ -91,11 +91,12 @@ def over_heslo(db, clen, ucet, heslo):
     """Vlastné heslo, ak si ho člen nastavil; inak číslo preukazu zo zoznamu členov."""
     if ucet is not None and ucet["heslo_hash"]:
         return check_password_hash(ucet["heslo_hash"], heslo)
-    if not clen["preukaz_hash"] or not heslo.strip():
+    if not heslo.strip():
         return False
+    ulozene = [x for x in (clen["preukaz_hash"], clen["sluzobne_hash"]) if x]
     h = re.sub(r"\s+", "", heslo)
     varianty = {h, h.lstrip("0"), "0" + h}  # Excel často zje úvodnú nulu
-    return any(hmac.compare_digest(clen["preukaz_hash"], hash_preukazu(db, v)) for v in varianty if v)
+    return any(hmac.compare_digest(u, hash_preukazu(db, v)) for u in ulozene for v in varianty if v)
 
 
 def zaznamenaj_zlyhanie(db, cislo, ucet):
@@ -411,14 +412,44 @@ def nastav_email():
     return redirect(url_for("ucet.spravca_konta"))
 
 
+def stav_prihlasenia(db, zadane, kandidati):
+    """Pre správcu: prečo sa člen nevie prihlásiť (bez zobrazenia hesiel)."""
+    kandidati = [c for c in kandidati if db.execute("SELECT 1 FROM clen WHERE cislo = ?", (c,)).fetchone()]
+    if not kandidati:
+        if "@" in zadane:
+            return (f"E-mail {zadane} nemá v evidencii žiadny člen. Skontrolujte stĺpec E-mail v evidencii "
+                    "(napr. nahrajte súbor s e-mailami cez „Spojiť s doterajšími údajmi“).")
+        return f"{zadane} nie je v zozname členov."
+    vysledky = []
+    for c in kandidati:
+        k = db.execute("SELECT * FROM clen WHERE cislo = ?", (c,)).fetchone()
+        u = db.execute("SELECT * FROM ucet WHERE cislo = ?", (c,)).fetchone()
+        casti = [f"Odborárske číslo {c}"]
+        casti.append("e-mail v evidencii: " + ("áno" if k["email"] else "nie"))
+        casti.append("služobné číslo v evidencii: " + ("áno" if k["sluzobne_hash"] else "nie"))
+        if not k["z_evidencie"]:
+            casti.append("je aj v nahratom zozname členov (CSV)")
+        if u is not None and u["heslo_hash"]:
+            casti.append("má nastavené VLASTNÉ heslo – služobné číslo neplatí, kým ho neobnovíte")
+        if u is not None and u["zamknute_do"] and teraz() < u["zamknute_do"]:
+            casti.append("konto je dočasne ZAMKNUTÉ po zlých pokusoch")
+        vysledky.append(", ".join(casti) + ".")
+    return " ".join(vysledky)
+
+
 @bp.route("/spravca/konta/obnovit", methods=["POST"])
 @len_spravca
 def obnov_heslo():
     """Zabudnuté heslo: zruší vlastné heslo člena, heslom je znova číslo preukazu."""
     db = get_db()
-    cislo = request.form.get("cislo", "").strip()
+    zadane = re.sub(r"\s+", "", request.form.get("cislo", ""))
+    kandidati = najdi_cisla(db, zadane)
+    cislo = kandidati[0] if kandidati else zadane
+    if request.form.get("akcia") == "kontrola":
+        flash(stav_prihlasenia(db, zadane, kandidati))
+        return redirect(url_for("ucet.spravca_konta"))
     if db.execute("SELECT 1 FROM clen WHERE cislo = ?", (cislo,)).fetchone() is None:
-        flash(f"Odborárske číslo {cislo} nie je v zozname členov.")
+        flash(f"{zadane} nie je v zozname členov.")
     else:
         db.execute(
             "UPDATE ucet SET heslo_hash = '', zlyhane_pokusy = 0, zamknute_do = '' WHERE cislo = ?",

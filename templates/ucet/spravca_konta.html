@@ -86,10 +86,12 @@
 
   <section class="panel">
     <h2>Zabudnuté heslo</h2>
-    <p class="info">Ak člen nemá zadaný e-mail: zruší jeho vlastné heslo a potom sa znova prihlási číslom svojho preukazu.</p>
+    <p class="info">„Obnoviť heslo“ zruší vlastné heslo člena aj zamknutie konta, potom sa prihlási svojím služobným číslom.
+      „Skontrolovať prihlásenie“ ukáže, prečo sa člen nevie prihlásiť.</p>
     <form method="post" action="{{ url_for('ucet.obnov_heslo') }}" class="nahratie">
-      <input type="text" name="cislo" placeholder="Odborárske číslo" required style="max-width: 220px">
+      <input type="text" name="cislo" placeholder="E-mail alebo odborárske číslo" required style="max-width: 300px">
       <button type="submit" class="tlacidlo">Obnoviť heslo</button>
+      <button type="submit" name="akcia" value="kontrola" class="tlacidlo tlacidlo--sekundarne">Skontrolovať prihlásenie</button>
     </form>
   </section>
 
