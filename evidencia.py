@@ -35,7 +35,7 @@ FARBY = {"zelena": "zelený", "cervena": "červený"}
 # Údaje, ktoré si člen v Moje konto zmeniť nemôže (mení ich len predseda ZO alebo správca).
 NEMENITELNE_CLENOM = {
     "číslo", "Identifikačné číslo", "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia",
-    "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Podporný fond",
+    "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Podporný fond", "Predchádzajúce mená",
 }
 
 
@@ -48,7 +48,9 @@ STANDARDNE_STLPCE = [
     "Dátum narodenia", "Adresa trvalého pobytu – ulica, číslo domu", "Adresa trvalého pobytu – mesto",
     "Adresa trvalého pobytu – PSČ", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia",
     "E-mail", "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Kontakt", "Služobné/ zam. číslo", "Podporný fond",
+    "Predchádzajúce mená",
 ]
+PREDCHADZAJUCE = "Predchádzajúce mená"
 
 
 def zjednot_stlpec(nazov):
@@ -282,17 +284,44 @@ def kluc_clena(udaje):
     return "meno:" + "|".join(casti).lower()
 
 
-def osoba(udaje):
-    """Ten istý človek aj s novým číslom: meno + priezvisko + dátum narodenia (bez diakritiky a medzier)."""
+def _norm(text):
     import unicodedata
-    text = "|".join(udaje.get(k, "") for k in ("Meno poisteného", "Priezvisko / Názov poisteného", "Dátum narodenia"))
     text = "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
     return re.sub(r"\s+", "", text)
 
 
+def cele_meno(udaje):
+    return " ".join(x for x in (udaje.get("Meno poisteného", ""), udaje.get("Priezvisko / Názov poisteného", "")) if x)
+
+
+def osoby(udaje):
+    """Ten istý človek aj s novým číslom: (meno priezvisko + dátum narodenia) pre súčasné aj predchádzajúce mená."""
+    narodenie = udaje.get("Dátum narodenia", "")
+    mena = [cele_meno(udaje)] + [m for m in udaje.get(PREDCHADZAJUCE, "").split(";")]
+    return {_norm(m) + "|" + _norm(narodenie) for m in mena if m.strip()}
+
+
+def zapamataj_mena(stare, nove):
+    """Ak sa zmenilo meno alebo priezvisko, pôvodné sa pridá do „Predchádzajúce mená“ (nič sa nestratí)."""
+    zoznam = [m.strip() for m in (stare.get(PREDCHADZAJUCE, "") + ";" + nove.get(PREDCHADZAJUCE, "")).split(";")
+              if m.strip()]
+    staremeno = cele_meno(stare)
+    if staremeno and _norm(staremeno) != _norm(cele_meno(nove)):
+        zoznam.append(staremeno)
+    vysledok = []
+    for m in zoznam:
+        if _norm(m) != _norm(cele_meno(nove)) and _norm(m) not in [_norm(x) for x in vysledok]:
+            vysledok.append(m)
+    if vysledok:
+        nove[PREDCHADZAJUCE] = "; ".join(vysledok)
+    else:
+        nove.pop(PREDCHADZAJUCE, None)
+    return nove
+
+
 def kluce_osoby(udaje):
     """Kľúče, podľa ktorých sa ten istý človek spozná aj medzi rôznymi verziami súboru."""
-    return {kluc_clena(udaje), "osoba:" + osoba(udaje)}
+    return {kluc_clena(udaje)} | {"osoba:" + o for o in osoby(udaje)}
 
 
 def archivuj(db, zo_slug, kluc, farba, udaje_json, dovod):
@@ -315,13 +344,13 @@ def _den(text):
 def obdobia_clenstva(db, udaje):
     """Všetky obdobia členstva tohto človeka: z archívu (aj pod starým číslom) + súčasné. [(od, do, popis)]"""
     from datetime import date
-    ja = osoba(udaje)
+    ja = osoby(udaje)
     obdobia = []
-    if ja.strip("|"):
+    if ja:
         for r in db.execute("SELECT a.udaje, a.archivovane, z.mesto FROM evidencia_archiv a "
                             "JOIN zakladna_organizacia z ON z.slug = a.zo_slug").fetchall():
             u = json.loads(r["udaje"])
-            if osoba(u) != ja:
+            if not (osoby(u) & ja):
                 continue
             od = _den(u.get("Dátum vstupu do poistenia"))
             do = _den(u.get("Dátum výstupu z poistenia")) or _den(r["archivovane"])
@@ -445,7 +474,9 @@ def prehlad():
                     k = kluc_clena(udaje)
                     if k in existujuce:
                         stare = json.loads(existujuce[k]["udaje"])
+                        povodne_udaje = dict(stare)
                         stare.update(udaje)
+                        zapamataj_mena(povodne_udaje, stare)
                         db.execute("UPDATE evidencia_clen SET udaje = ?, farba = ? WHERE id = ?",
                                    (json.dumps(stare, ensure_ascii=False), farba or existujuce[k]["farba"],
                                     existujuce[k]["id"]))
@@ -466,6 +497,11 @@ def prehlad():
                         archivuj(db, slug, r["kluc"], r["farba"], r["udaje"], "nie je v novom zozname")
                         odisli += 1
                 archivovanych += odisli
+                predtym = {r["kluc"]: json.loads(r["udaje"]) for r in db.execute(
+                    "SELECT kluc, udaje FROM evidencia_clen WHERE zo_slug = ?", (slug,))}
+                for _, u in clenovia:
+                    if kluc_clena(u) in predtym and kluc_clena(u).startswith("id:"):
+                        zapamataj_mena(predtym[kluc_clena(u)], u)
                 db.execute("DELETE FROM evidencia_clen WHERE zo_slug = ?", (slug,))
                 db.executemany(
                     "INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
@@ -642,6 +678,7 @@ def uprav_clena(slug, clen_id=None):
             db.execute("INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
                        (slug, poradie, kluc_clena(udaje), farba, json.dumps(udaje, ensure_ascii=False)))
         else:
+            zapamataj_mena(clen["udaje"], udaje)
             db.execute("UPDATE evidencia_clen SET kluc = ?, farba = ?, udaje = ? WHERE id = ?",
                        (kluc_clena(udaje), farba, json.dumps(udaje, ensure_ascii=False), clen_id))
         db.commit()

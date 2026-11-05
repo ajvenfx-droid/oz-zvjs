@@ -311,13 +311,14 @@ def emaily_predsedov(db, zo_slug):
 
 def uloz_moje_udaje(db, clen, f):
     import json
-    from evidencia import kluc_clena, synchronizuj_prihlasovanie
+    from evidencia import kluc_clena, synchronizuj_prihlasovanie, zapamataj_mena
     zaznamy = moje_udaje(db, clen["cislo"])
     zaznam = next((z for z in zaznamy if str(z["id"]) == f.get("zaznam")), None)
     if zaznam is None:
         abort(404)
     r = db.execute("SELECT udaje FROM evidencia_clen WHERE id = ?", (zaznam["id"],)).fetchone()
     udaje = json.loads(r["udaje"])
+    povodne_udaje = dict(udaje)
     zmeny = []
     for i, st in enumerate(zaznam["menitelne"]):
         nove = f.get(f"st_{i}", "").strip()
@@ -333,7 +334,7 @@ def uloz_moje_udaje(db, clen, f):
     if not zmeny:
         flash("Nič sa nezmenilo.")
         return
-    udaje = {k: v for k, v in udaje.items() if v}
+    udaje = zapamataj_mena(povodne_udaje, {k: v for k, v in udaje.items() if v})
     db.execute("UPDATE evidencia_clen SET udaje = ?, kluc = ? WHERE id = ?",
                (json.dumps(udaje, ensure_ascii=False), kluc_clena(udaje), zaznam["id"]))
     if any(st == "E-mail" for st, _, _ in zmeny):
