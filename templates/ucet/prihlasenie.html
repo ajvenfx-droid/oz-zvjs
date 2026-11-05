@@ -13,10 +13,5 @@
     </label>
     <button type="submit" class="tlacidlo">Prihlásiť sa</button>
   </form>
-  <div class="panel">
-    <p>Prihlasovacím menom je <strong>váš e-mail</strong>, ktorý má zväz uložený v evidencii.
-      Pri prvom prihlásení je heslom <strong>vaše služobné alebo zamestnanecké číslo</strong>.
-      Po prihlásení si ho v časti Moje konto môžete zmeniť na vlastné heslo.</p>
-    <p><a href="{{ url_for('ucet.zabudnute_heslo') }}">Zabudli ste heslo?</a></p>
-  </div>
+  <p><a href="{{ url_for('ucet.zabudnute_heslo') }}">Zabudli ste heslo?</a></p>
 {% endblock %}
