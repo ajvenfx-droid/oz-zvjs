@@ -602,7 +602,7 @@ def zo(slug):
     vsetci = _nacitaj_zo(slug)[2]
     return render_template("evidencia/zo.html", zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
                            hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny,
-                           vedenie=vedenie_zo(get_db(), slug), na_vyber=sorted(
+                           vedenie=vedenie_zo(get_db(), slug), nastavuje=funkcie_na_nastavenie(slug), na_vyber=sorted(
                                [c for c in vsetci if c["udaje"].get("Identifikačné číslo")],
                                key=lambda c: (abecedne(c["udaje"].get("Priezvisko / Názov poisteného", "")),
                                               abecedne(c["udaje"].get("Meno poisteného", "")))))
@@ -618,15 +618,26 @@ def vedenie_zo(db, slug):
         "WHERE u.zo_slug = ? AND u.funkcia IN ('predseda', 'podpredseda')", (slug,))}
 
 
+def funkcie_na_nastavenie(slug):
+    """Správca vyberá predsedu ZO, ostatné funkcie vyberá predseda tej ZO."""
+    clen = g.get("clen")
+    if clen and clen.get("funkcia") == "predseda" and clen.get("zo_slug") == slug:
+        return [f for f in FUNKCIE if f != "predseda"] + (["predseda"] if je_spravca() else [])
+    return ["predseda"] if je_spravca() else []
+
+
 @bp.route("/<slug>/vedenie", methods=["POST"])
 def nastav_vedenie(slug):
-    """Správca vyberie predsedu a podpredsedu ZO z jej členov; dostanú prístup na zmeny v svojej ZO."""
-    if not je_spravca():
+    """Správca vyberie predsedu ZO, predseda ZO vyberie ostatných; dostanú prístup na zmeny v svojej ZO."""
+    povolene = funkcie_na_nastavenie(slug)
+    if not povolene:
         abort(403)
     zo, _, clenovia, _ = _nacitaj_zo(slug)
     db = get_db()
     platne = {re.sub(r"\s+", "", c["udaje"].get("Identifikačné číslo", "")) for c in clenovia} - {""}
-    for funkcia in FUNKCIE:
+    for funkcia in povolene:
+        if funkcia not in request.form:
+            continue
         cislo = re.sub(r"\s+", "", request.form.get(funkcia, ""))
         if cislo and cislo not in platne:
             continue
@@ -640,7 +651,7 @@ def nastav_vedenie(slug):
                 "rola = CASE WHEN ucet.rola IN ('spravca', 'vedenie') THEN ucet.rola ELSE 'zo' END",
                 (cislo, slug, funkcia))
     db.commit()
-    flash(f"Organizačná štruktúra ZO {zo['mesto']} bolo uložené. Predseda a podpredseda môžu meniť členov svojej ZO.")
+    flash(f"Organizačná štruktúra ZO {zo['mesto']} bola uložená.")
     return redirect(url_for("evidencia.zo", slug=slug))
 
 

@@ -23,9 +23,9 @@
     <h2>ORGANIZAČNÁ ŠTRUKTÚRA</h2>
     <p>Predseda: <strong>{{ vedenie.predseda.meno if vedenie.predseda else '–' }}</strong>
       · Podpredseda: <strong>{{ vedenie.podpredseda.meno if vedenie.podpredseda else '–' }}</strong></p>
-    {% if je_spravca %}
+    {% if nastavuje %}
       <form method="post" action="{{ url_for('evidencia.nastav_vedenie', slug=zo.slug) }}" class="formular">
-        {% for f, nazov in [('predseda', 'Predseda'), ('podpredseda', 'Podpredseda')] %}
+        {% for f, nazov in [('predseda', 'Predseda'), ('podpredseda', 'Podpredseda')] if f in nastavuje %}
           <label class="pole">
             <span class="pole__nazov">{{ nazov }}</span>
             <select name="{{ f }}">
@@ -40,7 +40,8 @@
         {% endfor %}
         <button type="submit" class="tlacidlo">Uložiť organizačnú štruktúru</button>
       </form>
-      <p class="info">Predseda a podpredseda dostanú prístup na zmeny členov tejto ZO a upozornenia, keď si člen zmení údaje.</p>
+      <p class="info">{% if 'podpredseda' in nastavuje %}Podpredsedu vyberá predseda ZO.{% else %}Predsedu vyberá správca, ostatné funkcie vyberie predseda ZO.{% endif %}
+        Vybraní dostanú prístup na zmeny členov tejto ZO a upozornenia, keď si člen zmení údaje.</p>
     {% endif %}
   </section>
   {% if zmeny %}
