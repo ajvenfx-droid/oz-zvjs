@@ -151,6 +151,7 @@ def synchronizuj_prihlasovanie(db):
     heslo = služobné / zamestnanecké číslo. Ručne nahratý zoznam členov má prednosť."""
     from anketa import hash_preukazu
 
+    archivuj_cervenych(db)
     z_evidencie = {}
     for (u,) in db.execute("SELECT udaje FROM evidencia_clen"):
         u = json.loads(u)
@@ -350,6 +351,18 @@ def archivuj(db, zo_slug, kluc, farba, udaje_json, dovod):
                (zo_slug, kluc, farba, udaje_json, datetime.now().strftime("%d.%m.%Y"), dovod))
 
 
+def archivuj_cervenych(db):
+    """Červení v zozname sú odídení: presunú sa do archívu a zmiznú zo zoznamu členov."""
+    pocet = 0
+    for r in db.execute("SELECT id, zo_slug, kluc, farba, udaje FROM evidencia_clen WHERE farba = 'cervena'").fetchall():
+        if db.execute("SELECT 1 FROM evidencia_archiv WHERE zo_slug = ? AND kluc = ?",
+                      (r["zo_slug"], r["kluc"])).fetchone() is None:
+            archivuj(db, r["zo_slug"], r["kluc"], r["farba"], r["udaje"], "odchod (červený v zozname)")
+            pocet += 1
+        db.execute("DELETE FROM evidencia_clen WHERE id = ?", (r["id"],))
+    return pocet
+
+
 def _den(text):
     from datetime import date
     m = re.match(r"\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})", text or "")
@@ -534,6 +547,7 @@ def prehlad():
                 (slug, json.dumps(stlpce, ensure_ascii=False), teraz),
             )
             spolu += len(clenovia)
+        archivovanych += archivuj_cervenych(db)
         db.commit()
         synchronizuj_prihlasovanie(db)
         flash(f"Nahraté: {len(obsah)} ZO, spolu {spolu} členov "
@@ -797,7 +811,8 @@ def uprav_clena(slug, clen_id=None):
                        (kluc_clena(udaje), farba, json.dumps(udaje, ensure_ascii=False), clen_id))
         db.commit()
         synchronizuj_prihlasovanie(db)
-        flash("Údaje člena boli uložené.")
+        flash("Člen je označený ako odídený (červený) a bol presunutý do archívu odídených."
+              if farba == "cervena" else "Údaje člena boli uložené.")
         return redirect(url_for("evidencia.zo", slug=slug))
     obdobia = obdobia_clenstva(db, clen["udaje"]) if clen_id else []
     foto = nacitaj_foto(db, kluc_clena(clen["udaje"])) if clen_id else None
@@ -864,7 +879,7 @@ def archiv_obnovit(slug, zaznam_id):
     poradie = db.execute("SELECT COALESCE(MAX(poradie), 0) + 1 FROM evidencia_clen WHERE zo_slug = ?",
                          (slug,)).fetchone()[0]
     db.execute("INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
-               (slug, poradie, r["kluc"], r["farba"], r["udaje"]))
+               (slug, poradie, r["kluc"], "" if r["farba"] == "cervena" else r["farba"], r["udaje"]))
     db.execute("DELETE FROM evidencia_archiv WHERE id = ?", (zaznam_id,))
     db.commit()
     synchronizuj_prihlasovanie(db)
