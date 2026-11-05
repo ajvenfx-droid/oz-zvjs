@@ -182,7 +182,6 @@
     function prepocitaj() {
       var k = karty();
       k.forEach(function (karta, i) {
-        karta.querySelector(".cislo-otazky").textContent = i + 1;
         var sel = karta.querySelector(".podmienka"), ciel = sel.dataset.ciel || "";
         sel.innerHTML = '<option value="">vždy</option>';
         for (var j = 0; j < i; j++) {
@@ -199,6 +198,22 @@
         karta.classList.toggle("podotazka", !!sel.value);
         var legenda = karta.querySelector("legend");
         legenda.firstChild.textContent = sel.value ? "Podotázka " : "Otázka ";
+      });
+      // číslovanie 1, 2… a podotázky 1.1, 1.2…
+      var hlavne = 0, pod = {};
+      k.forEach(function (karta) {
+        var r = karta.classList.contains("podotazka") ? rodicKarta(karta) : null, c;
+        if (!r) c = String(++hlavne);
+        else { pod[r.dataset.kluc] = (pod[r.dataset.kluc] || 0) + 1; c = r.dataset.cislo + "." + pod[r.dataset.kluc]; }
+        karta.dataset.cislo = c;
+        karta.querySelector(".cislo-otazky").textContent = c;
+      });
+      k.forEach(function (karta) {
+        karta.querySelectorAll(".podmienka option").forEach(function (o) {
+          if (!o.value) return;
+          var r = editor.querySelector('.editor-otazka[data-kluc="' + o.value.split(":")[0] + '"]');
+          if (r) o.textContent = o.textContent.replace(/v otázke [\d.]+/, "v otázke " + r.dataset.cislo);
+        });
       });
       k.forEach(function (karta) { if (karta.classList.contains("zamknuta")) zamkni(karta, true); });
     }
@@ -304,7 +319,7 @@
             if (!v && vp) v = "Iné";
             if (v) { moznosti.push(v + (vp ? " [vpísať]" : "")); poradie[karta.dataset.kluc].moznosti[r.dataset.kluc] = moznosti.length; }
           });
-          if (moznosti.length < 2 && !chyba) chyba = "Otázka " + (i + 1) + " musí mať aspoň dve možnosti odpovede.";
+          if (moznosti.length < 2 && !chyba) chyba = "Otázka " + karta.dataset.cislo + " musí mať aspoň dve možnosti odpovede.";
         }
         zoznam.push({ karta: karta, cislo: i + 1, text: otazka, typ: typ, moznosti: moznosti });
       });
@@ -315,7 +330,7 @@
         if (ciel) {
           var c = ciel.split(":"), rodic = poradie[c[0]];
           if (!rodic || rodic.cislo > n || !rodic.moznosti[c[1]]) {
-            if (!chyba) chyba = "Otázka " + o.cislo + ": podotázka musí nadväzovať na vyplnenú možnosť otázky nad ňou.";
+            if (!chyba) chyba = "Otázka " + o.karta.dataset.cislo + ": podotázka musí nadväzovať na vyplnenú možnosť otázky nad ňou.";
           } else ak = " [ak " + rodic.cislo + "." + rodic.moznosti[c[1]] + "]";
         }
         riadky.push(o.text + (o.karta.querySelector(".anonymna-otazka").checked ? " [anonymná]" : "") + ak);

@@ -25,7 +25,7 @@
       {% set pole = 'otazka_' ~ o.id %}
       {% set moje = odpovede.get(o.id, []) %}
       <fieldset class="otazka{% if o.rodic %} podotazka{% endif %}"{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id }}"{% endif %} data-otazka="{{ o.id }}">
-        <legend>{{ loop.index }}. {{ o.text }}</legend>
+        <legend>{{ o.cislo }}. {{ o.text }}</legend>
         {% if o.anonymna %}<p class="info">Anonymná otázka: nikto neuvidí, ako ste odpovedali.</p>{% endif %}
         {% if o.typ == 'text' %}
           <textarea name="{{ pole }}" rows="3" {% if zamknute %}disabled{% endif %}>{{ moje[0] if moje else '' }}</textarea>

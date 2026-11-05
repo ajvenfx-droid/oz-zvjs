@@ -345,7 +345,19 @@ def nacitaj_otazky(db, anketa_id):
     for o in otazky:
         q, m = o.get("ak_otazka"), o.get("ak_moznost")
         if q is not None and 0 <= q < len(otazky) and 0 <= (m or 0) < len(otazky[q]["moznosti"]):
-            o["rodic"] = {"otazka": otazky[q], "cislo": q + 1, "moznost": otazky[q]["moznosti"][m]}
+            o["rodic"] = {"otazka": otazky[q], "moznost": otazky[q]["moznosti"][m]}
+    # Číslovanie: hlavné otázky 1, 2, 3…, podotázky podľa nadradenej otázky 1.1, 1.2…
+    hlavne, pod = 0, {}
+    for o in otazky:
+        if o["rodic"] is None:
+            hlavne += 1
+            o["cislo"] = str(hlavne)
+        else:
+            r = o["rodic"]["otazka"]
+            pod[r["id"]] = pod.get(r["id"], 0) + 1
+            o["cislo"] = f"{r['cislo']}.{pod[r['id']]}"
+        if o["rodic"]:
+            o["rodic"]["cislo"] = o["rodic"]["otazka"]["cislo"]
     return otazky
 
 
