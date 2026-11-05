@@ -96,22 +96,28 @@
   </section>
 
   <section class="panel">
-    <h2>Prehľad</h2>
+    <h2>Prehľad členov podľa ZO</h2>
     {% if konta %}
-      <div class="tabulka-obal">
-        <table class="tabulka">
-          <thead><tr><th>Odborárske číslo</th><th>Meno</th><th>Prihlasovanie</th><th>E-mail</th></tr></thead>
-          <tbody>
-            {% for k in konta %}
-              <tr>
-                <td>{{ k.cislo }}</td><td>{{ k.meno }}</td>
-                <td>{% if k.vlastne_heslo %}Vlastné heslo{% elif not k.email %}<span class="varovanie">Chýba e-mail</span>{% elif k.ma_preukaz %}Služobné číslo{% else %}<span class="varovanie">Chýba služobné číslo</span>{% endif %}</td>
-                <td>{{ k.email }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+      <p class="info">Kliknutím na ZO sa zobrazia jej členovia.</p>
+      {% for mesto, clenovia in skupiny %}
+        <details class="skupina-zo">
+          <summary class="rozbalit"><strong>{{ mesto }}</strong> ({{ clenovia|length }})</summary>
+          <div class="tabulka-obal">
+            <table class="tabulka">
+              <thead><tr><th>Odborárske číslo</th><th>Meno</th><th>Prihlasovanie</th><th>E-mail</th></tr></thead>
+              <tbody>
+                {% for k in clenovia %}
+                  <tr>
+                    <td>{{ k.cislo }}</td><td>{{ k.meno }}</td>
+                    <td>{% if k.vlastne_heslo %}Vlastné heslo{% elif not k.email %}<span class="varovanie">Chýba e-mail</span>{% elif k.ma_preukaz %}Služobné číslo{% else %}<span class="varovanie">Chýba služobné číslo</span>{% endif %}</td>
+                    <td>{{ k.email }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      {% endfor %}
     {% else %}
       <p class="info">Zoznam členov je prázdny. Nahrajte zoznamy v Evidencii členov.</p>
     {% endif %}

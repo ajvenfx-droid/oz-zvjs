@@ -448,9 +448,23 @@ def spravca_konta():
         "CASE WHEN COALESCE(u.email, '') != '' THEN u.email ELSE c.email END AS email "
         "FROM clen c LEFT JOIN ucet u ON u.cislo = c.cislo ORDER BY c.cislo"
     ).fetchall()
+    import json
+    zo_clena = {}
+    for r in db.execute("SELECT e.udaje, z.mesto FROM evidencia_clen e "
+                        "JOIN zakladna_organizacia z ON z.slug = e.zo_slug"):
+        c = re.sub(r"\s+", "", json.loads(r["udaje"]).get("Identifikačné číslo", ""))
+        if c:
+            zo_clena.setdefault(c, r["mesto"])
+    skupiny = {}
+    for k in konta:
+        skupiny.setdefault(zo_clena.get(k["cislo"], "Bez ZO v evidencii"), []).append(k)
+    skupiny = sorted(skupiny.items(), key=lambda x: (x[0] == "Bez ZO v evidencii", abecedne(x[0])))
+    for _, clenovia in skupiny:
+        clenovia.sort(key=lambda k: abecedne(k["meno"] or k["cislo"]))
     return render_template(
         "ucet/spravca_konta.html",
         konta=konta,
+        skupiny=skupiny,
         vlastnych=sum(1 for k in konta if k["vlastne_heslo"]),
         bez_preukazu=sum(1 for k in konta if not k["email"] or (not k["ma_preukaz"] and not k["vlastne_heslo"])),
         s_emailom=sum(1 for k in konta if k["email"]),
