@@ -453,6 +453,7 @@ input[readonly] { background: #f2efe6; }
 select { font: inherit; padding: 8px 10px; border: 1px solid #c9c2ad; border-radius: 6px; background: #fff; }
 
 /* Obrázky na pozadí nahraté v správe */
-.hero--obrazok, .banner { background-size: cover; background-position: center; }
+.hero, .banner { background-size: cover; background-position: center; }
+.hero { background-color: #1d1d1b; }
 .obrazok-riadok { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--ciara); }
 .obrazok-nahlad { max-width: 320px; max-height: 120px; object-fit: cover; border-radius: 4px; }
