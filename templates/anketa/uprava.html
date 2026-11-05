@@ -47,11 +47,11 @@
         <textarea class="text-otazky" rows="2"></textarea>
       </label>
       <label class="pole">
-        <span class="pole__nazov">Typ odpovede</span>
+        <span class="pole__nazov">Spôsob odpovede na túto otázku</span>
         <select class="typ-otazky">
-          <option value="jedna">člen vyberie jednu možnosť</option>
-          <option value="viac">člen môže vybrať viac možností</option>
-          <option value="text">člen napíše vlastnú odpoveď</option>
+          <option value="jedna">výber z možností – jedna odpoveď</option>
+          <option value="viac">výber z možností – viac odpovedí</option>
+          <option value="text">písomná odpoveď (člen napíše text)</option>
         </select>
       </label>
       <div class="moznosti-obal">
@@ -98,7 +98,7 @@
       m = m || { text: "", vpisovat: false };
       var riadok = document.createElement("div");
       riadok.className = "moznost-riadok";
-      riadok.innerHTML = '<input type="text" class="text-moznosti" placeholder="Text možnosti"> <label class="vpis-volba"><input type="checkbox" class="vpisovat"> s vpisovaním</label> <button type="button" class="odkaz-tlacidlo" title="Odstrániť možnosť">✕</button>';
+      riadok.innerHTML = '<input type="text" class="text-moznosti" placeholder="Text možnosti"> <label class="vpis-volba"><input type="checkbox" class="vpisovat"> doplniť text</label> <button type="button" class="odkaz-tlacidlo" title="Odstrániť možnosť">✕</button>';
       riadok.querySelector(".text-moznosti").value = m.text || "";
       riadok.querySelector(".vpisovat").checked = !!m.vpisovat;
       riadok.querySelector("button").onclick = function () { riadok.remove(); };
