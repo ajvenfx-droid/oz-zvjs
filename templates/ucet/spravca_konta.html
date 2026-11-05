@@ -108,7 +108,8 @@
               <tbody>
                 {% for k in clenovia %}
                   <tr>
-                    <td>{{ k.cislo }}</td><td>{{ k.meno }}</td>
+                    <td>{{ k.cislo }}</td>
+                    <td>{% if k.evidencia_id %}<a href="{{ url_for('evidencia.uprav_clena', slug=k.zo_slug, clen_id=k.evidencia_id) }}">{{ k.meno }}</a>{% else %}{{ k.meno }}{% endif %}</td>
                     <td>{% if k.vlastne_heslo %}Vlastné heslo{% elif not k.email %}<span class="varovanie">Chýba e-mail</span>{% elif k.ma_preukaz %}Služobné číslo{% else %}<span class="varovanie">Chýba služobné číslo</span>{% endif %}</td>
                     <td>{{ k.email }}</td>
                   </tr>
