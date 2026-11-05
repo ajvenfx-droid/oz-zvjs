@@ -1,5 +1,30 @@
 {% extends "base.html" %}
-{% block title %}Kontá členov – {{ nazov_zvazu }}{% endblock %}
+{% block title %}Kontá členov – {{ nazov_zvazu }}  <datalist id="zoznam-clenov">
+    {% for mesto, clenovia in skupiny %}{% for k in clenovia %}<option value="{{ k.cislo }}">{{ k.meno.split(' ')[-1] }} {{ ' '.join(k.meno.split(' ')[:-1]) }} – ZO {{ mesto }}</option>{% endfor %}{% endfor %}
+  </datalist>
+  <script>
+    (function () {
+      var pole = document.getElementById("hladat-clena");
+      if (!pole) return;
+      var bez = function (t) { return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); };
+      var skupiny = document.querySelectorAll(".skupina-zo");
+      skupiny.forEach(function (d) { d.querySelectorAll("tr[data-hladat]").forEach(function (r) { r.dataset.hladat = bez(r.dataset.hladat); }); });
+      pole.addEventListener("input", function () {
+        var q = bez(pole.value.trim()), spolu = 0;
+        skupiny.forEach(function (d) {
+          var najdene = 0;
+          d.querySelectorAll("tr[data-hladat]").forEach(function (r) {
+            var ok = !q || r.dataset.hladat.indexOf(q) !== -1;
+            r.hidden = !ok; if (ok) najdene++;
+          });
+          d.hidden = q && !najdene; d.open = !!q && najdene > 0; spolu += q ? najdene : 0;
+        });
+        var v = document.getElementById("hladat-vysledok");
+        v.hidden = !q; v.textContent = "Nájdených: " + spolu;
+      });
+    })();
+  </script>
+{% endblock %}
 {% block content %}
   <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu</a>
   <h1 class="nadpis">Kontá členov</h1>
@@ -42,8 +67,8 @@
       môže prezerať všetky ZO, ale nič nemení. Člen sa prihlási svojím odborárskym číslom a v hornej lište uvidí odkaz Evidencia členov.</p>
     <form method="post" action="{{ url_for('ucet.nastav_rolu') }}" class="formular">
       <label class="pole">
-        <span class="pole__nazov">E-mail alebo odborárske číslo</span>
-        <input type="text" name="cislo" required style="max-width: 300px">
+        <span class="pole__nazov">Priezvisko, e-mail alebo odborárske číslo</span>
+        <input type="text" name="cislo" required style="max-width: 300px" list="zoznam-clenov" autocomplete="off" placeholder="Začnite písať priezvisko">
       </label>
       <label class="pole">
         <span class="pole__nazov">Prístup</span>
@@ -89,7 +114,7 @@
     <p class="info">„Obnoviť heslo“ zruší vlastné heslo člena aj zamknutie konta, potom sa prihlási svojím služobným číslom.
       „Skontrolovať prihlásenie“ ukáže, prečo sa člen nevie prihlásiť.</p>
     <form method="post" action="{{ url_for('ucet.obnov_heslo') }}" class="nahratie">
-      <input type="text" name="cislo" placeholder="E-mail alebo odborárske číslo" required style="max-width: 300px">
+      <input type="text" name="cislo" placeholder="Priezvisko, e-mail alebo odborárske číslo" required style="max-width: 300px" list="zoznam-clenov" autocomplete="off">
       <button type="submit" class="tlacidlo">Obnoviť heslo</button>
       <button type="submit" name="akcia" value="kontrola" class="tlacidlo tlacidlo--sekundarne">Skontrolovať prihlásenie</button>
     </form>
@@ -98,7 +123,9 @@
   <section class="panel">
     <h2>Prehľad členov podľa ZO</h2>
     {% if konta %}
-      <p class="info">Kliknutím na ZO sa zobrazia jej členovia.</p>
+      <p class="info">Kliknutím na ZO sa zobrazia jej členovia, alebo vyhľadajte člena podľa priezviska.</p>
+      <input type="search" id="hladat-clena" placeholder="Hľadať priezvisko, meno, číslo alebo e-mail" style="max-width: 420px; margin-bottom: 12px" autocomplete="off">
+      <p class="info" id="hladat-vysledok" hidden></p>
       {% for mesto, clenovia in skupiny %}
         <details class="skupina-zo">
           <summary class="rozbalit"><strong>{{ mesto }}</strong> ({{ clenovia|length }})</summary>
@@ -107,7 +134,7 @@
               <thead><tr><th>Odborárske číslo</th><th>Meno</th><th>Prihlasovanie</th><th>E-mail</th></tr></thead>
               <tbody>
                 {% for k in clenovia %}
-                  <tr>
+                  <tr data-hladat="{{ (k.meno ~ ' ' ~ k.cislo ~ ' ' ~ (k.email or ''))|lower }}">
                     <td>{{ k.cislo }}</td>
                     <td>{% if k.evidencia_id %}<a href="{{ url_for('evidencia.uprav_clena', slug=k.zo_slug, clen_id=k.evidencia_id) }}">{{ k.meno }}</a>{% else %}{{ k.meno }}{% endif %}</td>
                     <td>{% if k.vlastne_heslo %}Vlastné heslo{% elif not k.email %}<span class="varovanie">Chýba e-mail</span>{% elif k.ma_preukaz %}Služobné číslo{% else %}<span class="varovanie">Chýba služobné číslo</span>{% endif %}</td>
@@ -123,4 +150,29 @@
       <p class="info">Zoznam členov je prázdny. Nahrajte zoznamy v Evidencii členov.</p>
     {% endif %}
   </section>
+  <datalist id="zoznam-clenov">
+    {% for mesto, clenovia in skupiny %}{% for k in clenovia %}<option value="{{ k.cislo }}">{{ k.meno.split(' ')[-1] }} {{ ' '.join(k.meno.split(' ')[:-1]) }} – ZO {{ mesto }}</option>{% endfor %}{% endfor %}
+  </datalist>
+  <script>
+    (function () {
+      var pole = document.getElementById("hladat-clena");
+      if (!pole) return;
+      var bez = function (t) { return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); };
+      var skupiny = document.querySelectorAll(".skupina-zo");
+      skupiny.forEach(function (d) { d.querySelectorAll("tr[data-hladat]").forEach(function (r) { r.dataset.hladat = bez(r.dataset.hladat); }); });
+      pole.addEventListener("input", function () {
+        var q = bez(pole.value.trim()), spolu = 0;
+        skupiny.forEach(function (d) {
+          var najdene = 0;
+          d.querySelectorAll("tr[data-hladat]").forEach(function (r) {
+            var ok = !q || r.dataset.hladat.indexOf(q) !== -1;
+            r.hidden = !ok; if (ok) najdene++;
+          });
+          d.hidden = q && !najdene; d.open = !!q && najdene > 0; spolu += q ? najdene : 0;
+        });
+        var v = document.getElementById("hladat-vysledok");
+        v.hidden = !q; v.textContent = "Nájdených: " + spolu;
+      });
+    })();
+  </script>
 {% endblock %}
