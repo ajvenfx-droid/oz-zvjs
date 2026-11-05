@@ -288,8 +288,10 @@ def moje_udaje(db, cislo):
         menitelne = menitelne_clenom(stlpce)
         polia = [(s, udaje.get(s, ""), menitelne.index(s) if s in menitelne else None) for s in stlpce
                  if s.lower() != "číslo" and (udaje.get(s) or s in menitelne)]
+        from evidencia import dlzka_clenstva, obdobia_clenstva
+        obdobia = obdobia_clenstva(db, udaje)
         vysledok.append({"id": r["id"], "zo_slug": r["zo_slug"], "mesto": r["mesto"], "polia": polia,
-                         "menitelne": menitelne})
+                         "menitelne": menitelne, "obdobia": obdobia, "dlzka": dlzka_clenstva(obdobia)})
     return vysledok
 
 

@@ -9,7 +9,8 @@
     <h1 class="nadpis">Archív odídených členov – celé Slovensko</h1>
   {% endif %}
   <p class="info">Do archívu sa člen dostane automaticky, keď ho vymažete z evidencie alebo keď pri nahratí nového
-    zoznamu (Nahradiť) v ňom už nie je. Ak sa v novom zozname znova objaví, z archívu sa sám vyradí.</p>
+    zoznamu (Nahradiť) v ňom už nie je. V archíve ostáva natrvalo, aj keď sa neskôr vráti do odborov (s novým číslom),
+    a jeho predchádzajúce členstvo sa mu započíta. Tlačidlo „Vrátiť“ použite, len ak bol člen vyradený omylom.</p>
   <p>Počet: <strong>{{ zaznamy|length }}</strong></p>
   {% if zaznamy %}
     <div class="tabulka-obal">
@@ -23,8 +24,8 @@
               <td>{{ z.archivovane }}</td><td>{{ z.dovod }}</td>
               {% if zo and moze_menit %}
                 <td><form method="post" action="{{ url_for('evidencia.archiv_obnovit', slug=zo.slug, zaznam_id=z.id) }}"
-                      onsubmit="return confirm('Vrátiť tohto člena medzi členov?');">
-                  <button type="submit" class="odkaz-tlacidlo">Vrátiť</button></form></td>
+                      onsubmit="return confirm('Bol tento člen vyradený omylom? Vráti sa medzi členov a z archívu sa odstráni.');">
+                  <button type="submit" class="odkaz-tlacidlo">Vrátiť (vyradený omylom)</button></form></td>
               {% endif %}
             </tr>
           {% endfor %}

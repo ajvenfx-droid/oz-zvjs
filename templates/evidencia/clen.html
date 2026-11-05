@@ -3,6 +3,7 @@
 {% block content %}
   <a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
   <h1 class="nadpis">{% if clen_id %}Upraviť člena{% else %}Nový člen{% endif %}</h1>
+  {% include "evidencia/_clenstvo.html" %}
   <form method="post" class="formular">
     {% for s in stlpce %}
       <label class="pole">

@@ -282,11 +282,17 @@ def kluc_clena(udaje):
     return "meno:" + "|".join(casti).lower()
 
 
+def osoba(udaje):
+    """Ten istý človek aj s novým číslom: meno + priezvisko + dátum narodenia (bez diakritiky a medzier)."""
+    import unicodedata
+    text = "|".join(udaje.get(k, "") for k in ("Meno poisteného", "Priezvisko / Názov poisteného", "Dátum narodenia"))
+    text = "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
+    return re.sub(r"\s+", "", text)
+
+
 def kluce_osoby(udaje):
     """Kľúče, podľa ktorých sa ten istý človek spozná aj medzi rôznymi verziami súboru."""
-    casti = [v for k, v in udaje.items() if any(s in k.lower() for s in ("meno", "priezvisko", "narodenia"))
-             and "identifikačné" not in k.lower()]
-    return {kluc_clena(udaje), "meno:" + "|".join(casti).lower()}
+    return {kluc_clena(udaje), "osoba:" + osoba(udaje)}
 
 
 def archivuj(db, zo_slug, kluc, farba, udaje_json, dovod):
@@ -295,12 +301,55 @@ def archivuj(db, zo_slug, kluc, farba, udaje_json, dovod):
                (zo_slug, kluc, farba, udaje_json, datetime.now().strftime("%d.%m.%Y"), dovod))
 
 
-def vyrad_z_archivu(db, zo_slug, udaje):
-    """Člen sa vrátil (je znova v zozname) – z archívu tejto ZO ho vyradí."""
-    kluce = kluce_osoby(udaje)
-    for r in db.execute("SELECT id, udaje FROM evidencia_archiv WHERE zo_slug = ?", (zo_slug,)).fetchall():
-        if kluce & kluce_osoby(json.loads(r["udaje"])):
-            db.execute("DELETE FROM evidencia_archiv WHERE id = ?", (r["id"],))
+def _den(text):
+    from datetime import date
+    m = re.match(r"\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})", text or "")
+    if not m:
+        return None
+    try:
+        return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+    except ValueError:
+        return None
+
+
+def obdobia_clenstva(db, udaje):
+    """Všetky obdobia členstva tohto človeka: z archívu (aj pod starým číslom) + súčasné. [(od, do, popis)]"""
+    from datetime import date
+    ja = osoba(udaje)
+    obdobia = []
+    if ja.strip("|"):
+        for r in db.execute("SELECT a.udaje, a.archivovane, z.mesto FROM evidencia_archiv a "
+                            "JOIN zakladna_organizacia z ON z.slug = a.zo_slug").fetchall():
+            u = json.loads(r["udaje"])
+            if osoba(u) != ja:
+                continue
+            od = _den(u.get("Dátum vstupu do poistenia"))
+            do = _den(u.get("Dátum výstupu z poistenia")) or _den(r["archivovane"])
+            if od and do:
+                obdobia.append((od, do, f"ZO {r['mesto']}, číslo {u.get('Identifikačné číslo', '–')}"))
+    od = _den(udaje.get("Dátum vstupu do poistenia"))
+    if od:
+        obdobia.append((od, _den(udaje.get("Dátum výstupu z poistenia")) or date.today(), "súčasné členstvo"))
+    return sorted(obdobia)
+
+
+def dlzka_clenstva(obdobia):
+    """Spolu bez prekrývania, ako text „X rokov Y mesiacov“."""
+    dni, koniec = 0, None
+    for od, do, _ in obdobia:
+        if koniec and od <= koniec:
+            if do > koniec:
+                dni += (do - koniec).days
+                koniec = do
+        else:
+            dni += max((do - od).days, 0)
+            koniec = do
+    roky, mesiace = dni // 365, (dni % 365) // 30
+    if not obdobia:
+        return ""
+    def tvar(n, a, b, c):
+        return f"{n} {a if n == 1 else b if 2 <= n <= 4 else c}"
+    return f"{tvar(roky, 'rok', 'roky', 'rokov')} {tvar(mesiace, 'mesiac', 'mesiace', 'mesiacov')}"
 
 
 def abecedne(text):
@@ -417,8 +466,6 @@ def prehlad():
                         archivuj(db, slug, r["kluc"], r["farba"], r["udaje"], "nie je v novom zozname")
                         odisli += 1
                 archivovanych += odisli
-                for _, u in clenovia:
-                    vyrad_z_archivu(db, slug, u)
                 db.execute("DELETE FROM evidencia_clen WHERE zo_slug = ?", (slug,))
                 db.executemany(
                     "INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
@@ -594,7 +641,6 @@ def uprav_clena(slug, clen_id=None):
                                  (slug,)).fetchone()[0]
             db.execute("INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
                        (slug, poradie, kluc_clena(udaje), farba, json.dumps(udaje, ensure_ascii=False)))
-            vyrad_z_archivu(db, slug, udaje)
         else:
             db.execute("UPDATE evidencia_clen SET kluc = ?, farba = ?, udaje = ? WHERE id = ?",
                        (kluc_clena(udaje), farba, json.dumps(udaje, ensure_ascii=False), clen_id))
@@ -602,7 +648,9 @@ def uprav_clena(slug, clen_id=None):
         synchronizuj_prihlasovanie(db)
         flash("Údaje člena boli uložené.")
         return redirect(url_for("evidencia.zo", slug=slug))
-    return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, clen=clen, clen_id=clen_id, farby=FARBY)
+    obdobia = obdobia_clenstva(db, clen["udaje"]) if clen_id else []
+    return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, clen=clen, clen_id=clen_id, farby=FARBY,
+                           obdobia=obdobia, dlzka=dlzka_clenstva(obdobia))
 
 
 @bp.route("/<slug>/zmazat", methods=["POST"])

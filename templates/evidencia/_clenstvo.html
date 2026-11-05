@@ -1,0 +1,13 @@
+{% if dlzka %}
+  <section class="panel">
+    <p>Dĺžka členstva spolu: <strong>{{ dlzka }}</strong></p>
+    {% if obdobia|length > 1 %}
+      <ul>
+        {% for od, do, popis in obdobia %}
+          <li>{{ od.strftime('%d.%m.%Y') }} – {{ do.strftime('%d.%m.%Y') }} ({{ popis }})</li>
+        {% endfor %}
+      </ul>
+      <p class="info">Započítané sú aj predchádzajúce obdobia z archívu (podľa mena, priezviska a dátumu narodenia).</p>
+    {% endif %}
+  </section>
+{% endif %}
