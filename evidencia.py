@@ -17,6 +17,7 @@ from functools import wraps
 
 from flask import Blueprint, Response, abort, flash, g, redirect, render_template, request, session, url_for
 
+from anketa import je_spravca
 from db import get_db
 
 bp = Blueprint("evidencia", __name__, url_prefix="/spravca/evidencia")
@@ -273,7 +274,7 @@ def abecedne(text):
 
 def pristup(slug=None):
     """Vráti 'menit', 'citat' alebo None podľa toho, kto je prihlásený."""
-    if session.get("spravca"):
+    if je_spravca():
         return "menit"
     clen = g.get("clen")
     if clen is None:
@@ -291,7 +292,7 @@ def vyzaduj(menit=False):
         def obal(*args, **kwargs):
             p = pristup(kwargs.get("slug"))
             if p is None or (menit and p != "menit"):
-                if not session.get("spravca") and g.get("clen") is None:
+                if not je_spravca() and g.get("clen") is None:
                     return redirect(url_for("ucet.prihlasenie", dalej=request.path))
                 abort(403)
             g.moze_menit = p == "menit"
@@ -302,7 +303,7 @@ def vyzaduj(menit=False):
 
 @bp.app_context_processor
 def inject_pristup():
-    return {"moze_menit": g.get("moze_menit", False), "je_spravca": bool(session.get("spravca"))}
+    return {"moze_menit": g.get("moze_menit", False), "je_spravca": bool(je_spravca())}
 
 
 # --- stránky -----------------------------------------------------------------
@@ -312,9 +313,9 @@ def inject_pristup():
 def prehlad():
     db = get_db()
     clen = g.get("clen")
-    if not session.get("spravca") and clen is not None and clen["rola"] == "zo" and clen["zo_slug"]:
+    if not je_spravca() and clen is not None and clen["rola"] == "zo" and clen["zo_slug"]:
         return redirect(url_for("evidencia.zo", slug=clen["zo_slug"]))
-    if request.method == "POST" and not session.get("spravca"):
+    if request.method == "POST" and not je_spravca():
         abort(403)
     if pristup() is None:
         if g.get("clen") is None:
@@ -481,7 +482,7 @@ def uprav_clena(slug, clen_id=None):
 
 @bp.route("/<slug>/zmazat", methods=["POST"])
 def zmazat(slug):
-    if not session.get("spravca"):
+    if not je_spravca():
         abort(403)
     db = get_db()
     db.execute("DELETE FROM evidencia_clen WHERE zo_slug = ?", (slug,))

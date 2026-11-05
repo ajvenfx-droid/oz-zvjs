@@ -43,6 +43,7 @@ ROLE = {
     "clen": "bez prístupu k evidencii",
     "zo": "predseda / podpredseda ZO – mení členov svojej ZO",
     "vedenie": "predsedníctvo – prezerá všetky ZO, nemení",
+    "spravca": "správca stránky – môže všetko",
 }
 
 EMAIL_VZOR = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -443,7 +444,7 @@ def spravca_konta():
             "SELECT u.cislo, c.meno, u.rola, u.zo_slug, z.mesto FROM ucet u "
             "JOIN clen c ON c.cislo = u.cislo "
             "LEFT JOIN zakladna_organizacia z ON z.slug = u.zo_slug "
-            "WHERE u.rola IN ('zo', 'vedenie') ORDER BY u.rola, z.poradie, c.meno"
+            "WHERE u.rola IN ('zo', 'vedenie', 'spravca') ORDER BY u.rola, z.poradie, c.meno"
         ).fetchall(),
         organizacie=sorted(db.execute("SELECT slug, mesto FROM zakladna_organizacia").fetchall(),
                            key=lambda z: abecedne(z["mesto"])),
@@ -455,7 +456,9 @@ def spravca_konta():
 def nastav_rolu():
     """Prístup člena k evidencii členov: bez prístupu / vedenie ZO (svoja ZO) / predsedníctvo (prezeranie)."""
     db = get_db()
-    cislo = request.form.get("cislo", "").strip()
+    zadane = re.sub(r"\s+", "", request.form.get("cislo", ""))
+    kandidati = najdi_cisla(db, zadane)
+    cislo = kandidati[0] if kandidati else zadane
     rola = request.form.get("rola", "clen")
     zo_slug = request.form.get("zo_slug", "").strip() if rola == "zo" else ""
     if rola not in ROLE:

@@ -14,7 +14,9 @@
   <div class="lista-uctu">
     {% if prihlaseny_clen %}
       <span>{{ prihlaseny_clen.meno or prihlaseny_clen.cislo }}</span>
-      {% if prihlaseny_clen.rola in ('zo', 'vedenie') %}
+      {% if prihlaseny_clen.rola == 'spravca' %}
+        <a href="{{ url_for('anketa.spravca') }}">Správa stránky</a>
+      {% elif prihlaseny_clen.rola in ('zo', 'vedenie') %}
         <a href="{{ url_for('evidencia.prehlad') if prihlaseny_clen.rola == 'vedenie' else url_for('evidencia.zo', slug=prihlaseny_clen.zo_slug) }}">Evidencia členov</a>
       {% endif %}
       <a href="{{ url_for('ucet.moje_konto') }}">Moje konto</a>

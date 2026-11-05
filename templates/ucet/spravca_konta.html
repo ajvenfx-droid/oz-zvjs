@@ -42,8 +42,8 @@
       môže prezerať všetky ZO, ale nič nemení. Člen sa prihlási svojím odborárskym číslom a v hornej lište uvidí odkaz Evidencia členov.</p>
     <form method="post" action="{{ url_for('ucet.nastav_rolu') }}" class="formular">
       <label class="pole">
-        <span class="pole__nazov">Odborárske číslo</span>
-        <input type="text" name="cislo" required style="max-width: 220px">
+        <span class="pole__nazov">E-mail alebo odborárske číslo</span>
+        <input type="text" name="cislo" required style="max-width: 300px">
       </label>
       <label class="pole">
         <span class="pole__nazov">Prístup</span>
@@ -68,7 +68,7 @@
             {% for p in pristupy %}
               <tr>
                 <td>{{ p.cislo }}</td><td>{{ p.meno }}</td>
-                <td>{% if p.rola == 'zo' %}predseda / podpredseda ZO {{ p.mesto }}{% else %}predsedníctvo – len prezeranie{% endif %}</td>
+                <td>{% if p.rola == 'zo' %}predseda / podpredseda ZO {{ p.mesto }}{% elif p.rola == 'spravca' %}správca stránky{% else %}predsedníctvo – len prezeranie{% endif %}</td>
                 <td>
                   <form method="post" action="{{ url_for('ucet.nastav_rolu') }}">
                     <input type="hidden" name="cislo" value="{{ p.cislo }}">

@@ -19,6 +19,7 @@ from flask import (
     Response,
     abort,
     flash,
+    g,
     redirect,
     render_template,
     request,
@@ -331,10 +332,16 @@ def hlasovanie(slug):
 # --- správca ----------------------------------------------------------------
 
 
+def je_spravca():
+    """Správca: prihlásený heslom správcu alebo člen s prístupom „správca stránky“."""
+    clen = g.get("clen")
+    return bool(session.get("spravca")) or (clen is not None and clen["rola"] == "spravca")
+
+
 def len_spravca(f):
     @wraps(f)
     def obal(*args, **kwargs):
-        if not session.get("spravca"):
+        if not je_spravca():
             return redirect(url_for("anketa.prihlasenie", dalej=request.path))
         return f(*args, **kwargs)
     return obal
@@ -342,6 +349,8 @@ def len_spravca(f):
 
 @bp.route("/spravca/prihlasenie", methods=["GET", "POST"])
 def prihlasenie():
+    if je_spravca():
+        return redirect(url_for("anketa.spravca"))
     db = get_db()
     heslo_hash = nastavenie(db, "heslo_spravcu")
     if request.method == "POST" and heslo_hash:
