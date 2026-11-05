@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (
+    abort,
     Blueprint,
     flash,
     g,
@@ -216,6 +217,9 @@ def moje_konto():
         db = get_db()
         cislo = g.clen["cislo"]
         f = request.form
+        if f.get("akcia") == "udaje":
+            uloz_moje_udaje(db, g.clen, f)
+            return redirect(url_for("ucet.moje_konto"))
         if f.get("akcia") == "email":
             email = f.get("email", "").strip()
             if email and not EMAIL_VZOR.match(email):
@@ -246,24 +250,93 @@ def moje_konto():
                 db.commit()
                 flash("Heslo bolo zmenené.")
         return redirect(url_for("ucet.moje_konto"))
-    return render_template("ucet/moje_konto.html", evidencia=moje_udaje(get_db(), g.clen["cislo"]))
+    from evidencia import MENITELNE_CLENOM
+    return render_template("ucet/moje_konto.html", evidencia=moje_udaje(get_db(), g.clen["cislo"]),
+                           menitelne_clenom=MENITELNE_CLENOM)
 
 
 def moje_udaje(db, cislo):
-    """Údaje prihláseného člena z evidencie členov: [(ZO, [(stĺpec, hodnota), ...])]."""
+    """Záznamy prihláseného člena v evidencii: [{id, zo_slug, mesto, polia: [(stĺpec, hodnota, menitelne)]}]."""
     import json
+    from evidencia import MENITELNE_CLENOM
     vysledok = []
     for r in db.execute(
-            "SELECT e.zo_slug, e.udaje, z.mesto, s.stlpce FROM evidencia_clen e "
+            "SELECT e.id, e.zo_slug, e.udaje, z.mesto, s.stlpce FROM evidencia_clen e "
             "JOIN zakladna_organizacia z ON z.slug = e.zo_slug "
             "LEFT JOIN evidencia_stlpce s ON s.zo_slug = e.zo_slug"):
         udaje = json.loads(r["udaje"])
         if re.sub(r"\s+", "", udaje.get("Identifikačné číslo", "")) != cislo:
             continue
         poradie = json.loads(r["stlpce"]) if r["stlpce"] else []
-        stlpce = [s for s in poradie if s in udaje] + [s for s in udaje if s not in poradie]
-        vysledok.append((r["mesto"], [(s, udaje[s]) for s in stlpce if udaje[s] and s.lower() != "číslo"]))
+        stlpce = [s for s in poradie if s in udaje or s in MENITELNE_CLENOM]
+        stlpce += [s for s in udaje if s not in stlpce]
+        stlpce += [s for s in MENITELNE_CLENOM if s not in stlpce]
+        polia = [(s, udaje.get(s, ""), s in MENITELNE_CLENOM) for s in stlpce
+                 if s.lower() != "číslo" and (udaje.get(s) or s in MENITELNE_CLENOM)]
+        vysledok.append({"id": r["id"], "zo_slug": r["zo_slug"], "mesto": r["mesto"], "polia": polia})
     return vysledok
+
+
+def emaily_predsedov(db, zo_slug):
+    """E-maily predsedu a podpredsedu ZO (prístup v evidencii), inak e-mail z popisu ZO."""
+    emaily = [r["email"] for r in db.execute(
+        "SELECT CASE WHEN COALESCE(u.email, '') != '' THEN u.email ELSE c.email END AS email "
+        "FROM ucet u JOIN clen c ON c.cislo = u.cislo WHERE u.rola = 'zo' AND u.zo_slug = ?", (zo_slug,))
+        if r["email"]]
+    if not emaily:
+        zo = db.execute("SELECT popis FROM zakladna_organizacia WHERE slug = ?", (zo_slug,)).fetchone()
+        najdene = re.search(r"[^@\s]+@[^@\s]+\.[^@\s,;]+", zo["popis"] if zo else "")
+        if najdene:
+            emaily = [najdene.group(0)]
+    return emaily
+
+
+def uloz_moje_udaje(db, clen, f):
+    import json
+    from evidencia import MENITELNE_CLENOM, kluc_clena, synchronizuj_prihlasovanie
+    zaznamy = moje_udaje(db, clen["cislo"])
+    zaznam = next((z for z in zaznamy if str(z["id"]) == f.get("zaznam")), None)
+    if zaznam is None:
+        abort(404)
+    r = db.execute("SELECT udaje FROM evidencia_clen WHERE id = ?", (zaznam["id"],)).fetchone()
+    udaje = json.loads(r["udaje"])
+    zmeny = []
+    for i, st in enumerate(MENITELNE_CLENOM):
+        nove = f.get(f"st_{i}", "").strip()
+        if nove != udaje.get(st, ""):
+            if st == "E-mail" and nove and not EMAIL_VZOR.match(nove):
+                flash("Zadajte platnú e-mailovú adresu.")
+                return
+            if st == "E-mail" and not nove:
+                flash("E-mail nemôže byť prázdny, je to vaše prihlasovacie meno.")
+                return
+            zmeny.append((st, udaje.get(st, ""), nove))
+            udaje[st] = nove
+    if not zmeny:
+        flash("Nič sa nezmenilo.")
+        return
+    udaje = {k: v for k, v in udaje.items() if v}
+    db.execute("UPDATE evidencia_clen SET udaje = ?, kluc = ? WHERE id = ?",
+               (json.dumps(udaje, ensure_ascii=False), kluc_clena(udaje), zaznam["id"]))
+    if any(st == "E-mail" for st, _, _ in zmeny):
+        db.execute("UPDATE ucet SET email = '' WHERE cislo = ?", (clen["cislo"],))
+    meno = clen["meno"] or clen["cislo"]
+    cas = datetime.now(CASOVA_ZONA).strftime("%d.%m.%Y %H:%M")
+    db.execute("INSERT INTO evidencia_zmena (zo_slug, cislo, meno, cas, zmeny) VALUES (?, ?, ?, ?, ?)",
+               (zaznam["zo_slug"], clen["cislo"], meno, cas, json.dumps(zmeny, ensure_ascii=False)))
+    db.commit()
+    synchronizuj_prihlasovanie(db)
+    flash("Údaje boli uložené. Predseda vašej ZO dostane informáciu o zmene.")
+    emaily = emaily_predsedov(db, zaznam["zo_slug"])
+    if emaily and posta.je_nastavena(db):
+        text = (f"Člen {meno} (odborárske číslo {clen['cislo']}) si na stránke zmenil údaje:\n\n"
+                + "\n".join(f"{st}: {stare or '–'} → {nove or '–'}" for st, stare, nove in zmeny)
+                + "\n\nZmena je už uložená v evidencii členov ZO " + zaznam["mesto"] + ".\n")
+        for komu in emaily:
+            try:
+                posta.posli(db, komu, f"Zmena údajov člena – {meno}", text)
+            except Exception:
+                pass
 
 
 @bp.route("/zabudnute-heslo", methods=["GET", "POST"])

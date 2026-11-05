@@ -6,16 +6,29 @@
     <h2>Údaje</h2>
     <p>Odborárske číslo: <strong>{{ prihlaseny_clen.cislo }}</strong></p>
     {% if prihlaseny_clen.meno %}<p>Meno: <strong>{{ prihlaseny_clen.meno }}</strong></p>{% endif %}
-    {% for mesto, polia in evidencia %}
-      <p>Základná organizácia: <strong>{{ mesto }}</strong></p>
-      <table class="tabulka">
-        <tbody>
-          {% for nazov, hodnota in polia %}<tr><th>{{ nazov }}</th><td>{{ hodnota }}</td></tr>{% endfor %}
-        </tbody>
-      </table>
-    {% endfor %}
-    {% if evidencia %}<p class="info">Ak je niektorý údaj nesprávny, oznámte to predsedovi svojej ZO.</p>{% endif %}
   </section>
+  {% for z in evidencia %}
+  <section class="panel">
+    <h2>Moje údaje v evidencii – ZO {{ z.mesto }}</h2>
+    <p class="info">Údaje v poliach môžete zmeniť. Ostatné mení len predseda ZO. O každej zmene dostane predseda vašej ZO informáciu.</p>
+    <form method="post" class="formular">
+      <input type="hidden" name="akcia" value="udaje">
+      <input type="hidden" name="zaznam" value="{{ z.id }}">
+      {% for nazov, hodnota, menitelne in z.polia %}
+        {% if menitelne %}
+          <label class="pole">
+            <span class="pole__nazov">{{ nazov }}</span>
+            <input type="{{ 'email' if nazov == 'E-mail' else 'text' }}" name="st_{{ menitelne_clenom.index(nazov) }}" value="{{ hodnota }}">
+          </label>
+        {% else %}
+          <p class="pole"><span class="pole__nazov">{{ nazov }}</span><br><strong>{{ hodnota }}</strong></p>
+        {% endif %}
+      {% endfor %}
+      <button type="submit" class="tlacidlo">Uložiť zmeny</button>
+    </form>
+  </section>
+  {% endfor %}
+  {% if not evidencia %}
   <section class="panel">
     <h2>E-mail</h2>
     {% if not prihlaseny_clen.email %}
@@ -32,6 +45,7 @@
       <button type="submit" class="tlacidlo">Uložiť e-mail</button>
     </form>
   </section>
+  {% endif %}
   <section class="panel">
     <h2>Zmena hesla</h2>
     {% if not prihlaseny_clen.vlastne_heslo %}

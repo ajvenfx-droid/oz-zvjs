@@ -14,6 +14,20 @@
       <a href="{{ url_for('evidencia.export', slug=zo.slug) }}">Stiahnuť CSV</a>
     </div>
   </div>
+  {% if zmeny %}
+    <details class="panel">
+      <summary><strong>Zmeny údajov od členov</strong> ({{ zmeny|length }}, posledná {{ zmeny[0].cas }})</summary>
+      <table class="tabulka">
+        <thead><tr><th>Kedy</th><th>Člen</th><th>Zmena</th></tr></thead>
+        <tbody>
+          {% for z in zmeny %}
+            <tr><td>{{ z.cas }}</td><td>{{ z.meno }} ({{ z.cislo }})</td>
+              <td>{% for st, stare, nove in z.zmeny %}{{ st }}: {{ stare or '–' }} → <strong>{{ nove or '–' }}</strong><br>{% endfor %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  {% endif %}
   <p>Počet: <strong>{{ clenovia|length }}</strong>
     <span class="legenda legenda--zelena">zelený</span> <span class="legenda legenda--cervena">červený</span></p>
   {% if clenovia %}

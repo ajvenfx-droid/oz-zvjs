@@ -31,6 +31,13 @@ CISLO_ZOZNAMU = {
 
 FARBY = {"zelena": "zelený", "cervena": "červený"}
 
+# Údaje, ktoré si člen môže sám zmeniť v Moje konto (ostatné mení len predseda ZO alebo správca).
+MENITELNE_CLENOM = [
+    "Titul", "Priezvisko / Názov poisteného", "Titul za menom",
+    "Adresa trvalého pobytu – ulica, číslo domu", "Adresa trvalého pobytu – mesto",
+    "Adresa trvalého pobytu – PSČ", "E-mail", "Kontakt",
+]
+
 # Stĺpce, ktoré má každá ZO, aj keď ich v nahratom súbore nie je (dajú sa doplniť ručne).
 STANDARDNE_STLPCE = [
     "Identifikačné číslo", "Titul", "Meno poisteného", "Priezvisko / Názov poisteného", "Titul za menom",
@@ -74,6 +81,18 @@ def init_db(db):
             zo_slug TEXT PRIMARY KEY,
             stlpce TEXT NOT NULL,
             nahrate TEXT NOT NULL
+        )
+        """
+    )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS evidencia_zmena (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            zo_slug TEXT NOT NULL,
+            cislo TEXT NOT NULL,
+            meno TEXT NOT NULL,
+            cas TEXT NOT NULL,
+            zmeny TEXT NOT NULL
         )
         """
     )
@@ -396,8 +415,10 @@ def zo(slug):
     hladat = request.args.get("hladat", "").strip().lower()
     if hladat:
         clenovia = [c for c in clenovia if any(hladat in v.lower() for v in c["udaje"].values())]
+    zmeny = [dict(r) | {"zmeny": json.loads(r["zmeny"])} for r in get_db().execute(
+        "SELECT cas, meno, cislo, zmeny FROM evidencia_zmena WHERE zo_slug = ? ORDER BY id DESC LIMIT 30", (slug,))]
     return render_template("evidencia/zo.html", zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
-                           hladat=hladat, farby=FARBY)
+                           hladat=hladat, farby=FARBY, zmeny=zmeny)
 
 
 @bp.route("/<slug>/export.csv")
