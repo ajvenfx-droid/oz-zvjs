@@ -7,6 +7,7 @@ import csv
 import hashlib
 import hmac
 import io
+import json
 import re
 import secrets
 import unicodedata
@@ -106,6 +107,9 @@ def init_db(db):
     stlpce = [r["name"] for r in db.execute("PRAGMA table_info(clen)")]
     if "preukaz_hash" not in stlpce:
         db.execute("ALTER TABLE clen ADD COLUMN preukaz_hash TEXT NOT NULL DEFAULT ''")
+    if "zo_slug" not in [r["name"] for r in db.execute("PRAGMA table_info(anketa)")]:
+        # Anketa len pre členov jednej ZO (prázdne = pre všetkých).
+        db.execute("ALTER TABLE anketa ADD COLUMN zo_slug TEXT NOT NULL DEFAULT ''")
     if nastavenie(db, "prva_anketa_vlozena") is None:
         if db.execute("SELECT COUNT(*) FROM anketa").fetchone()[0] == 0:
             uloz_anketu(db, None, PRVA_ANKETA["nazov"], PREDVOLENY_UVOD, "", PRVA_ANKETA["otazky"])
@@ -255,6 +259,21 @@ def aktivne_ankety(db):
     return [a for a in db.execute("SELECT * FROM anketa ORDER BY id DESC") if not je_ukoncena(a)]
 
 
+def je_clenom_zo(db, cislo, zo_slug):
+    """Člen s týmto odborárskym číslom je v evidencii danej ZO."""
+    cislo = re.sub(r"\s+", "", cislo)
+    for (u,) in db.execute("SELECT udaje FROM evidencia_clen WHERE zo_slug = ? AND udaje LIKE ?",
+                           (zo_slug, f"%{cislo}%")):
+        if re.sub(r"\s+", "", json.loads(u).get("Identifikačné číslo", "")) == cislo:
+            return True
+    return False
+
+
+def mesto_zo(db, zo_slug):
+    r = db.execute("SELECT mesto FROM zakladna_organizacia WHERE slug = ?", (zo_slug,)).fetchone() if zo_slug else None
+    return r["mesto"] if r else ""
+
+
 def nacitaj_anketu(db, anketa_id):
     anketa = db.execute("SELECT * FROM anketa WHERE id = ?", (anketa_id,)).fetchone()
     if anketa is None:
@@ -284,6 +303,8 @@ def hlasovanie(slug):
             chyby.append("Zadajte svoje odborárske číslo.")
         elif clen is None:
             chyby.append("Toto odborárske číslo nie je v zozname platných členov.")
+        elif anketa["zo_slug"] and not je_clenom_zo(db, cislo, anketa["zo_slug"]):
+            chyby.append(f"Táto anketa je len pre členov ZO {mesto_zo(db, anketa['zo_slug'])}.")
         elif db.execute(
             "SELECT 1 FROM hlas WHERE anketa_id = ? AND cislo = ?", (anketa["id"], cislo)
         ).fetchone():
@@ -326,6 +347,7 @@ def hlasovanie(slug):
                                    text="Váš hlas bol zaznamenaný.")
 
     return render_template("anketa/hlasovanie.html", anketa=anketa, otazky=otazky,
+                           zo_mesto=mesto_zo(db, anketa["zo_slug"]),
                            chyby=chyby, vyplnene=vyplnene)
 
 
@@ -373,7 +395,7 @@ def odhlasenie():
 def spravca():
     db = get_db()
     ankety = [
-        {**dict(a), "hlasov": pocet_hlasov(db, a["id"]), "ukoncena": je_ukoncena(a)}
+        {**dict(a), "hlasov": pocet_hlasov(db, a["id"]), "ukoncena": je_ukoncena(a), "zo_mesto": mesto_zo(db, a["zo_slug"])}
         for a in db.execute("SELECT * FROM anketa ORDER BY id DESC")
     ]
     pocet_clenov = db.execute("SELECT COUNT(*) FROM clen").fetchone()[0]
@@ -441,18 +463,28 @@ def uprav_anketu(anketa_id=None):
                 datetime.strptime(koniec, "%Y-%m-%dT%H:%M")
             anketa_id = uloz_anketu(db, anketa_id, nazov, f.get("uvod", "").strip(), koniec,
                                     f.get("otazky", ""), menit_otazky=not ma_hlasy)
+            zo_slug = f.get("zo_slug", "")
+            db.execute("UPDATE anketa SET zo_slug = ? WHERE id = ?",
+                       (zo_slug if mesto_zo(db, zo_slug) else "", anketa_id))
         except ValueError as e:
             db.rollback()
             flash(str(e) if "does not match" not in str(e) else "Neplatný dátum ukončenia.")
-            return render_template("anketa/uprava.html", anketa=f, ma_hlasy=ma_hlasy, nova=anketa is None)
+            return render_template("anketa/uprava.html", anketa=f, ma_hlasy=ma_hlasy, nova=anketa is None,
+                                   organizacie=_organizacie(db))
         db.commit()
         flash("Anketa bola uložená.")
         return redirect(url_for("anketa.spravca"))
     if anketa is None:
-        anketa = {"nazov": "", "uvod": PREDVOLENY_UVOD, "koniec": "", "otazky": ""}
+        anketa = {"nazov": "", "uvod": PREDVOLENY_UVOD, "koniec": "", "otazky": "", "zo_slug": ""}
     else:
         anketa = {**dict(anketa), "otazky": anketa["otazky_text"]}
-    return render_template("anketa/uprava.html", anketa=anketa, ma_hlasy=ma_hlasy, nova=anketa_id is None)
+    return render_template("anketa/uprava.html", anketa=anketa, ma_hlasy=ma_hlasy, nova=anketa_id is None,
+                           organizacie=_organizacie(db))
+
+
+def _organizacie(db):
+    from evidencia import abecedne
+    return sorted(db.execute("SELECT slug, mesto FROM zakladna_organizacia").fetchall(), key=lambda z: abecedne(z["mesto"]))
 
 
 @bp.route("/spravca/<int:anketa_id>/zmazat", methods=["POST"])

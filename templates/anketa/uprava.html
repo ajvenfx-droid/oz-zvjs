@@ -13,6 +13,13 @@
       <textarea name="uvod" rows="6">{{ anketa.uvod }}</textarea>
     </label>
     <label class="pole">
+      <span class="pole__nazov">Kto môže hlasovať</span>
+      <select name="zo_slug">
+        <option value="">všetci členovia OZ</option>
+        {% for z in organizacie %}<option value="{{ z.slug }}" {% if anketa.zo_slug == z.slug %}selected{% endif %}>len členovia ZO {{ z.mesto }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="pole">
       <span class="pole__nazov">Koniec hlasovania (nepovinné)</span>
       <input type="datetime-local" name="koniec" value="{{ anketa.koniec }}">
     </label>

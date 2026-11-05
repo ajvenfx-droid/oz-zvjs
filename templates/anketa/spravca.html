@@ -24,7 +24,7 @@
           {% for a in ankety %}
             <tr>
               <td>
-                <strong>{{ a.nazov }}</strong><br>
+                <strong>{{ a.nazov }}</strong>{% if a.zo_mesto %} <span class="info">(len ZO {{ a.zo_mesto }})</span>{% endif %}<br>
                 <span class="odkaz-ankety">{{ url_for('anketa.hlasovanie', slug=a.slug, _external=True) }}</span>
               </td>
               <td>

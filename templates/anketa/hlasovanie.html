@@ -3,6 +3,7 @@
 {% block content %}
   <h1 class="nadpis">{{ anketa.nazov }}</h1>
   {% if anketa.uvod %}<div class="uvod-ankety">{{ anketa.uvod }}</div>{% endif %}
+  {% if zo_mesto %}<p class="info">Anketa je určená len pre členov ZO {{ zo_mesto }}.</p>{% endif %}
   {% if anketa.koniec %}<p class="info">Hlasovanie je otvorené do {{ anketa.koniec|koniec }}.</p>{% endif %}
 
   {% if chyby %}
