@@ -142,6 +142,47 @@
       return r === rodic || (r && r !== karta && zavisiOd(r, rodic));
     }
 
+    function rodicOtazky(karta) {
+      var c = karta.querySelector(".podmienka").dataset.ciel || "";
+      if (!c) return null;
+      var r = editor.querySelector('.editor-otazka[data-kluc="' + c.split(":")[0] + '"]');
+      return r && r !== karta ? r : null;
+    }
+
+    function predkovia(karta) {
+      var m = [], r = rodicOtazky(karta);
+      while (r && m.indexOf(r) < 0) { m.push(r); r = rodicOtazky(r); }
+      return m;
+    }
+
+    // otázka spolu so svojimi podotázkami, ktoré sú hneď pod ňou
+    function blok(karta) {
+      var b = [karta], n = karta.nextElementSibling;
+      while (n && zavisiOd(n, karta)) { b.push(n); n = n.nextElementSibling; }
+      return b;
+    }
+
+    function posunHore(karta) {
+      var pred = karta.previousElementSibling;
+      if (!pred) return;
+      var mojiPredkovia = predkovia(karta);
+      if (mojiPredkovia.indexOf(pred) >= 0) return;   // podotázka nejde nad svoju otázku
+      // preskočí sa celý predchádzajúci blok (otázka aj s jej podotázkami)
+      var ciel = pred, r = rodicOtazky(ciel);
+      while (r && mojiPredkovia.indexOf(r) < 0) { ciel = r; r = rodicOtazky(ciel); }
+      blok(karta).forEach(function (k) { editor.insertBefore(k, ciel); });
+    }
+
+    function posunDole(karta) {
+      var b = blok(karta), dalsia = b[b.length - 1].nextElementSibling;
+      if (!dalsia) return;
+      // podotázka zostáva v bloku svojej otázky
+      var r = rodicOtazky(karta);
+      if (r && blok(r).indexOf(karta) >= 0 && blok(r).indexOf(dalsia) < 0) return;
+      var dalsiBlok = blok(dalsia), za = dalsiBlok[dalsiBlok.length - 1].nextElementSibling;
+      b.forEach(function (k) { editor.insertBefore(k, za); });
+    }
+
     function prepocitaj() {
       var k = karty();
       k.forEach(function (karta, i) {
@@ -231,8 +272,8 @@
         zamkni(karta, true);
       };
       karta.querySelector(".upravit").onclick = function () { zamkni(karta, false); karta.querySelector(".text-otazky").focus(); };
-      karta.querySelector(".hore").onclick = function () { if (karta.previousElementSibling) editor.insertBefore(karta, karta.previousElementSibling); prepocitaj(); };
-      karta.querySelector(".dole").onclick = function () { if (karta.nextElementSibling) editor.insertBefore(karta.nextElementSibling, karta); prepocitaj(); };
+      karta.querySelector(".hore").onclick = function () { posunHore(karta); prepocitaj(); };
+      karta.querySelector(".dole").onclick = function () { posunDole(karta); prepocitaj(); };
       if (za) editor.insertBefore(karta, za.nextElementSibling); else editor.appendChild(karta);
       obal.hidden = typ.value === "text";
       prepocitaj();
