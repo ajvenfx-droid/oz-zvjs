@@ -9,23 +9,6 @@
   </section>
 {% endblock %}
 {% block content %}
-  {% if ankety %}
-    <section class="sekcia">
-      <h2 class="nadpis">Prebiehajúce ankety</h2>
-      <ul class="zoznam-zo">
-        {% for a in ankety %}
-          <li>
-            <a class="karta-zo karta-zo--anketa" href="{{ url_for('anketa.hlasovanie', slug=a.slug) }}">
-              <span class="karta-zo__mesto">{{ a.nazov }}</span>
-              <span class="karta-zo__nazov">
-                {% if a.koniec %}Hlasovanie do {{ a.koniec|koniec }}{% else %}Kliknite a hlasujte{% endif %}
-              </span>
-            </a>
-          </li>
-        {% endfor %}
-      </ul>
-    </section>
-  {% endif %}
 
   {% for nadpis, typ, zoznam in [('Aktuality', 'aktuality', aktuality), ('Tlačové správy', 'tlacove-spravy', tlacove)] %}
     <section class="sekcia">

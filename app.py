@@ -122,7 +122,6 @@ def index():
     return render_template(
         "index.html",
         uvod=obsah.nacitaj_stranku("uvod"),
-        ankety=anketa.aktivne_ankety(db),
         aktuality=obsah.najnovsie_clanky(db, "aktuality"),
         tlacove=obsah.najnovsie_clanky(db, "tlacove-spravy"),
     )
