@@ -124,7 +124,8 @@ def nacitaj_prihlaseneho():
         return
     row = get_db().execute(
         "SELECT c.cislo, c.meno, COALESCE(u.rola, 'clen') AS rola, "
-        "COALESCE(u.heslo_hash, '') != '' AS vlastne_heslo, COALESCE(u.email, '') AS email, "
+        "COALESCE(u.heslo_hash, '') != '' AS vlastne_heslo, "
+        "CASE WHEN COALESCE(u.email, '') != '' THEN u.email ELSE COALESCE(c.email, '') END AS email, "
         "COALESCE(u.zo_slug, '') AS zo_slug "
         "FROM clen c LEFT JOIN ucet u ON u.cislo = c.cislo WHERE c.cislo = ?",
         (cislo,),
@@ -245,7 +246,24 @@ def moje_konto():
                 db.commit()
                 flash("Heslo bolo zmenené.")
         return redirect(url_for("ucet.moje_konto"))
-    return render_template("ucet/moje_konto.html")
+    return render_template("ucet/moje_konto.html", evidencia=moje_udaje(get_db(), g.clen["cislo"]))
+
+
+def moje_udaje(db, cislo):
+    """Údaje prihláseného člena z evidencie členov: [(ZO, [(stĺpec, hodnota), ...])]."""
+    import json
+    vysledok = []
+    for r in db.execute(
+            "SELECT e.zo_slug, e.udaje, z.mesto, s.stlpce FROM evidencia_clen e "
+            "JOIN zakladna_organizacia z ON z.slug = e.zo_slug "
+            "LEFT JOIN evidencia_stlpce s ON s.zo_slug = e.zo_slug"):
+        udaje = json.loads(r["udaje"])
+        if re.sub(r"\s+", "", udaje.get("Identifikačné číslo", "")) != cislo:
+            continue
+        poradie = json.loads(r["stlpce"]) if r["stlpce"] else []
+        stlpce = [s for s in poradie if s in udaje] + [s for s in udaje if s not in poradie]
+        vysledok.append((r["mesto"], [(s, udaje[s]) for s in stlpce if udaje[s] and s.lower() != "číslo"]))
+    return vysledok
 
 
 @bp.route("/zabudnute-heslo", methods=["GET", "POST"])

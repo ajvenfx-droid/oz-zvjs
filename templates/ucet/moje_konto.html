@@ -6,6 +6,15 @@
     <h2>Údaje</h2>
     <p>Odborárske číslo: <strong>{{ prihlaseny_clen.cislo }}</strong></p>
     {% if prihlaseny_clen.meno %}<p>Meno: <strong>{{ prihlaseny_clen.meno }}</strong></p>{% endif %}
+    {% for mesto, polia in evidencia %}
+      <p>Základná organizácia: <strong>{{ mesto }}</strong></p>
+      <table class="tabulka">
+        <tbody>
+          {% for nazov, hodnota in polia %}<tr><th>{{ nazov }}</th><td>{{ hodnota }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    {% endfor %}
+    {% if evidencia %}<p class="info">Ak je niektorý údaj nesprávny, oznámte to predsedovi svojej ZO.</p>{% endif %}
   </section>
   <section class="panel">
     <h2>E-mail</h2>
