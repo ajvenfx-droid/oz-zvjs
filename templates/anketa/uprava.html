@@ -142,6 +142,35 @@
       return r === rodic || (r && r !== karta && zavisiOd(r, rodic));
     }
 
+    function rodicKarta(karta) {
+      var c = karta.querySelector(".podmienka").dataset.ciel || "";
+      return c ? editor.querySelector('.editor-otazka[data-kluc="' + c.split(":")[0] + '"]') : null;
+    }
+
+    // otázka spolu so všetkými svojimi podotázkami
+    function blok(karta) {
+      var b = [karta], n = karta.nextElementSibling;
+      while (n && zavisiOd(n, karta)) { b.push(n); n = n.nextElementSibling; }
+      return b;
+    }
+
+    // posun otázky aj s podotázkami; podotázka sa posúva len medzi podotázkami tej istej otázky
+    function posun(karta, smer) {
+      var rodic = rodicKarta(karta), b = blok(karta);
+      if (smer < 0) {
+        var c = karta.previousElementSibling;
+        while (c && c !== rodic && rodicKarta(c) !== rodic) c = c.previousElementSibling;
+        if (!c || c === rodic) return;
+        b.forEach(function (k) { editor.insertBefore(k, c); });
+      } else {
+        var n = b[b.length - 1].nextElementSibling;
+        if (!n || rodicKarta(n) !== rodic) return;
+        blok(n).forEach(function (k) { editor.insertBefore(k, karta); });
+      }
+      prepocitaj();
+      karta.scrollIntoView({ block: "nearest" });
+    }
+
     function prepocitaj() {
       var k = karty();
       k.forEach(function (karta, i) {
@@ -231,8 +260,8 @@
         zamkni(karta, true);
       };
       karta.querySelector(".upravit").onclick = function () { zamkni(karta, false); karta.querySelector(".text-otazky").focus(); };
-      karta.querySelector(".hore").onclick = function () { if (karta.previousElementSibling) editor.insertBefore(karta, karta.previousElementSibling); prepocitaj(); };
-      karta.querySelector(".dole").onclick = function () { if (karta.nextElementSibling) editor.insertBefore(karta.nextElementSibling, karta); prepocitaj(); };
+      karta.querySelector(".hore").onclick = function () { posun(karta, -1); };
+      karta.querySelector(".dole").onclick = function () { posun(karta, 1); };
       if (za) editor.insertBefore(karta, za.nextElementSibling); else editor.appendChild(karta);
       obal.hidden = typ.value === "text";
       prepocitaj();
