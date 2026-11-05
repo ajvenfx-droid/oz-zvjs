@@ -157,6 +157,14 @@
     // posun otázky aj s podotázkami; podotázka sa posúva len medzi podotázkami tej istej otázky
     function posun(karta, smer) {
       var rodic = rodicKarta(karta), b = blok(karta);
+      if (rodic && blok(rodic).indexOf(karta) < 0) {
+        // podotázka odtrhnutá od svojej otázky – posúva sa po jednej, aby sa dala vrátiť k otázke
+        var s = smer < 0 ? karta.previousElementSibling : b[b.length - 1].nextElementSibling;
+        if (s && smer < 0) b.forEach(function (k) { editor.insertBefore(k, s); });
+        if (s && smer > 0) editor.insertBefore(s, karta);
+        prepocitaj();
+        return;
+      }
       if (smer < 0) {
         var c = karta.previousElementSibling;
         while (c && c !== rodic && rodicKarta(c) !== rodic) c = c.previousElementSibling;
