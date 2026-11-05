@@ -470,3 +470,4 @@ select { font: inherit; padding: 8px 10px; border: 1px solid #c9c2ad; border-rad
 summary.rozbalit { cursor: pointer; color: var(--zlata-tmava, #8a6d0b); font-size: 1.2em; }
 summary.rozbalit strong { font-weight: 600; }
 .skupina-zo { border-bottom: 1px solid #e5dcc3; padding: 10px 0; }
+.foto-clena { max-width: 220px; max-height: 280px; border-radius: 6px; border: 1px solid #e5dcc3; display: block; margin-bottom: 12px; }

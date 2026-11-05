@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (
+    Response,
     abort,
     Blueprint,
     flash,
@@ -296,8 +297,11 @@ def moje_udaje(db, cislo):
                  if s.lower() != "číslo" and (udaje.get(s) or s in menitelne)]
         from evidencia import dlzka_clenstva, obdobia_clenstva
         obdobia = obdobia_clenstva(db, udaje)
+        from evidencia import kluc_clena, nacitaj_foto
+        f = nacitaj_foto(db, kluc_clena(udaje))
         vysledok.append({"id": r["id"], "zo_slug": r["zo_slug"], "mesto": r["mesto"], "polia": polia,
-                         "menitelne": menitelne, "obdobia": obdobia, "dlzka": dlzka_clenstva(obdobia)})
+                         "menitelne": menitelne, "obdobia": obdobia, "dlzka": dlzka_clenstva(obdobia),
+                         "foto": f["verzia"] if f else None})
     return vysledok
 
 
@@ -595,3 +599,19 @@ def obnov_heslo():
         db.commit()
         flash(f"Heslo člena {cislo} je obnovené. Prihlási sa svojím služobným alebo zamestnaneckým číslom.")
     return redirect(url_for("ucet.spravca_konta"))
+
+
+@bp.route("/moje-konto/foto/<int:zaznam_id>")
+@len_prihlaseny
+def moja_foto(zaznam_id):
+    from evidencia import kluc_clena, nacitaj_foto
+    db = get_db()
+    zaznam = next((z for z in moje_udaje(db, g.clen["cislo"]) if z["id"] == zaznam_id), None)
+    if zaznam is None:
+        abort(404)
+    import json
+    udaje = json.loads(db.execute("SELECT udaje FROM evidencia_clen WHERE id = ?", (zaznam_id,)).fetchone()["udaje"])
+    f = nacitaj_foto(db, kluc_clena(udaje))
+    if f is None:
+        abort(404)
+    return Response(f["data"], mimetype=f["typ"], headers={"Cache-Control": "private, max-age=86400"})

@@ -92,6 +92,16 @@ def init_db(db):
     )
     db.execute(
         """
+        CREATE TABLE IF NOT EXISTS evidencia_foto (
+            kluc TEXT PRIMARY KEY,
+            typ TEXT NOT NULL,
+            data BLOB NOT NULL,
+            verzia TEXT NOT NULL
+        )
+        """
+    )
+    db.execute(
+        """
         CREATE TABLE IF NOT EXISTS evidencia_archiv (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             zo_slug TEXT NOT NULL,
@@ -727,8 +737,9 @@ def uprav_clena(slug, clen_id=None):
         flash("Údaje člena boli uložené.")
         return redirect(url_for("evidencia.zo", slug=slug))
     obdobia = obdobia_clenstva(db, clen["udaje"]) if clen_id else []
+    foto = nacitaj_foto(db, kluc_clena(clen["udaje"])) if clen_id else None
     return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, clen=clen, clen_id=clen_id, farby=FARBY,
-                           obdobia=obdobia, dlzka=dlzka_clenstva(obdobia))
+                           obdobia=obdobia, dlzka=dlzka_clenstva(obdobia), foto=foto)
 
 
 @bp.route("/<slug>/zmazat", methods=["POST"])
@@ -796,3 +807,80 @@ def archiv_obnovit(slug, zaznam_id):
     synchronizuj_prihlasovanie(db)
     flash("Člen bol vrátený z archívu medzi členov.")
     return redirect(url_for("evidencia.archiv_zo", slug=slug))
+
+
+# --- fotky členov -------------------------------------------------------------
+
+MAX_FOTO = 8 * 1024 * 1024
+
+
+def nacitaj_foto(db, kluc):
+    return db.execute("SELECT typ, data, verzia FROM evidencia_foto WHERE kluc = ?", (kluc,)).fetchone()
+
+
+def uprav_fotku(data):
+    """Zmenší fotku na najviac 800 px a uloží ako JPEG (ak je k dispozícii knižnica Pillow)."""
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        return data, None
+    obr = ImageOps.exif_transpose(Image.open(io.BytesIO(data)))
+    obr = obr.convert("RGB")
+    obr.thumbnail((800, 800))
+    vystup = io.BytesIO()
+    obr.save(vystup, "JPEG", quality=85)
+    return vystup.getvalue(), "image/jpeg"
+
+
+def _clen_v_zo(slug, clen_id):
+    r = get_db().execute("SELECT udaje FROM evidencia_clen WHERE id = ? AND zo_slug = ?", (clen_id, slug)).fetchone()
+    if r is None:
+        abort(404)
+    return json.loads(r["udaje"])
+
+
+@bp.route("/<slug>/clen/<int:clen_id>/foto", methods=["GET", "POST"])
+@vyzaduj()
+def foto(slug, clen_id):
+    udaje = _clen_v_zo(slug, clen_id)
+    db = get_db()
+    kluc = kluc_clena(udaje)
+    if request.method == "POST":
+        if not g.moze_menit:
+            abort(403)
+        if request.form.get("akcia") == "zmazat":
+            db.execute("DELETE FROM evidencia_foto WHERE kluc = ?", (kluc,))
+            db.commit()
+            flash("Fotka bola odstránená.")
+            return redirect(url_for("evidencia.uprav_clena", slug=slug, clen_id=clen_id))
+        subor = request.files.get("foto")
+        data = subor.read() if subor else b""
+        if not data:
+            flash("Vyberte fotku.")
+        elif len(data) > MAX_FOTO:
+            flash("Fotka je príliš veľká (najviac 8 MB).")
+        else:
+            typ = subor.mimetype or ""
+            try:
+                data, novy_typ = uprav_fotku(data)
+                typ = novy_typ or typ
+            except Exception:
+                flash("Súbor sa nepodarilo otvoriť ako obrázok. Použite fotku vo formáte JPG alebo PNG.")
+                return redirect(url_for("evidencia.uprav_clena", slug=slug, clen_id=clen_id))
+            if not typ.startswith("image/"):
+                flash("Súbor nie je obrázok.")
+                return redirect(url_for("evidencia.uprav_clena", slug=slug, clen_id=clen_id))
+            db.execute("INSERT INTO evidencia_foto (kluc, typ, data, verzia) VALUES (?, ?, ?, ?) "
+                       "ON CONFLICT(kluc) DO UPDATE SET typ = excluded.typ, data = excluded.data, verzia = excluded.verzia",
+                       (kluc, typ, data, datetime.now().strftime("%Y%m%d%H%M%S")))
+            if not udaje.get("Fotka"):
+                udaje["Fotka"] = "áno"
+                db.execute("UPDATE evidencia_clen SET udaje = ? WHERE id = ?",
+                           (json.dumps(udaje, ensure_ascii=False), clen_id))
+            db.commit()
+            flash("Fotka bola uložená.")
+        return redirect(url_for("evidencia.uprav_clena", slug=slug, clen_id=clen_id))
+    f = nacitaj_foto(db, kluc)
+    if f is None:
+        abort(404)
+    return Response(f["data"], mimetype=f["typ"], headers={"Cache-Control": "private, max-age=86400"})

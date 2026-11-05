@@ -4,6 +4,29 @@
   <a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
   <h1 class="nadpis">{% if clen_id %}Upraviť člena{% else %}Nový člen{% endif %}</h1>
   {% include "evidencia/_clenstvo.html" %}
+  {% if clen_id %}
+    <section class="panel">
+      <h2>Fotka</h2>
+      {% if foto %}
+        <img class="foto-clena" src="{{ url_for('evidencia.foto', slug=zo.slug, clen_id=clen_id, v=foto.verzia) }}" alt="Fotka člena">
+      {% else %}
+        <p class="info">Člen zatiaľ nemá nahratú fotku.</p>
+      {% endif %}
+      {% if moze_menit %}
+        <form method="post" action="{{ url_for('evidencia.foto', slug=zo.slug, clen_id=clen_id) }}" enctype="multipart/form-data" class="nahratie">
+          <input type="file" name="foto" accept="image/*" required>
+          <button type="submit" class="tlacidlo">{% if foto %}Nahrať novú fotku{% else %}Nahrať fotku{% endif %}</button>
+        </form>
+        {% if foto %}
+          <form method="post" action="{{ url_for('evidencia.foto', slug=zo.slug, clen_id=clen_id) }}"
+                onsubmit="return confirm('Odstrániť fotku?');">
+            <input type="hidden" name="akcia" value="zmazat">
+            <p><button type="submit" class="odkaz-tlacidlo">Odstrániť fotku</button></p>
+          </form>
+        {% endif %}
+      {% endif %}
+    </section>
+  {% endif %}
   <form method="post" class="formular">
     {% for s in stlpce %}
       <label class="pole">
