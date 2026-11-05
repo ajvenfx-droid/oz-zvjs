@@ -541,7 +541,9 @@ def moze_spravovat(zo_slug):
 
 
 def spat_na_zoznam(zo_slug):
-    return url_for("anketa.spravca") if je_spravca() else url_for("anketa.dotazniky_zo", slug=zo_slug)
+    if je_spravca() and request.values.get("zo") != zo_slug:
+        return url_for("anketa.spravca")
+    return url_for("anketa.dotazniky_zo", slug=zo_slug)
 
 
 def len_spravca(f):
@@ -652,6 +654,9 @@ def uprav_anketu(anketa_id=None):
     anketa = nacitaj_anketu(db, anketa_id) if anketa_id else None
     # Predseda / podpredseda ZO spravuje len dotazníky svojej ZO.
     pevna_zo = None if je_spravca() else spravovana_zo()
+    if je_spravca() and request.args.get("zo") and mesto_zo(db, request.args["zo"]):
+        # Správca otvoril dotazník zo stránky konkrétnej ZO – vtedy sa ZO nevyberá.
+        pevna_zo = request.args["zo"]
     if not je_spravca():
         if pevna_zo is None:
             if g.get("clen") is None:
@@ -659,6 +664,7 @@ def uprav_anketu(anketa_id=None):
             abort(403)
         if anketa is not None and anketa["zo_slug"] != pevna_zo:
             abort(403)
+    spat = url_for("anketa.dotazniky_zo", slug=pevna_zo) if pevna_zo else url_for("anketa.spravca")
     ma_hlasy = bool(anketa_id) and pocet_hlasov(db, anketa_id) > 0
     if request.method == "POST":
         f = request.form
@@ -678,16 +684,16 @@ def uprav_anketu(anketa_id=None):
             db.rollback()
             flash(str(e) if "does not match" not in str(e) else "Neplatný dátum ukončenia.")
             return render_template("anketa/uprava.html", anketa=f, ma_hlasy=ma_hlasy, nova=anketa is None,
-                                   organizacie=_organizacie(db), pevna_zo=pevna_zo, spat=spat_na_zoznam(pevna_zo))
+                                   organizacie=_organizacie(db), pevna_zo=pevna_zo, spat=spat)
         db.commit()
         flash("Dotazník bol uložený.")
-        return redirect(spat_na_zoznam(pevna_zo))
+        return redirect(spat)
     if anketa is None:
         anketa = {"nazov": "", "uvod": PREDVOLENY_UVOD, "koniec": "", "otazky": "", "zo_slug": pevna_zo or ""}
     else:
         anketa = {**dict(anketa), "otazky": anketa["otazky_text"]}
     return render_template("anketa/uprava.html", anketa=anketa, ma_hlasy=ma_hlasy, nova=anketa_id is None,
-                           organizacie=_organizacie(db), pevna_zo=pevna_zo, spat=spat_na_zoznam(pevna_zo))
+                           organizacie=_organizacie(db), pevna_zo=pevna_zo, spat=spat)
 
 
 def _organizacie(db):

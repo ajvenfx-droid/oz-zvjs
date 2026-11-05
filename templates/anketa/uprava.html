@@ -20,6 +20,8 @@
         {% for z in organizacie %}<option value="{{ z.slug }}" {% if anketa.zo_slug == z.slug %}selected{% endif %}>len členovia ZO {{ z.mesto }}</option>{% endfor %}
       </select>
     </label>
+    {% else %}
+    <p class="info">Dotazník môžu vyplniť len členovia ZO {% for z in organizacie if z.slug == pevna_zo %}{{ z.mesto }}{% endfor %}.</p>
     {% endif %}
     <label class="pole">
       <span class="pole__nazov">Koniec vypĺňania (nepovinné)</span>
