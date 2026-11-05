@@ -640,7 +640,7 @@ def nastav_vedenie(slug):
                 "rola = CASE WHEN ucet.rola IN ('spravca', 'vedenie') THEN ucet.rola ELSE 'zo' END",
                 (cislo, slug, funkcia))
     db.commit()
-    flash(f"Vedenie ZO {zo['mesto']} bolo uložené. Predseda a podpredseda môžu meniť členov svojej ZO.")
+    flash(f"Organizačná štruktúra ZO {zo['mesto']} bolo uložené. Predseda a podpredseda môžu meniť členov svojej ZO.")
     return redirect(url_for("evidencia.zo", slug=slug))
 
 

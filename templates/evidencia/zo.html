@@ -20,7 +20,7 @@
     </div>
   </div>
   <section class="panel">
-    <h2>Vedenie ZO</h2>
+    <h2>ORGANIZAČNÁ ŠTRUKTÚRA</h2>
     <p>Predseda: <strong>{{ vedenie.predseda.meno if vedenie.predseda else '–' }}</strong>
       · Podpredseda: <strong>{{ vedenie.podpredseda.meno if vedenie.podpredseda else '–' }}</strong></p>
     {% if je_spravca %}
@@ -38,7 +38,7 @@
             </select>
           </label>
         {% endfor %}
-        <button type="submit" class="tlacidlo">Uložiť vedenie ZO</button>
+        <button type="submit" class="tlacidlo">Uložiť organizačnú štruktúru</button>
       </form>
       <p class="info">Predseda a podpredseda dostanú prístup na zmeny členov tejto ZO a upozornenia, keď si člen zmení údaje.</p>
     {% endif %}
