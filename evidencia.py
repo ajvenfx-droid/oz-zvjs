@@ -35,8 +35,17 @@ FARBY = {"zelena": "zelený", "cervena": "červený"}
 # Údaje, ktoré si člen v Moje konto zmeniť nemôže (mení ich len predseda ZO alebo správca).
 NEMENITELNE_CLENOM = {
     "číslo", "Identifikačné číslo", "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia",
-    "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Podporný fond", "Predchádzajúce mená",
+    "Dátum vstupu do odborov", "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Podporný fond", "Predchádzajúce mená",
 }
+
+
+VSTUP_ODBORY = "Dátum vstupu do odborov"
+VSTUP_ODBORY_VZOR = re.compile(r"vstup\w*\s+do\s+odbor\w*\D{0,10}?(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{4})", re.I)
+
+
+def vstup_do_odborov(udaje):
+    """Začiatok členstva v odboroch: z poznámky v Exceli, inak dátum vstupu do poistenia."""
+    return udaje.get(VSTUP_ODBORY) or udaje.get("Dátum vstupu do poistenia", "")
 
 
 def menitelne_clenom(stlpce):
@@ -46,7 +55,7 @@ def menitelne_clenom(stlpce):
 STANDARDNE_STLPCE = [
     "Identifikačné číslo", "Titul", "Meno poisteného", "Priezvisko / Názov poisteného", "Titul za menom",
     "Dátum narodenia", "Adresa trvalého pobytu – ulica, číslo domu", "Adresa trvalého pobytu – mesto",
-    "Adresa trvalého pobytu – PSČ", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia",
+    "Adresa trvalého pobytu – PSČ", "Dátum vstupu do poistenia", "Dátum vstupu do odborov", "Dátum výstupu z poistenia",
     "E-mail", "Preukaz", "Fotka", "MEDAILA, PLAKETA", "Kontakt", "Služobné/ zam. číslo", "Podporný fond",
     "Predchádzajúce mená",
 ]
@@ -229,7 +238,8 @@ def _harky_xls(data):
                 if xf.background.fill_pattern:
                     rgb = wb.colour_map.get(xf.background.pattern_colour_index)
             farby.append(_farba(rgb))
-        yield sh.name, riadky, farby, wb.datemode
+        poznamky = {k: n.text for k, n in getattr(sh, "cell_note_map", {}).items()}
+        yield sh.name, riadky, farby, wb.datemode, poznamky
 
 
 def _harky_xlsx(data):
@@ -237,9 +247,12 @@ def _harky_xlsx(data):
 
     wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
     for sh in wb.worksheets:
-        riadky, farby = [], []
-        for row in sh.iter_rows():
+        riadky, farby, poznamky = [], [], {}
+        for r, row in enumerate(sh.iter_rows()):
             riadky.append([c.value for c in row])
+            for c, bunka in enumerate(row):
+                if bunka.comment is not None:
+                    poznamky[(r, c)] = bunka.comment.text
             rgb = None
             if len(row) > 4 and row[4].fill and row[4].fill.fill_type == "solid":
                 farba = row[4].fill.fgColor
@@ -247,14 +260,14 @@ def _harky_xlsx(data):
                     h = farba.rgb[-6:]
                     rgb = (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
             farby.append(_farba(rgb))
-        yield sh.title, riadky, farby, 0
+        yield sh.title, riadky, farby, 0, poznamky
 
 
 def precitaj_subor(nazov, data):
     """Vráti {zo_slug: (stĺpce, [(farba, {stĺpec: hodnota})])} pre hárky, ktoré patria nejakej ZO."""
     harky = _harky_xlsx(data) if nazov.lower().endswith(".xlsx") else _harky_xls(data)
     vysledok = {}
-    for meno_harku, riadky, farby, datemode in harky:
+    for meno_harku, riadky, farby, datemode, poznamky in harky:
         m = re.match(r"\s*(\d+)\s*\.", meno_harku)
         if not m or int(m.group(1)) not in CISLO_ZOZNAMU:
             continue
@@ -292,6 +305,11 @@ def precitaj_subor(nazov, data):
             mena = [v for k, v in udaje.items() if "meno" in k.lower() or "priezvisko" in k.lower()]
             if not mena:
                 continue
+            # Poznámka pri bunke, napr. „Vstup do odborov 12.4.2009“, keď sa líši od vstupu do poistenia.
+            for (pr, _), text in poznamky.items():
+                m = VSTUP_ODBORY_VZOR.search(text or "") if pr == r else None
+                if m:
+                    udaje[VSTUP_ODBORY] = f"{int(m.group(1)):02d}.{int(m.group(2)):02d}.{m.group(3)}"
             clenovia.append((farby[r] if r < len(farby) else "", udaje))
         vysledok[slug] = ([st for _, st in stlpce], clenovia)
     return vysledok
@@ -385,11 +403,11 @@ def obdobia_clenstva(db, udaje):
             u = json.loads(r["udaje"])
             if not (osoby(u) & ja):
                 continue
-            od = _den(u.get("Dátum vstupu do poistenia"))
+            od = _den(vstup_do_odborov(u))
             do = _den(u.get("Dátum výstupu z poistenia")) or _den(r["archivovane"])
             if od and do:
                 obdobia.append((od, do, f"ZO {r['mesto']}, číslo {u.get('Identifikačné číslo', '–')}"))
-    od = _den(udaje.get("Dátum vstupu do poistenia"))
+    od = _den(vstup_do_odborov(udaje))
     if od:
         obdobia.append((od, _den(udaje.get("Dátum výstupu z poistenia")) or date.today(), "súčasné členstvo"))
     return sorted(obdobia)
@@ -535,6 +553,8 @@ def prehlad():
                 for _, u in clenovia:
                     if kluc_clena(u) in predtym and kluc_clena(u).startswith("id:"):
                         zapamataj_mena(predtym[kluc_clena(u)], u)
+                        if predtym[kluc_clena(u)].get(VSTUP_ODBORY) and not u.get(VSTUP_ODBORY):
+                            u[VSTUP_ODBORY] = predtym[kluc_clena(u)][VSTUP_ODBORY]
                 db.execute("DELETE FROM evidencia_clen WHERE zo_slug = ?", (slug,))
                 db.executemany(
                     "INSERT INTO evidencia_clen (zo_slug, poradie, kluc, farba, udaje) VALUES (?, ?, ?, ?, ?)",
@@ -610,7 +630,7 @@ def _vyber(clenovia):
         clenovia = sorted(clenovia, key=lambda c: (len(c["udaje"].get("Identifikačné číslo", "")) or 99,
                                                    c["udaje"].get("Identifikačné číslo", "")))
     elif zoradit == "vstup":
-        clenovia = sorted(clenovia, key=lambda c: _datum(c["udaje"].get("Dátum vstupu do poistenia", "")))
+        clenovia = sorted(clenovia, key=lambda c: _datum(vstup_do_odborov(c["udaje"])))
     else:
         zoradit = "subor"
     return clenovia, hladat, zoradit
@@ -836,7 +856,7 @@ def zmazat(slug):
 # --- archív odídených členov -------------------------------------------------
 
 ARCHIV_STLPCE = ["Identifikačné číslo", "Titul", "Meno poisteného", "Priezvisko / Názov poisteného",
-                 "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum výstupu z poistenia"]
+                 "Dátum narodenia", "Dátum vstupu do poistenia", "Dátum vstupu do odborov", "Dátum výstupu z poistenia"]
 
 
 def _archiv(slug=None):
