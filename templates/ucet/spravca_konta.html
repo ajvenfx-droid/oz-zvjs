@@ -5,8 +5,8 @@
   <h1 class="nadpis">Kontá členov</h1>
   <p>Členov v zozname: <strong>{{ konta|length }}</strong> · s vlastným heslom: <strong>{{ vlastnych }}</strong> · so zadaným e-mailom: <strong>{{ s_emailom }}</strong>
     {% if bez_preukazu %}· <span class="varovanie">bez čísla preukazu (nemôžu sa prihlásiť): {{ bez_preukazu }}</span>{% endif %}</p>
-  <p class="info">Prihlasovacie meno je odborárske číslo, heslo je číslo preukazu zo zoznamu členov,
-    kým si člen nenastaví vlastné heslo. Zoznam členov sa nahráva v správe.</p>
+  <p class="info">Prihlasovacie meno je e-mail člena z evidencie členov, prvotné heslo je jeho služobné / zamestnanecké číslo
+    z evidencie, kým si člen nenastaví vlastné heslo. Členovia sa sem dostanú nahratím zoznamov v Evidencii členov.</p>
 
   <section class="panel">
     <h2>Odosielanie e-mailov</h2>
@@ -113,7 +113,7 @@
         </table>
       </div>
     {% else %}
-      <p class="info">Zoznam členov je prázdny. Najprv ho nahrajte v správe.</p>
+      <p class="info">Zoznam členov je prázdny. Nahrajte zoznamy v Evidencii členov.</p>
     {% endif %}
   </section>
 {% endblock %}
