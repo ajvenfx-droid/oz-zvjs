@@ -23,6 +23,10 @@
     {% else %}
     <p class="info">Dotazník môžu vyplniť len členovia ZO {% for z in organizacie if z.slug == pevna_zo %}{{ z.mesto }}{% endfor %}.</p>
     {% endif %}
+    <label class="moznost">
+      <input type="checkbox" name="povolit_anonymne" value="1" {% if anketa.povolit_anonymne %}checked{% endif %}>
+      Člen si môže pri otázke zvoliť „Odpovedať anonymne“
+    </label>
     <label class="pole">
       <span class="pole__nazov">Koniec vypĺňania (nepovinné)</span>
       <input type="datetime-local" name="koniec" value="{{ anketa.koniec }}">

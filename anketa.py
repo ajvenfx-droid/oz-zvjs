@@ -130,6 +130,9 @@ def init_db(db):
     if "max_volieb" not in [r["name"] for r in db.execute("PRAGMA table_info(otazka)")]:
         # Pri výbere viacerých možností najviac koľko (NULL = bez obmedzenia).
         db.execute("ALTER TABLE otazka ADD COLUMN max_volieb INTEGER")
+    if "povolit_anonymne" not in [r["name"] for r in db.execute("PRAGMA table_info(anketa)")]:
+        # 1 = člen si môže pri otázke zvoliť „Odpovedať anonymne“, 0 = nemôže.
+        db.execute("ALTER TABLE anketa ADD COLUMN povolit_anonymne INTEGER NOT NULL DEFAULT 1")
     if "zverejneny" not in [r["name"] for r in db.execute("PRAGMA table_info(anketa)")]:
         # 0 = koncept, ktorý členovia nevidia; 1 = zverejnený. Doterajšie ankety ostávajú zverejnené.
         db.execute("ALTER TABLE anketa ADD COLUMN zverejneny INTEGER NOT NULL DEFAULT 1")
@@ -530,7 +533,8 @@ def dotaznik(anketa_id):
             flash("Dotazník je už uzavretý, odpovede sa nedajú meniť.")
             return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
         nove = []
-        anonymne = {o["id"] for o in otazky if request.form.get(f"anonymne_{o['id']}") and not o["anonymna"]}
+        anonymne = {o["id"] for o in otazky if request.form.get(f"anonymne_{o['id']}") and not o["anonymna"]
+                    and anketa["povolit_anonymne"]}
         zvolene = {o["id"]: [int(v) for v in request.form.getlist(f"otazka_{o['id']}") if v.isdigit()]
                    for o in otazky if o["typ"] != TYP_TEXT}
         aktivne = aktivne_otazky(otazky, zvolene)
@@ -757,8 +761,8 @@ def uprav_anketu(anketa_id=None):
             anketa_id = uloz_anketu(db, anketa_id, nazov, f.get("uvod", "").strip(), koniec,
                                     f.get("otazky", ""), menit_otazky=not ma_hlasy)
             zo_slug = pevna_zo or f.get("zo_slug", "")
-            db.execute("UPDATE anketa SET zo_slug = ? WHERE id = ?",
-                       (zo_slug if mesto_zo(db, zo_slug) else "", anketa_id))
+            db.execute("UPDATE anketa SET zo_slug = ?, povolit_anonymne = ? WHERE id = ?",
+                       (zo_slug if mesto_zo(db, zo_slug) else "", int(bool(f.get("povolit_anonymne"))), anketa_id))
         except ValueError as e:
             db.rollback()
             flash(str(e) if "does not match" not in str(e) else "Neplatný dátum ukončenia.")
@@ -768,7 +772,8 @@ def uprav_anketu(anketa_id=None):
         flash("Dotazník bol uložený.")
         return redirect(spat)
     if anketa is None:
-        anketa = {"nazov": "", "uvod": PREDVOLENY_UVOD, "koniec": "", "otazky": "", "zo_slug": pevna_zo or ""}
+        anketa = {"nazov": "", "uvod": PREDVOLENY_UVOD, "koniec": "", "otazky": "", "zo_slug": pevna_zo or "",
+                  "povolit_anonymne": 1}
     else:
         anketa = {**dict(anketa), "otazky": anketa["otazky_text"]}
     return render_template("anketa/uprava.html", anketa=anketa, ma_hlasy=ma_hlasy, nova=anketa_id is None,
@@ -808,7 +813,8 @@ def kopiruj_anketu(anketa_id):
         flash("Kopírovať sa dá len zverejnený dotazník.")
         return redirect(spat_na_zoznam(anketa["zo_slug"]))
     nova_id = uloz_anketu(db, None, f"{anketa['nazov']} (kópia)", anketa["uvod"], "", anketa["otazky_text"])
-    db.execute("UPDATE anketa SET zo_slug = ? WHERE id = ?", (anketa["zo_slug"], nova_id))
+    db.execute("UPDATE anketa SET zo_slug = ?, povolit_anonymne = ? WHERE id = ?",
+               (anketa["zo_slug"], anketa["povolit_anonymne"], nova_id))
     db.commit()
     flash("Vytvorená kópia dotazníka. Upravte ju a potom zverejnite.")
     zo = request.values.get("zo")
