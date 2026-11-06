@@ -127,6 +127,9 @@ def init_db(db):
         # Podotázka: zobrazí sa len ak v otázke s poradím ak_otazka člen zvolil možnosť s poradím ak_moznost.
         db.execute("ALTER TABLE otazka ADD COLUMN ak_otazka INTEGER")
         db.execute("ALTER TABLE otazka ADD COLUMN ak_moznost INTEGER")
+    if "max_volieb" not in [r["name"] for r in db.execute("PRAGMA table_info(otazka)")]:
+        # Pri výbere viacerých možností najviac koľko (NULL = bez obmedzenia).
+        db.execute("ALTER TABLE otazka ADD COLUMN max_volieb INTEGER")
     if "zverejneny" not in [r["name"] for r in db.execute("PRAGMA table_info(anketa)")]:
         # 0 = koncept, ktorý členovia nevidia; 1 = zverejnený. Doterajšie ankety ostávajú zverejnené.
         db.execute("ALTER TABLE anketa ADD COLUMN zverejneny INTEGER NOT NULL DEFAULT 1")
@@ -205,6 +208,7 @@ def vytvor_slug(db, nazov, anketa_id=None):
 
 ANONYMNA_ZNACKA = re.compile(r"\[\s*anonym\w*\s*\]", re.I)
 VPISAT_ZNACKA = re.compile(r"\[\s*vp[ií]sa[tť]\s*\]", re.I)
+MAX_ZNACKA = re.compile(r"\[\s*max\s+(\d+)\s*\]", re.I)
 PODMIENKA_ZNACKA = re.compile(r"\[\s*ak\s+(\d+)\s*[.,/]\s*(\d+)\s*\]", re.I)
 
 
@@ -230,11 +234,15 @@ def rozober_otazky(text):
         else:
             anonymna = bool(ANONYMNA_ZNACKA.search(riadok))
             podmienka = PODMIENKA_ZNACKA.search(riadok)
-            riadok = PODMIENKA_ZNACKA.sub("", ANONYMNA_ZNACKA.sub("", riadok)).strip()
+            maximum = MAX_ZNACKA.search(riadok)
+            riadok = MAX_ZNACKA.sub("", PODMIENKA_ZNACKA.sub("", ANONYMNA_ZNACKA.sub("", riadok))).strip()
             ak = (int(podmienka.group(1)) - 1, int(podmienka.group(2)) - 1) if podmienka else None
-            otazky.append({"text": riadok, "typ": TYP_JEDNA, "moznosti": [], "anonymna": anonymna, "ak": ak})
+            otazky.append({"text": riadok, "typ": TYP_JEDNA, "moznosti": [], "anonymna": anonymna, "ak": ak,
+                            "max": int(maximum.group(1)) if maximum and int(maximum.group(1)) > 0 else None})
     for o in otazky:
         o["moznosti"] = [m for m in o["moznosti"] if m["text"] or m["vpisovat"]]
+        if o["typ"] != TYP_VIAC or (o["max"] and o["max"] >= len(o["moznosti"])):
+            o["max"] = None
         if not o["moznosti"]:
             o["typ"] = TYP_TEXT
         elif len(o["moznosti"]) < 2:
@@ -265,8 +273,8 @@ def uloz_anketu(db, anketa_id, nazov, uvod, koniec, otazky_text, menit_otazky=Tr
         db.execute("UPDATE anketa SET otazky_text = ? WHERE id = ?", (otazky_text, anketa_id))
         for i, o in enumerate(otazky):
             cur = db.execute(
-                "INSERT INTO otazka (anketa_id, poradie, text, typ, anonymna, ak_otazka, ak_moznost) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (anketa_id, i, o["text"], o["typ"], int(o["anonymna"]), *(o["ak"] or (None, None))),
+                "INSERT INTO otazka (anketa_id, poradie, text, typ, anonymna, ak_otazka, ak_moznost, max_volieb) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (anketa_id, i, o["text"], o["typ"], int(o["anonymna"]), *(o["ak"] or (None, None)), o["max"]),
             )
             db.executemany(
                 "INSERT INTO moznost (otazka_id, poradie, text, vpisovat) VALUES (?, ?, ?, ?)",
@@ -539,6 +547,8 @@ def dotaznik(anketa_id):
                 vybrane = [v for v in request.form.getlist(pole) if v in platne]
                 if o["typ"] == TYP_JEDNA:
                     vybrane = vybrane[:1]
+                elif o.get("max_volieb") and len(vybrane) > o["max_volieb"]:
+                    chyby.append(f"Pri otázke „{o['text']}“ môžete označiť najviac {o['max_volieb']} možnosti.")
                 if not vybrane and akcia == "potvrdit":
                     chyby.append(f"Odpovedzte na otázku „{o['text']}“.")
                 vpisovacie = {str(m["id"]) for m in o["moznosti"] if m["vpisovat"]}

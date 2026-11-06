@@ -13,7 +13,7 @@ koniec: 2026-11-10T22:00     (nepovinné)
 Otázka
 - možnosť
 - možnosť
-Anonymná otázka [anonymná]
+Anonymná otázka [anonymná] [max 2]   ([max 2] = pri „+“ najviac 2 možnosti)
 + možnosť (viac možností)
 + možnosť
 Otázka s vlastnou odpoveďou

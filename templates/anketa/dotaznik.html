@@ -24,13 +24,13 @@
     {% for o in otazky %}
       {% set pole = 'otazka_' ~ o.id %}
       {% set moje = odpovede.get(o.id, []) %}
-      <fieldset class="otazka{% if o.rodic %} podotazka{% endif %}"{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id }}"{% endif %} data-otazka="{{ o.id }}">
+      <fieldset class="otazka{% if o.rodic %} podotazka{% endif %}"{% if o.max_volieb %} data-max="{{ o.max_volieb }}"{% endif %}{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id }}"{% endif %} data-otazka="{{ o.id }}">
         <legend>{{ o.cislo }}. {{ o.text }}</legend>
         {% if o.anonymna %}<p class="info">Anonymná otázka: nikto neuvidí, ako ste odpovedali.</p>{% endif %}
         {% if o.typ == 'text' %}
           <textarea name="{{ pole }}" rows="3" {% if zamknute %}disabled{% endif %}>{{ moje[0] if moje else '' }}</textarea>
         {% else %}
-          {% if o.typ == 'viac' %}<p class="info">Môžete označiť viac možností.</p>{% endif %}
+          {% if o.typ == 'viac' %}<p class="info">{% if o.max_volieb %}Môžete označiť najviac {{ o.max_volieb }} {{ 'možnosti' if o.max_volieb < 5 else 'možností' }}.{% else %}Môžete označiť viac možností.{% endif %}</p>{% endif %}
           {% for m in o.moznosti %}
             <label class="moznost">
               <input type="{{ 'checkbox' if o.typ == 'viac' else 'radio' }}" name="{{ pole }}" value="{{ m.id }}"
@@ -80,8 +80,18 @@
         if (!zamknute) f.querySelectorAll("input, textarea").forEach(function (el) { el.disabled = !ok; });
       });
     }
-    form.addEventListener("change", prepni);
-    prepni();
+    // obmedzenie počtu označených možností
+    function limity() {
+      if (zamknute) return;
+      form.querySelectorAll("fieldset[data-max]").forEach(function (f) {
+        if (f.hidden) return;
+        var boxy = f.querySelectorAll('input[type=checkbox][name^="otazka_"]');
+        var n = Array.prototype.filter.call(boxy, function (b) { return b.checked; }).length;
+        boxy.forEach(function (b) { if (!b.checked) b.disabled = n >= parseInt(f.dataset.max, 10); });
+      });
+    }
+    form.addEventListener("change", function () { prepni(); limity(); });
+    prepni(); limity();
   })();
   </script>
 

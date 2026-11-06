@@ -58,6 +58,10 @@
           <option value="text">písomná odpoveď (člen napíše text)</option>
         </select>
       </label>
+      <label class="pole max-obal" hidden>
+        <span class="pole__nazov">Najviac koľko možností môže člen označiť</span>
+        <input type="number" class="max-volieb" min="1" step="1" placeholder="bez obmedzenia" style="max-width: 180px">
+      </label>
       <div class="moznosti-obal">
         <span class="pole__nazov">Možnosti odpovede</span>
         <div class="moznosti"></div>
@@ -85,6 +89,7 @@
     var sablona = document.getElementById("sablona-otazky");
     var ZNACKA = /\[\s*anonym\w*\s*\]/i;
     var VPISAT = /\[\s*vp[ií]sa[tť]\s*\]/i;
+    var MAX = /\[\s*max\s+(\d+)\s*\]/i;
     var PODMIENKA = /\[\s*ak\s+(\d+)\s*[.,\/]\s*(\d+)\s*\]/i;
     var kluc = 0;
 
@@ -100,8 +105,9 @@
           if (r[0] === "+") o.typ = "viac";
           else if (o.typ === "text") o.typ = "jedna";
         } else {
-          var p = r.match(PODMIENKA);
-          otazky.push({ text: r.replace(ZNACKA, "").replace(PODMIENKA, "").trim(), anonymna: ZNACKA.test(r), typ: "text",
+          var p = r.match(PODMIENKA), mx = r.match(MAX);
+          otazky.push({ text: r.replace(ZNACKA, "").replace(PODMIENKA, "").replace(MAX, "").trim(), anonymna: ZNACKA.test(r), typ: "text",
+                        max: mx ? parseInt(mx[1], 10) : "",
                         moznosti: [], ak: p ? [parseInt(p[1], 10) - 1, parseInt(p[2], 10) - 1] : null });
         }
       });
@@ -236,6 +242,8 @@
         suhrn.innerHTML = h;
         suhrn.querySelector(".suhrn-text").textContent = cisty(karta.querySelector(".text-otazky").value);
         var info = typ.options[typ.selectedIndex].text;
+        var mx = parseInt(karta.querySelector(".max-volieb").value, 10);
+        if (typ.value === "viac" && mx > 0) info += " · najviac " + mx;
         if (karta.querySelector(".anonymna-otazka").checked) info += " · anonymná";
         if (sel.value) info += " · zobrazí sa " + sel.options[sel.selectedIndex].text;
         suhrn.querySelector(".info").textContent = info;
@@ -261,11 +269,13 @@
       karta.querySelector(".text-otazky").value = o.text;
       karta.querySelector(".typ-otazky").value = o.typ;
       karta.querySelector(".anonymna-otazka").checked = o.anonymna;
+      karta.querySelector(".max-volieb").value = o.max || "";
       (o.moznosti.length ? o.moznosti : (o.typ === "text" ? [] : [null, null])).forEach(function (m) { pridajMoznost(karta, m); });
       var obal = karta.querySelector(".moznosti-obal");
       var typ = karta.querySelector(".typ-otazky");
       function zobraz() {
         obal.hidden = typ.value === "text";
+        karta.querySelector(".max-obal").hidden = typ.value !== "viac";
         if (!obal.hidden && !karta.querySelectorAll(".moznost-riadok").length) { pridajMoznost(karta); pridajMoznost(karta); }
         prepocitaj();
       }
@@ -287,6 +297,7 @@
       karta.querySelector(".dole").onclick = function () { posun(karta, 1); };
       if (za) editor.insertBefore(karta, za.nextElementSibling); else editor.appendChild(karta);
       obal.hidden = typ.value === "text";
+      karta.querySelector(".max-obal").hidden = typ.value !== "viac";
       prepocitaj();
       return karta;
     }
@@ -333,7 +344,9 @@
             if (!chyba) chyba = "Otázka " + o.karta.dataset.cislo + ": podotázka musí nadväzovať na vyplnenú možnosť otázky nad ňou.";
           } else ak = " [ak " + rodic.cislo + "." + rodic.moznosti[c[1]] + "]";
         }
-        riadky.push(o.text + (o.karta.querySelector(".anonymna-otazka").checked ? " [anonymná]" : "") + ak);
+        var mx = parseInt(o.karta.querySelector(".max-volieb").value, 10);
+        riadky.push(o.text + (o.karta.querySelector(".anonymna-otazka").checked ? " [anonymná]" : "") +
+                    (o.typ === "viac" && mx > 0 ? " [max " + mx + "]" : "") + ak);
         o.moznosti.forEach(function (m) { riadky.push((o.typ === "viac" ? "+ " : "- ") + m); });
         riadky.push("");
       });
