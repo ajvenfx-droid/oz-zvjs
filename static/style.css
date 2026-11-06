@@ -523,3 +523,13 @@ summary.rozbalit strong { font-weight: 600; }
 .suhrn-moznosti:empty { display: none; }
 .vpisy-riadok td { background: #fff8e1; border-left: 4px solid var(--zlata); }
 .vpisy-riadok ul.texty { margin: 6px 0 0 20px; }
+.kto-zoznam { display: flex; flex-direction: column; gap: 6px; }
+.kto { border: 1px solid var(--ciara); border-radius: 6px; background: #fff; }
+.kto summary { cursor: pointer; padding: 10px 14px; list-style-position: inside; }
+.kto[open] summary { background: var(--modra-svetla); border-bottom: 1px solid var(--ciara); }
+.kto-odpovede { list-style: none; margin: 0; padding: 6px 14px 12px; }
+.kto-odpovede li { padding: 8px 0; border-bottom: 1px dashed var(--ciara); }
+.kto-odpovede li:last-child { border-bottom: 0; }
+.kto-odpovede .kto-pod { padding-left: 24px; }
+.kto-otazka { display: block; color: var(--sivy); font-size: 0.9rem; }
+.kto-odpoved { display: block; font-weight: 600; margin-top: 2px; }

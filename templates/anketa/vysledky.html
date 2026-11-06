@@ -47,20 +47,21 @@
     <h2>Kto ako odpovedal</h2>
     {% if otazky|selectattr('anonymna')|list %}<p class="info">Odpovede na anonymné otázky sa tu nezobrazujú.</p>{% endif %}
     {% if hlasujuci %}
-      <div class="tabulka-obal">
-        <table class="tabulka">
-          <thead>
-            <tr><th>Odborárske číslo</th><th>Meno</th><th>Čas</th>{% for o in otazky if not o.anonymna %}<th>{{ o.text }}</th>{% endfor %}</tr>
-          </thead>
-          <tbody>
-            {% for h in hlasujuci %}
-              <tr>
-                <td>{{ h.cislo }}</td><td>{{ h.meno }}</td><td>{{ h.cas }}</td>
-                {% for o in otazky if not o.anonymna %}<td>{{ h.odpovede.get(o.id, '') }}</td>{% endfor %}
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <p class="info">Kliknite na meno a zobrazia sa odpovede.</p>
+      <div class="kto-zoznam">
+        {% for h in hlasujuci %}
+          <details class="kto">
+            <summary><strong>{{ h.meno or 'bez mena' }}</strong> <span class="info">({{ h.cislo }}) · odoslané {{ h.cas }}</span></summary>
+            <ol class="kto-odpovede">
+              {% for o in otazky if not o.anonymna and (not o.rodic or o.id in h.odpovede) %}
+                <li{% if o.rodic %} class="kto-pod"{% endif %}>
+                  <span class="kto-otazka">{{ o.cislo }}. {{ o.text }}</span>
+                  <span class="kto-odpoved">{{ h.odpovede.get(o.id) or '–' }}</span>
+                </li>
+              {% endfor %}
+            </ol>
+          </details>
+        {% endfor %}
       </div>
     {% else %}
       <p class="info">Zatiaľ nikto neodoslal dotazník.</p>
