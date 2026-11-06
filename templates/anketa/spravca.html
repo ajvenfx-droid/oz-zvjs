@@ -43,7 +43,7 @@
                     <input type="hidden" name="akcia" value="zverejnit"><button type="submit" class="odkaz-tlacidlo"><strong>Zverejniť</strong></button>
                   </form>
                 {% endif %}
-                <form method="post" action="{{ url_for('anketa.kopiruj_anketu', anketa_id=a.id) }}"><button type="submit" class="odkaz-tlacidlo">Kopírovať</button></form>
+                {% if a.zverejneny %}<form method="post" action="{{ url_for('anketa.kopiruj_anketu', anketa_id=a.id) }}"><button type="submit" class="odkaz-tlacidlo">Kopírovať</button></form>{% endif %}
                 <form method="post" action="{{ url_for('anketa.zmaz_anketu', anketa_id=a.id) }}"
                       onsubmit="return confirm('Naozaj zmazať anketu „{{ a.nazov }}“ aj so všetkými hlasmi?');">
                   <button type="submit" class="odkaz-tlacidlo">Zmazať</button>

@@ -794,6 +794,9 @@ def kopiruj_anketu(anketa_id):
     """Nový koncept s rovnakými otázkami a úvodom (bez odpovedí a bez dátumu ukončenia)."""
     db = get_db()
     anketa = _anketa_na_spravu(db, anketa_id)
+    if not anketa["zverejneny"]:
+        flash("Kopírovať sa dá len zverejnený dotazník.")
+        return redirect(spat_na_zoznam(anketa["zo_slug"]))
     nova_id = uloz_anketu(db, None, f"{anketa['nazov']} (kópia)", anketa["uvod"], "", anketa["otazky_text"])
     db.execute("UPDATE anketa SET zo_slug = ? WHERE id = ?", (anketa["zo_slug"], nova_id))
     db.commit()
