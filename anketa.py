@@ -131,6 +131,9 @@ def init_db(db):
     if "max_volieb" not in [r["name"] for r in db.execute("PRAGMA table_info(otazka)")]:
         # Pri výbere viacerých možností najviac koľko (NULL = bez obmedzenia).
         db.execute("ALTER TABLE otazka ADD COLUMN max_volieb INTEGER")
+    if "s_menom" not in [r["name"] for r in db.execute("PRAGMA table_info(otazka)")]:
+        # 1 = pri tejto otázke člen nemôže zvoliť „Odpovedať anonymne“.
+        db.execute("ALTER TABLE otazka ADD COLUMN s_menom INTEGER NOT NULL DEFAULT 0")
     if "povolit_anonymne" not in [r["name"] for r in db.execute("PRAGMA table_info(anketa)")]:
         # 1 = člen si môže pri otázke zvoliť „Odpovedať anonymne“, 0 = nemôže.
         db.execute("ALTER TABLE anketa ADD COLUMN povolit_anonymne INTEGER NOT NULL DEFAULT 1")
@@ -211,6 +214,7 @@ def vytvor_slug(db, nazov, anketa_id=None):
 
 
 ANONYMNA_ZNACKA = re.compile(r"\[\s*anonym\w*\s*\]", re.I)
+S_MENOM_ZNACKA = re.compile(r"\[\s*s\s+menom\s*\]", re.I)
 VPISAT_ZNACKA = re.compile(r"\[\s*vp[ií]sa[tť]\s*\]", re.I)
 SKUPINA_ZNACKA = re.compile(r"\[\s*skupina\s*\]", re.I)
 POLOZKA_ZNACKA = re.compile(r"\[\s*v\s+(\d+)\s*\]", re.I)
@@ -239,16 +243,17 @@ def rozober_otazky(text):
             raise ValueError(f"Možnosť „{riadok}“ nepatrí k žiadnej otázke.")
         else:
             anonymna = bool(ANONYMNA_ZNACKA.search(riadok))
+            s_menom = bool(S_MENOM_ZNACKA.search(riadok)) and not anonymna
             podmienka = PODMIENKA_ZNACKA.search(riadok)
             maximum = MAX_ZNACKA.search(riadok)
             skupina = bool(SKUPINA_ZNACKA.search(riadok))
             polozka = POLOZKA_ZNACKA.search(riadok)
-            for z in (MAX_ZNACKA, PODMIENKA_ZNACKA, ANONYMNA_ZNACKA, SKUPINA_ZNACKA, POLOZKA_ZNACKA):
+            for z in (MAX_ZNACKA, PODMIENKA_ZNACKA, ANONYMNA_ZNACKA, S_MENOM_ZNACKA, SKUPINA_ZNACKA, POLOZKA_ZNACKA):
                 riadok = z.sub("", riadok)
             riadok = riadok.strip()
             ak = (int(podmienka.group(1)) - 1, int(podmienka.group(2)) - 1) if podmienka else (
                 (int(polozka.group(1)) - 1, None) if polozka else None)
-            otazky.append({"text": riadok, "typ": TYP_SKUPINA if skupina else TYP_JEDNA, "moznosti": [], "anonymna": anonymna, "ak": ak,
+            otazky.append({"text": riadok, "typ": TYP_SKUPINA if skupina else TYP_JEDNA, "moznosti": [], "anonymna": anonymna, "s_menom": s_menom, "ak": ak,
                             "max": int(maximum.group(1)) if maximum and int(maximum.group(1)) > 0 else None})
     for o in otazky:
         o["moznosti"] = [m for m in o["moznosti"] if m["text"] or m["vpisovat"]]
@@ -289,8 +294,9 @@ def uloz_anketu(db, anketa_id, nazov, uvod, koniec, otazky_text, menit_otazky=Tr
         db.execute("UPDATE anketa SET otazky_text = ? WHERE id = ?", (otazky_text, anketa_id))
         for i, o in enumerate(otazky):
             cur = db.execute(
-                "INSERT INTO otazka (anketa_id, poradie, text, typ, anonymna, ak_otazka, ak_moznost, max_volieb) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (anketa_id, i, o["text"], o["typ"], int(o["anonymna"]), *(o["ak"] or (None, None)), o["max"]),
+                "INSERT INTO otazka (anketa_id, poradie, text, typ, anonymna, ak_otazka, ak_moznost, max_volieb, s_menom) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (anketa_id, i, o["text"], o["typ"], int(o["anonymna"]), *(o["ak"] or (None, None)), o["max"], int(o["s_menom"])),
             )
             db.executemany(
                 "INSERT INTO moznost (otazka_id, poradie, text, vpisovat) VALUES (?, ?, ?, ?)",
@@ -553,7 +559,7 @@ def dotaznik(anketa_id):
             return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
         nove = []
         anonymne = {o["id"] for o in otazky if request.form.get(f"anonymne_{o['id']}") and not o["anonymna"]
-                    and anketa["povolit_anonymne"]}
+                    and not o["s_menom"] and anketa["povolit_anonymne"]}
         zvolene = {o["id"]: [int(v) for v in request.form.getlist(f"otazka_{o['id']}") if v.isdigit()]
                    for o in otazky if o["typ"] != TYP_TEXT}
         aktivne = aktivne_otazky(otazky, zvolene)

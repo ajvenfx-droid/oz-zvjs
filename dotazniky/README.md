@@ -14,6 +14,7 @@ Otázka
 - možnosť
 - možnosť
 Anonymná otázka [anonymná] [max 2]   ([max 2] = pri „+“ najviac 2 možnosti)
+Otázka len s menom [s menom]   (člen nemôže zvoliť anonymnú odpoveď)
 + možnosť (viac možností)
 + možnosť
 Otázka s vlastnou odpoveďou

@@ -45,7 +45,7 @@
             </label>
           {% endfor %}
         {% endif %}
-        {% if not o.anonymna and anketa.povolit_anonymne and o.typ != 'skupina' %}
+        {% if not o.anonymna and not o.s_menom and anketa.povolit_anonymne and o.typ != 'skupina' %}
           <label class="moznost anonymne-volba">
             <input type="checkbox" name="anonymne_{{ o.id }}" value="1" {% if o.id in anonymne %}checked{% endif %} {% if zamknute %}disabled{% endif %}>
             Odpovedať anonymne (vedenie uvidí len súhrn, nie moju odpoveď)

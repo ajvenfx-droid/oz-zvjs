@@ -80,7 +80,14 @@
         <span class="pole__nazov">Kedy sa otázka zobrazí</span>
         <select class="podmienka"><option value="">vždy</option></select>
       </label>
-      <label class="moznost anonymna-obal"><input type="checkbox" class="anonymna-otazka"> Anonymná otázka (vo výsledkoch len súhrn, bez mien)</label>
+      <label class="pole anonymna-obal">
+        <span class="pole__nazov">Anonymita</span>
+        <select class="anonymita">
+          <option value="">člen si môže zvoliť, či odpovie anonymne</option>
+          <option value="anonymna">anonymná otázka – vo výsledkoch len súhrn, bez mien</option>
+          <option value="s_menom">len s menom – člen nemôže odpovedať anonymne</option>
+        </select>
+      </label>
       </div>
       <div class="akcie editor-akcie">
         <button type="button" class="tlacidlo hotovo">✓ Hotovo</button>
@@ -97,6 +104,7 @@
     var editor = document.getElementById("editor-otazok");
     var sablona = document.getElementById("sablona-otazky");
     var ZNACKA = /\[\s*anonym\w*\s*\]/i;
+    var S_MENOM = /\[\s*s\s+menom\s*\]/i;
     var VPISAT = /\[\s*vp[ií]sa[tť]\s*\]/i;
     var MAX = /\[\s*max\s+(\d+)\s*\]/i;
     var SKUPINA = /\[\s*skupina\s*\]/i;
@@ -117,7 +125,7 @@
           else if (o.typ === "text") o.typ = "jedna";
         } else {
           var p = r.match(PODMIENKA), mx = r.match(MAX), pl = r.match(POLOZKA);
-          otazky.push({ text: r.replace(ZNACKA, "").replace(PODMIENKA, "").replace(MAX, "").replace(SKUPINA, "").replace(POLOZKA, "").trim(),
+          otazky.push({ s_menom: S_MENOM.test(r), text: r.replace(ZNACKA, "").replace(S_MENOM, "").replace(PODMIENKA, "").replace(MAX, "").replace(SKUPINA, "").replace(POLOZKA, "").trim(),
                         anonymna: ZNACKA.test(r), typ: SKUPINA.test(r) ? "skupina" : "text",
                         max: mx ? parseInt(mx[1], 10) : "",
                         moznosti: [], ak: p ? [parseInt(p[1], 10) - 1, parseInt(p[2], 10) - 1] : (pl ? [parseInt(pl[1], 10) - 1, null] : null) });
@@ -268,7 +276,9 @@
         var info = typ.options[typ.selectedIndex].text;
         var mx = parseInt(karta.querySelector(".max-volieb").value, 10);
         if (typ.value === "viac" && mx > 0) info += " · najviac " + mx;
-        if (karta.querySelector(".anonymna-otazka").checked) info += " · anonymná";
+        var an = karta.querySelector(".anonymita").value;
+        if (typ.value !== "skupina" && an === "anonymna") info += " · anonymná";
+        if (typ.value !== "skupina" && an === "s_menom") info += " · len s menom";
         if (sel.value) info += " · zobrazí sa " + sel.options[sel.selectedIndex].text;
         suhrn.querySelector(".info").textContent = info;
         if (typ.value !== "text" && typ.value !== "skupina") karta.querySelectorAll(".moznost-riadok").forEach(function (r) {
@@ -300,7 +310,7 @@
       o = o || { text: "", anonymna: false, typ: "jedna", moznosti: [] };
       karta.querySelector(".text-otazky").value = o.text;
       karta.querySelector(".typ-otazky").value = o.typ;
-      karta.querySelector(".anonymna-otazka").checked = o.anonymna;
+      karta.querySelector(".anonymita").value = o.anonymna ? "anonymna" : (o.s_menom ? "s_menom" : "");
       karta.querySelector(".max-volieb").value = o.max || "";
       (o.moznosti.length ? o.moznosti : (o.typ === "text" || o.typ === "skupina" ? [] : [null, null])).forEach(function (m) { pridajMoznost(karta, m); });
       var obal = karta.querySelector(".moznosti-obal");
@@ -334,7 +344,8 @@
           posledna.querySelectorAll(".moznost-riadok").forEach(function (r) {
             mz.push({ text: r.querySelector(".text-moznosti").value, vpisovat: r.querySelector(".vpisovat").checked });
           });
-          vzor = { text: "", anonymna: false, typ: tv, moznosti: tv === "text" ? [] : mz };
+          var an = posledna.querySelector(".anonymita").value;
+          vzor = { text: "", anonymna: an === "anonymna", s_menom: an === "s_menom", typ: tv, moznosti: tv === "text" ? [] : mz };
         }
         var nova = pridajOtazku(vzor || { text: "", anonymna: false, typ: "text", moznosti: [] }, b[b.length - 1]);
         nova.querySelector(".podmienka").dataset.ciel = karta.dataset.kluc + ":";
@@ -393,7 +404,7 @@
         }
         var mx = parseInt(o.karta.querySelector(".max-volieb").value, 10);
         riadky.push(o.text + (o.typ === "skupina" ? " [skupina]" : "") +
-                    (o.typ !== "skupina" && o.karta.querySelector(".anonymna-otazka").checked ? " [anonymná]" : "") +
+                    (o.typ !== "skupina" ? { anonymna: " [anonymná]", s_menom: " [s menom]" }[o.karta.querySelector(".anonymita").value] || "" : "") +
                     (o.typ === "viac" && mx > 0 ? " [max " + mx + "]" : "") + ak);
         o.moznosti.forEach(function (m) { riadky.push((o.typ === "viac" ? "+ " : "- ") + m); });
         riadky.push("");
