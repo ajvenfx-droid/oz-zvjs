@@ -263,7 +263,7 @@
       karta.querySelectorAll(".moznost-riadok").forEach(function (r) {
         if (cisty(r.querySelector(".text-moznosti").value) || r.querySelector(".vpisovat").checked) n++;
       });
-      return n < 2 ? "Otázka musí mať aspoň dve možnosti odpovede." : "";
+      return n < 1 ? "Otázka musí mať aspoň jednu možnosť odpovede." : "";
     }
 
     function zamkni(karta, zamknut) {
@@ -387,7 +387,7 @@
             if (!v && vp) v = "Iné";
             if (v) { moznosti.push(v + (vp ? " [vpísať]" : "")); poradie[karta.dataset.kluc].moznosti[r.dataset.kluc] = moznosti.length; }
           });
-          if (moznosti.length < 2 && !chyba) chyba = "Otázka " + karta.dataset.cislo + " musí mať aspoň dve možnosti odpovede.";
+          if (moznosti.length < 1 && !chyba) chyba = "Otázka " + karta.dataset.cislo + " musí mať aspoň jednu možnosť odpovede.";
         }
         zoznam.push({ karta: karta, cislo: i + 1, text: otazka, typ: typ, moznosti: moznosti });
       });

@@ -263,8 +263,6 @@ def rozober_otazky(text):
             o["moznosti"], o["anonymna"] = [], False
         elif not o["moznosti"]:
             o["typ"] = TYP_TEXT
-        elif len(o["moznosti"]) < 2:
-            raise ValueError(f"Otázka „{o['text']}“ musí mať aspoň dve možnosti.")
     for i, o in enumerate(otazky):
         if o["ak"]:
             q, m = o["ak"]
