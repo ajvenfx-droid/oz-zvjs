@@ -34,7 +34,7 @@
             {% if m.vpisy %}
               <tr class="vpisy-riadok"><td colspan="4">
                 <strong>Napísané odpovede pri „{{ m.text }}“ ({{ m.vpisy|length }}):</strong>
-                <ul class="texty">{% for v in m.vpisy %}<li>{{ v }}</li>{% endfor %}</ul>
+                <ul class="texty">{% for v in m.vpisy %}<li>{{ v.text }} <span class="info">– {{ v.kto or 'anonymne' }}</span></li>{% endfor %}</ul>
               </td></tr>
             {% endif %}
           {% endfor %}

@@ -799,9 +799,13 @@ def vysledky_ankety(db, anketa_id):
                 "WHERE d.moznost_id = ? AND h.potvrdene = 1", (m["id"],)
             ).fetchone()[0]
             m["percent"] = round(100 * m["pocet"] / zaklad, 1) if zaklad else 0
-            m["vpisy"] = sorted((r["text"] for r in db.execute(
-                "SELECT d.text FROM odpoved d JOIN hlas h ON h.id = d.hlas_id "
-                "WHERE d.moznost_id = ? AND h.potvrdene = 1 AND d.text != ''", (m["id"],))), key=str.lower)
+            # napísaný text aj s autorom; pri anonymnej otázke alebo anonymnej odpovedi bez mena
+            m["vpisy"] = sorted(({"text": r["text"], "kto": "" if (o["anonymna"] or r["anonymna"]) else f"{r['meno']} ({r['cislo']})".strip()}
+                                 for r in db.execute(
+                "SELECT d.text, d.anonymna, h.cislo, COALESCE(c.meno, '') AS meno FROM odpoved d "
+                "JOIN hlas h ON h.id = d.hlas_id LEFT JOIN clen c ON c.cislo = h.cislo "
+                "WHERE d.moznost_id = ? AND h.potvrdene = 1 AND d.text != ''", (m["id"],))),
+                key=lambda v: v["text"].lower())
         texty = [r["text"] for r in db.execute(
             "SELECT d.text FROM odpoved d JOIN hlas h ON h.id = d.hlas_id "
             "WHERE d.otazka_id = ? AND d.moznost_id IS NULL AND h.potvrdene = 1 ORDER BY d.id",
@@ -883,7 +887,7 @@ def export(anketa_id):
             for m in o["moznosti"]:
                 w.writerow([m["text"], m["pocet"], str(m["percent"]).replace(".", ",")])
                 for v in m["vpisy"]:
-                    w.writerow(["", "", "", v])
+                    w.writerow(["", "", "", v["text"], v["kto"] or "anonymne"])
         w.writerow([])
     w.writerow(["Hlasy jednotlivých členov"])
     menovite = [o for o in otazky if not o["anonymna"]]
