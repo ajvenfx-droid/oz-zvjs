@@ -533,3 +533,10 @@ summary.rozbalit strong { font-weight: 600; }
 .kto-odpovede .kto-pod { padding-left: 24px; }
 .kto-otazka { display: block; color: var(--sivy); font-size: 0.9rem; }
 .kto-odpoved { display: block; font-weight: 600; margin-top: 2px; }
+.klik-kto { cursor: pointer; }
+.klik-kto:hover td { background: var(--modra-svetla); }
+.klik-kto .sipka { display: inline-block; color: var(--zlata-tmava); }
+.klik-kto.otvorene .sipka { color: var(--zlata); }
+.kto-moznost td { background: #fbf8ee; }
+.kto-stitok { display: inline-block; background: #fff; border: 1px solid var(--ciara); border-radius: 12px; padding: 2px 10px; margin: 3px 4px 3px 0; font-size: 0.9rem; }
+.kto-stitok.anonym { color: var(--sivy); font-style: italic; }

@@ -806,12 +806,25 @@ def vysledky_ankety(db, anketa_id):
                 "JOIN hlas h ON h.id = d.hlas_id LEFT JOIN clen c ON c.cislo = h.cislo "
                 "WHERE d.moznost_id = ? AND h.potvrdene = 1 AND d.text != ''", (m["id"],))),
                 key=lambda v: v["text"].lower())
-        texty = [r["text"] for r in db.execute(
-            "SELECT d.text FROM odpoved d JOIN hlas h ON h.id = d.hlas_id "
+            # kto zvolil túto možnosť (anonymné odpovede bez mena, zoradené na koniec)
+            m["kto"] = sorted(("" if (o["anonymna"] or r["anonymna"]) else f"{r['meno']} ({r['cislo']})".strip()
+                               for r in db.execute(
+                "SELECT d.anonymna, h.cislo, COALESCE(c.meno, '') AS meno FROM odpoved d "
+                "JOIN hlas h ON h.id = d.hlas_id LEFT JOIN clen c ON c.cislo = h.cislo "
+                "WHERE d.moznost_id = ? AND h.potvrdene = 1", (m["id"],))),
+                key=lambda k: (k == "", k.lower()))
+        riadky = db.execute(
+            "SELECT d.text, d.anonymna, h.cislo, COALESCE(c.meno, '') AS meno FROM odpoved d "
+            "JOIN hlas h ON h.id = d.hlas_id LEFT JOIN clen c ON c.cislo = h.cislo "
             "WHERE d.otazka_id = ? AND d.moznost_id IS NULL AND h.potvrdene = 1 ORDER BY d.id",
             (o["id"],),
-        )]
-        o["texty"] = sorted(texty, key=str.lower) if o["anonymna"] else texty
+        ).fetchall()
+        o["texty"] = [r["text"] for r in riadky]
+        o["texty_kto"] = [{"text": r["text"], "kto": "" if (o["anonymna"] or r["anonymna"]) else f"{r['meno']} ({r['cislo']})"}
+                          for r in riadky]
+        if o["anonymna"]:
+            o["texty"].sort(key=str.lower)
+            o["texty_kto"].sort(key=lambda v: v["text"].lower())
     hlasujuci = []
     for h in db.execute(
         "SELECT h.*, COALESCE(c.meno, '') AS meno FROM hlas h "
