@@ -32,7 +32,10 @@
               <td class="cislo">{{ m.percent|string|replace('.', ',') }} %</td>
             </tr>
             {% if m.vpisy %}
-              <tr><td colspan="4"><ul class="texty">{% for v in m.vpisy %}<li>{{ v }}</li>{% endfor %}</ul></td></tr>
+              <tr class="vpisy-riadok"><td colspan="4">
+                <strong>Napísané odpovede pri „{{ m.text }}“ ({{ m.vpisy|length }}):</strong>
+                <ul class="texty">{% for v in m.vpisy %}<li>{{ v }}</li>{% endfor %}</ul>
+              </td></tr>
             {% endif %}
           {% endfor %}
         </table>

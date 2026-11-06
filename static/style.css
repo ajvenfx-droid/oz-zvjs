@@ -521,3 +521,5 @@ summary.rozbalit strong { font-weight: 600; }
 #dotaznik .otazka .moznost:not(.anonymne-volba):has(input:checked) { background: #fff3cc; border-color: var(--zlata); font-weight: 600; }
 .suhrn-otazky .suhrn-text { font-size: 1.05rem; }
 .suhrn-moznosti:empty { display: none; }
+.vpisy-riadok td { background: #fff8e1; border-left: 4px solid var(--zlata); }
+.vpisy-riadok ul.texty { margin: 6px 0 0 20px; }
