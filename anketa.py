@@ -789,6 +789,19 @@ def zverejni_anketu(anketa_id):
     return redirect(spat_na_zoznam(anketa["zo_slug"]))
 
 
+@bp.route("/spravca/<int:anketa_id>/kopia", methods=["POST"])
+def kopiruj_anketu(anketa_id):
+    """Nový koncept s rovnakými otázkami a úvodom (bez odpovedí a bez dátumu ukončenia)."""
+    db = get_db()
+    anketa = _anketa_na_spravu(db, anketa_id)
+    nova_id = uloz_anketu(db, None, f"{anketa['nazov']} (kópia)", anketa["uvod"], "", anketa["otazky_text"])
+    db.execute("UPDATE anketa SET zo_slug = ? WHERE id = ?", (anketa["zo_slug"], nova_id))
+    db.commit()
+    flash("Vytvorená kópia dotazníka. Upravte ju a potom zverejnite.")
+    zo = request.values.get("zo")
+    return redirect(url_for("anketa.uprav_anketu", anketa_id=nova_id, **({"zo": zo} if zo else {})))
+
+
 @bp.route("/spravca/<int:anketa_id>/zmazat", methods=["POST"])
 def zmaz_anketu(anketa_id):
     db = get_db()
