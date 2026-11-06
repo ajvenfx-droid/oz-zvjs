@@ -441,9 +441,11 @@ def dotazniky_clena(db, cislo):
             continue  # koncept členovia nevidia, kým ho predseda nezverejní
         h = db.execute("SELECT potvrdene FROM hlas WHERE anketa_id = ? AND cislo = ?", (a["id"], cislo)).fetchone()
         stav = "nevyplneny" if h is None else ("odoslany" if h["potvrdene"] else "rozpracovany")
-        if je_ukoncena(a) and stav != "odoslany":
+        rk = je_v_reviznej_komisii(db, a["zo_slug"], cislo)
+        if je_ukoncena(a) and stav != "odoslany" and not rk:
             continue
-        vysledok.append({"anketa": a, "stav": stav, "ukoncena": je_ukoncena(a), "zo_mesto": mesto_zo(db, a["zo_slug"])})
+        vysledok.append({"anketa": a, "stav": stav, "ukoncena": je_ukoncena(a), "zo_mesto": mesto_zo(db, a["zo_slug"]),
+                         "vysledky": rk})
     return vysledok
 
 
@@ -588,6 +590,23 @@ def spravovana_zo():
 
 def moze_spravovat(zo_slug):
     return je_spravca() or (bool(zo_slug) and zo_slug == spravovana_zo())
+
+
+RK_SKUPINY = ("rk_predseda", "rk_clen1", "rk_clen2")
+
+
+def je_v_reviznej_komisii(db, zo_slug, cislo):
+    if not zo_slug or not cislo:
+        return False
+    return db.execute(
+        f"SELECT 1 FROM evidencia_organ WHERE zo_slug = ? AND cislo = ? AND skupina IN ({','.join('?' * len(RK_SKUPINY))})",
+        (zo_slug, cislo, *RK_SKUPINY)).fetchone() is not None
+
+
+def moze_vidiet_vysledky(db, zo_slug):
+    """Výsledky vidí správca, predseda a podpredseda ZO a členovia revíznej komisie ZO."""
+    clen = g.get("clen")
+    return moze_spravovat(zo_slug) or (clen is not None and je_v_reviznej_komisii(db, zo_slug, clen["cislo"]))
 
 
 def spat_na_zoznam(zo_slug):
@@ -859,6 +878,15 @@ def ucast(db, anketa):
     return opravnenych, rozpracovanych
 
 
+def _anketa_na_citanie(db, anketa_id):
+    anketa = nacitaj_anketu(db, anketa_id)
+    if not moze_vidiet_vysledky(db, anketa["zo_slug"]):
+        if g.get("clen") is None and not je_spravca():
+            abort(redirect(url_for("ucet.prihlasenie", dalej=request.path)))
+        abort(403)
+    return anketa
+
+
 def _anketa_na_spravu(db, anketa_id):
     anketa = nacitaj_anketu(db, anketa_id)
     if not moze_spravovat(anketa["zo_slug"]):
@@ -869,19 +897,20 @@ def _anketa_na_spravu(db, anketa_id):
 @bp.route("/spravca/<int:anketa_id>/vysledky")
 def vysledky(anketa_id):
     db = get_db()
-    anketa = _anketa_na_spravu(db, anketa_id)
+    anketa = _anketa_na_citanie(db, anketa_id)
     otazky, hlasov, hlasujuci = vysledky_ankety(db, anketa_id)
     opravnenych, rozpracovanych = ucast(db, anketa)
     return render_template("anketa/vysledky.html", anketa=anketa, otazky=otazky, hlasov=hlasov,
                            hlasujuci=hlasujuci, ukoncena=je_ukoncena(anketa), opravnenych=opravnenych,
                            rozpracovanych=rozpracovanych, zo_mesto=mesto_zo(db, anketa["zo_slug"]),
-                           spat=spat_na_zoznam(anketa["zo_slug"]))
+                           spat=spat_na_zoznam(anketa["zo_slug"]) if moze_spravovat(anketa["zo_slug"])
+                           else url_for("ucet.moje_konto") + "#dotazniky")
 
 
 @bp.route("/spravca/<int:anketa_id>/export.csv")
 def export(anketa_id):
     db = get_db()
-    anketa = _anketa_na_spravu(db, anketa_id)
+    anketa = _anketa_na_citanie(db, anketa_id)
     otazky, hlasov, hlasujuci = vysledky_ankety(db, anketa_id)
     out = io.StringIO()
     w = csv.writer(out, delimiter=";")
