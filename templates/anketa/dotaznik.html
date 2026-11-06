@@ -24,10 +24,11 @@
     {% for o in otazky %}
       {% set pole = 'otazka_' ~ o.id %}
       {% set moje = odpovede.get(o.id, []) %}
-      <fieldset class="otazka{% if o.rodic %} podotazka{% endif %}"{% if o.max_volieb %} data-max="{{ o.max_volieb }}"{% endif %}{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id }}"{% endif %} data-otazka="{{ o.id }}">
+      <fieldset class="otazka{% if o.rodic %} podotazka{% if not o.rodic.moznost %} polozka{% endif %}{% endif %}{% if o.typ == 'skupina' %} skupina{% endif %}"{% if o.max_volieb %} data-max="{{ o.max_volieb }}"{% endif %}{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id if o.rodic.moznost else '' }}"{% endif %} data-otazka="{{ o.id }}">
         <legend>{{ o.cislo }}. {{ o.text }}</legend>
         {% if o.anonymna %}<p class="info">Anonymná otázka: nikto neuvidí, ako ste odpovedali.</p>{% endif %}
-        {% if o.typ == 'text' %}
+        {% if o.typ == 'skupina' %}
+        {% elif o.typ == 'text' %}
           <textarea name="{{ pole }}" rows="3" {% if zamknute %}disabled{% endif %}>{{ moje[0] if moje else '' }}</textarea>
         {% else %}
           {% if o.typ == 'viac' %}<p class="info">{% if o.max_volieb %}Môžete označiť najviac {{ o.max_volieb }} {{ 'možnosti' if o.max_volieb < 5 else 'možností' }}.{% else %}Môžete označiť viac možností.{% endif %}</p>{% endif %}
@@ -44,7 +45,7 @@
             </label>
           {% endfor %}
         {% endif %}
-        {% if not o.anonymna and anketa.povolit_anonymne %}
+        {% if not o.anonymna and anketa.povolit_anonymne and o.typ != 'skupina' %}
           <label class="moznost anonymne-volba">
             <input type="checkbox" name="anonymne_{{ o.id }}" value="1" {% if o.id in anonymne %}checked{% endif %} {% if zamknute %}disabled{% endif %}>
             Odpovedať anonymne (vedenie uvidí len súhrn, nie moju odpoveď)
@@ -72,8 +73,11 @@
         var ok = true;
         if (f.dataset.akOtazka) {
           var rodic = form.querySelector('fieldset[data-otazka="' + f.dataset.akOtazka + '"]');
-          var volba = rodic && rodic.querySelector('input[name="otazka_' + f.dataset.akOtazka + '"][value="' + f.dataset.akMoznost + '"]');
-          ok = viditelne[f.dataset.akOtazka] && volba && volba.checked;
+          if (!f.dataset.akMoznost) ok = !!viditelne[f.dataset.akOtazka];  // položka skupiny
+          else {
+            var volba = rodic && rodic.querySelector('input[name="otazka_' + f.dataset.akOtazka + '"][value="' + f.dataset.akMoznost + '"]');
+            ok = viditelne[f.dataset.akOtazka] && volba && volba.checked;
+          }
         }
         viditelne[f.dataset.otazka] = ok;
         f.hidden = !ok;

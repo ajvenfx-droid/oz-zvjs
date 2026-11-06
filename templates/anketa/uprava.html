@@ -60,6 +60,7 @@
           <option value="jedna">výber z možností – jedna odpoveď</option>
           <option value="viac">výber z možností – viac odpovedí</option>
           <option value="text">písomná odpoveď (člen napíše text)</option>
+          <option value="skupina">skupina položiek – každá položka má vlastnú odpoveď</option>
         </select>
       </label>
       <label class="pole max-obal" hidden>
@@ -71,11 +72,15 @@
         <div class="moznosti"></div>
         <button type="button" class="odkaz-tlacidlo pridat-moznost">+ Pridať možnosť</button>
       </div>
+      <div class="polozky-obal" hidden>
+        <p class="info">Táto otázka je len nadpis. Pod ňu pridajte položky (napr. „1. člen revíznej komisie“), každá má vlastný spôsob odpovede.</p>
+        <button type="button" class="odkaz-tlacidlo pridat-polozku">+ Pridať položku</button>
+      </div>
       <label class="pole podmienka-otazky">
         <span class="pole__nazov">Kedy sa otázka zobrazí</span>
         <select class="podmienka"><option value="">vždy</option></select>
       </label>
-      <label class="moznost"><input type="checkbox" class="anonymna-otazka"> Anonymná otázka (vo výsledkoch len súhrn, bez mien)</label>
+      <label class="moznost anonymna-obal"><input type="checkbox" class="anonymna-otazka"> Anonymná otázka (vo výsledkoch len súhrn, bez mien)</label>
       </div>
       <div class="akcie editor-akcie">
         <button type="button" class="tlacidlo hotovo">✓ Hotovo</button>
@@ -94,6 +99,8 @@
     var ZNACKA = /\[\s*anonym\w*\s*\]/i;
     var VPISAT = /\[\s*vp[ií]sa[tť]\s*\]/i;
     var MAX = /\[\s*max\s+(\d+)\s*\]/i;
+    var SKUPINA = /\[\s*skupina\s*\]/i;
+    var POLOZKA = /\[\s*v\s+(\d+)\s*\]/i;
     var PODMIENKA = /\[\s*ak\s+(\d+)\s*[.,\/]\s*(\d+)\s*\]/i;
     var kluc = 0;
 
@@ -109,10 +116,11 @@
           if (r[0] === "+") o.typ = "viac";
           else if (o.typ === "text") o.typ = "jedna";
         } else {
-          var p = r.match(PODMIENKA), mx = r.match(MAX);
-          otazky.push({ text: r.replace(ZNACKA, "").replace(PODMIENKA, "").replace(MAX, "").trim(), anonymna: ZNACKA.test(r), typ: "text",
+          var p = r.match(PODMIENKA), mx = r.match(MAX), pl = r.match(POLOZKA);
+          otazky.push({ text: r.replace(ZNACKA, "").replace(PODMIENKA, "").replace(MAX, "").replace(SKUPINA, "").replace(POLOZKA, "").trim(),
+                        anonymna: ZNACKA.test(r), typ: SKUPINA.test(r) ? "skupina" : "text",
                         max: mx ? parseInt(mx[1], 10) : "",
-                        moznosti: [], ak: p ? [parseInt(p[1], 10) - 1, parseInt(p[2], 10) - 1] : null });
+                        moznosti: [], ak: p ? [parseInt(p[1], 10) - 1, parseInt(p[2], 10) - 1] : (pl ? [parseInt(pl[1], 10) - 1, null] : null) });
         }
       });
       otazky.forEach(function (o) { if (o.moznosti.length && o.typ === "text") o.typ = "jedna"; });
@@ -195,7 +203,15 @@
         var sel = karta.querySelector(".podmienka"), ciel = sel.dataset.ciel || "";
         sel.innerHTML = '<option value="">vždy</option>';
         for (var j = 0; j < i; j++) {
-          if (k[j].querySelector(".typ-otazky").value === "text") continue;
+          var tj = k[j].querySelector(".typ-otazky").value;
+          if (tj === "text") continue;
+          if (tj === "skupina") {
+            var op = document.createElement("option");
+            op.value = k[j].dataset.kluc + ":";
+            op.textContent = "ako položka otázky " + (j + 1);
+            sel.appendChild(op);
+            continue;
+          }
           k[j].querySelectorAll(".moznost-riadok").forEach(function (r) {
             var o = document.createElement("option");
             o.value = k[j].dataset.kluc + ":" + r.dataset.kluc;
@@ -205,9 +221,12 @@
         }
         sel.value = ciel;
         if (sel.value !== ciel) { sel.value = ""; }
+        var jePolozka = !!sel.value && sel.value.slice(-1) === ":";
         karta.classList.toggle("podotazka", !!sel.value);
+        karta.classList.toggle("polozka", jePolozka);
         var legenda = karta.querySelector("legend");
-        legenda.firstChild.textContent = sel.value ? "Podotázka " : "Otázka ";
+        legenda.firstChild.textContent = jePolozka ? "Položka " : (sel.value ? "Podotázka " : "Otázka ");
+        karta.querySelector(".text-otazky").placeholder = jePolozka ? "napr. 1. člen revíznej komisie" : "";
       });
       // číslovanie 1, 2… a podotázky 1.1, 1.2…
       var hlavne = 0, pod = {};
@@ -222,7 +241,7 @@
         karta.querySelectorAll(".podmienka option").forEach(function (o) {
           if (!o.value) return;
           var r = editor.querySelector('.editor-otazka[data-kluc="' + o.value.split(":")[0] + '"]');
-          if (r) o.textContent = o.textContent.replace(/v otázke [\d.]+/, "v otázke " + r.dataset.cislo);
+          if (r) o.textContent = o.textContent.replace(/otázke [\d.]+/, "otázke " + r.dataset.cislo);
         });
       });
       k.forEach(function (karta) { if (karta.classList.contains("zamknuta")) zamkni(karta, true); });
@@ -230,7 +249,8 @@
 
     function chybaOtazky(karta) {
       if (!cisty(karta.querySelector(".text-otazky").value)) return "Napíšte text otázky.";
-      if (karta.querySelector(".typ-otazky").value === "text") return "";
+      var t = karta.querySelector(".typ-otazky").value;
+      if (t === "text" || t === "skupina") return "";
       var n = 0;
       karta.querySelectorAll(".moznost-riadok").forEach(function (r) {
         if (cisty(r.querySelector(".text-moznosti").value) || r.querySelector(".vpisovat").checked) n++;
@@ -251,7 +271,7 @@
         if (karta.querySelector(".anonymna-otazka").checked) info += " · anonymná";
         if (sel.value) info += " · zobrazí sa " + sel.options[sel.selectedIndex].text;
         suhrn.querySelector(".info").textContent = info;
-        if (typ.value !== "text") karta.querySelectorAll(".moznost-riadok").forEach(function (r) {
+        if (typ.value !== "text" && typ.value !== "skupina") karta.querySelectorAll(".moznost-riadok").forEach(function (r) {
           var v = cisty(r.querySelector(".text-moznosti").value), vp = r.querySelector(".vpisovat").checked;
           if (!v && !vp) return;
           var li = document.createElement("li");
@@ -266,6 +286,14 @@
       karta.classList.toggle("zamknuta", zamknut);
     }
 
+    function prepniCasti(karta) {
+      var t = karta.querySelector(".typ-otazky").value;
+      karta.querySelector(".moznosti-obal").hidden = t === "text" || t === "skupina";
+      karta.querySelector(".max-obal").hidden = t !== "viac";
+      karta.querySelector(".polozky-obal").hidden = t !== "skupina";
+      karta.querySelector(".anonymna-obal").hidden = t === "skupina";
+    }
+
     function pridajOtazku(o, za) {
       var karta = sablona.content.firstElementChild.cloneNode(true);
       karta.dataset.kluc = "o" + (++kluc);
@@ -274,12 +302,11 @@
       karta.querySelector(".typ-otazky").value = o.typ;
       karta.querySelector(".anonymna-otazka").checked = o.anonymna;
       karta.querySelector(".max-volieb").value = o.max || "";
-      (o.moznosti.length ? o.moznosti : (o.typ === "text" ? [] : [null, null])).forEach(function (m) { pridajMoznost(karta, m); });
+      (o.moznosti.length ? o.moznosti : (o.typ === "text" || o.typ === "skupina" ? [] : [null, null])).forEach(function (m) { pridajMoznost(karta, m); });
       var obal = karta.querySelector(".moznosti-obal");
       var typ = karta.querySelector(".typ-otazky");
       function zobraz() {
-        obal.hidden = typ.value === "text";
-        karta.querySelector(".max-obal").hidden = typ.value !== "viac";
+        prepniCasti(karta);
         if (!obal.hidden && !karta.querySelectorAll(".moznost-riadok").length) { pridajMoznost(karta); pridajMoznost(karta); }
         prepocitaj();
       }
@@ -299,9 +326,23 @@
       karta.querySelector(".upravit").onclick = function () { zamkni(karta, false); karta.querySelector(".text-otazky").focus(); };
       karta.querySelector(".hore").onclick = function () { posun(karta, -1); };
       karta.querySelector(".dole").onclick = function () { posun(karta, 1); };
+      karta.querySelector(".pridat-polozku").onclick = function () {
+        // nová položka na koniec skupiny; prevezme spôsob odpovede a možnosti predchádzajúcej položky
+        var b = blok(karta), posledna = b.length > 1 ? b[b.length - 1] : null, vzor = null;
+        if (posledna && rodicKarta(posledna) === karta) {
+          var tv = posledna.querySelector(".typ-otazky").value, mz = [];
+          posledna.querySelectorAll(".moznost-riadok").forEach(function (r) {
+            mz.push({ text: r.querySelector(".text-moznosti").value, vpisovat: r.querySelector(".vpisovat").checked });
+          });
+          vzor = { text: "", anonymna: false, typ: tv, moznosti: tv === "text" ? [] : mz };
+        }
+        var nova = pridajOtazku(vzor || { text: "", anonymna: false, typ: "text", moznosti: [] }, b[b.length - 1]);
+        nova.querySelector(".podmienka").dataset.ciel = karta.dataset.kluc + ":";
+        prepocitaj();
+        nova.querySelector(".text-otazky").focus();
+      };
       if (za) editor.insertBefore(karta, za.nextElementSibling); else editor.appendChild(karta);
-      obal.hidden = typ.value === "text";
-      karta.querySelector(".max-obal").hidden = typ.value !== "viac";
+      prepniCasti(karta);
       prepocitaj();
       return karta;
     }
@@ -311,6 +352,7 @@
       var vytvorene = nacitane.map(function (o) { return pridajOtazku(o); });
       nacitane.forEach(function (o, i) {
         if (!o.ak || !vytvorene[o.ak[0]]) return;
+        if (o.ak[1] === null) { vytvorene[i].querySelector(".podmienka").dataset.ciel = vytvorene[o.ak[0]].dataset.kluc + ":"; return; }
         var r = vytvorene[o.ak[0]].querySelectorAll(".moznost-riadok")[o.ak[1]];
         if (r) vytvorene[i].querySelector(".podmienka").dataset.ciel = vytvorene[o.ak[0]].dataset.kluc + ":" + r.dataset.kluc;
       });
@@ -326,8 +368,8 @@
         var otazka = cisty(karta.querySelector(".text-otazky").value);
         if (!otazka) return;
         var typ = karta.querySelector(".typ-otazky").value, moznosti = [];
-        poradie[karta.dataset.kluc] = { cislo: zoznam.length + 1, moznosti: {} };
-        if (typ !== "text") {
+        poradie[karta.dataset.kluc] = { cislo: zoznam.length + 1, moznosti: {}, typ: typ };
+        if (typ !== "text" && typ !== "skupina") {
           karta.querySelectorAll(".moznost-riadok").forEach(function (r) {
             var v = cisty(r.querySelector(".text-moznosti").value);
             var vp = r.querySelector(".vpisovat").checked;
@@ -344,12 +386,14 @@
         var ak = "", ciel = o.karta.querySelector(".podmienka").value;
         if (ciel) {
           var c = ciel.split(":"), rodic = poradie[c[0]];
-          if (!rodic || rodic.cislo > n || !rodic.moznosti[c[1]]) {
+          if (!c[1] && rodic && rodic.cislo <= n && rodic.typ === "skupina") ak = " [v " + rodic.cislo + "]";
+          else if (!rodic || rodic.cislo > n || !rodic.moznosti[c[1]]) {
             if (!chyba) chyba = "Otázka " + o.karta.dataset.cislo + ": podotázka musí nadväzovať na vyplnenú možnosť otázky nad ňou.";
           } else ak = " [ak " + rodic.cislo + "." + rodic.moznosti[c[1]] + "]";
         }
         var mx = parseInt(o.karta.querySelector(".max-volieb").value, 10);
-        riadky.push(o.text + (o.karta.querySelector(".anonymna-otazka").checked ? " [anonymná]" : "") +
+        riadky.push(o.text + (o.typ === "skupina" ? " [skupina]" : "") +
+                    (o.typ !== "skupina" && o.karta.querySelector(".anonymna-otazka").checked ? " [anonymná]" : "") +
                     (o.typ === "viac" && mx > 0 ? " [max " + mx + "]" : "") + ak);
         o.moznosti.forEach(function (m) { riadky.push((o.typ === "viac" ? "+ " : "- ") + m); });
         riadky.push("");

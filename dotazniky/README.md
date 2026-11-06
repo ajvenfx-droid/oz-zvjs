@@ -17,6 +17,10 @@ Anonymná otázka [anonymná] [max 2]   ([max 2] = pri „+“ najviac 2 možnos
 + možnosť (viac možností)
 + možnosť
 Otázka s vlastnou odpoveďou
+Skupina položiek [skupina]     (len nadpis)
+1. člen RK [v 5]              (položka skupiny – otázka č. 5 v poradí riadkov)
+- A
+- B
 Podotázka [ak 1.2]           (zobrazí sa len ak v otázke 1 zvolí 2. možnosť)
 - Iné [vpísať]                (možnosť, pri ktorej člen doplní text)
 - možnosť

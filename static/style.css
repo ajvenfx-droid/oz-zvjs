@@ -541,3 +541,7 @@ summary.rozbalit strong { font-weight: 600; }
 .kto-stitok { display: inline-block; background: #fff; border: 1px solid var(--ciara); border-radius: 12px; padding: 2px 10px; margin: 3px 4px 3px 0; font-size: 0.9rem; }
 .kto-stitok.anonym { color: var(--sivy); font-style: italic; }
 .autor { font-weight: 600; color: var(--zlata-tmava); }
+#dotaznik .otazka.skupina { padding-bottom: 4px; margin-bottom: 8px; }
+#dotaznik .otazka.polozka, .editor-otazka.polozka { border-color: #9a7f2a; background: #fffaf0; border-left-width: 6px; }
+#dotaznik .otazka.polozka legend, .editor-otazka.polozka legend { background: #9a7f2a; }
+.polozka-vysledky { margin-left: 28px; border-left: 4px solid #9a7f2a; }

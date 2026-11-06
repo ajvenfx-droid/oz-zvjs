@@ -38,6 +38,7 @@ CASOVA_ZONA = ZoneInfo("Europe/Bratislava")
 TYP_JEDNA = "jedna"  # výber jednej možnosti
 TYP_VIAC = "viac"  # výber viacerých možností
 TYP_TEXT = "text"  # voľná textová odpoveď
+TYP_SKUPINA = "skupina"  # len nadpis; odpovedá sa v jej položkách (podotázkach bez podmienky)
 
 # Anketa vložená pri prvom spustení (len raz, aj keby ju správca neskôr zmazal).
 PRVA_ANKETA = {
@@ -211,6 +212,8 @@ def vytvor_slug(db, nazov, anketa_id=None):
 
 ANONYMNA_ZNACKA = re.compile(r"\[\s*anonym\w*\s*\]", re.I)
 VPISAT_ZNACKA = re.compile(r"\[\s*vp[ií]sa[tť]\s*\]", re.I)
+SKUPINA_ZNACKA = re.compile(r"\[\s*skupina\s*\]", re.I)
+POLOZKA_ZNACKA = re.compile(r"\[\s*v\s+(\d+)\s*\]", re.I)
 MAX_ZNACKA = re.compile(r"\[\s*max\s+(\d+)\s*\]", re.I)
 PODMIENKA_ZNACKA = re.compile(r"\[\s*ak\s+(\d+)\s*[.,/]\s*(\d+)\s*\]", re.I)
 
@@ -238,22 +241,32 @@ def rozober_otazky(text):
             anonymna = bool(ANONYMNA_ZNACKA.search(riadok))
             podmienka = PODMIENKA_ZNACKA.search(riadok)
             maximum = MAX_ZNACKA.search(riadok)
-            riadok = MAX_ZNACKA.sub("", PODMIENKA_ZNACKA.sub("", ANONYMNA_ZNACKA.sub("", riadok))).strip()
-            ak = (int(podmienka.group(1)) - 1, int(podmienka.group(2)) - 1) if podmienka else None
-            otazky.append({"text": riadok, "typ": TYP_JEDNA, "moznosti": [], "anonymna": anonymna, "ak": ak,
+            skupina = bool(SKUPINA_ZNACKA.search(riadok))
+            polozka = POLOZKA_ZNACKA.search(riadok)
+            for z in (MAX_ZNACKA, PODMIENKA_ZNACKA, ANONYMNA_ZNACKA, SKUPINA_ZNACKA, POLOZKA_ZNACKA):
+                riadok = z.sub("", riadok)
+            riadok = riadok.strip()
+            ak = (int(podmienka.group(1)) - 1, int(podmienka.group(2)) - 1) if podmienka else (
+                (int(polozka.group(1)) - 1, None) if polozka else None)
+            otazky.append({"text": riadok, "typ": TYP_SKUPINA if skupina else TYP_JEDNA, "moznosti": [], "anonymna": anonymna, "ak": ak,
                             "max": int(maximum.group(1)) if maximum and int(maximum.group(1)) > 0 else None})
     for o in otazky:
         o["moznosti"] = [m for m in o["moznosti"] if m["text"] or m["vpisovat"]]
         if o["typ"] != TYP_VIAC or (o["max"] and o["max"] >= len(o["moznosti"])):
             o["max"] = None
-        if not o["moznosti"]:
+        if o["typ"] == TYP_SKUPINA:
+            o["moznosti"], o["anonymna"] = [], False
+        elif not o["moznosti"]:
             o["typ"] = TYP_TEXT
         elif len(o["moznosti"]) < 2:
             raise ValueError(f"Otázka „{o['text']}“ musí mať aspoň dve možnosti.")
     for i, o in enumerate(otazky):
         if o["ak"]:
             q, m = o["ak"]
-            if not (0 <= q < i) or not (0 <= m < len(otazky[q]["moznosti"])):
+            if m is None:
+                if not (0 <= q < i) or otazky[q]["typ"] != TYP_SKUPINA:
+                    raise ValueError(f"Položka „{o['text']}“ musí patriť k otázke typu skupina položiek nad ňou.")
+            elif not (0 <= q < i) or not (0 <= m < len(otazky[q]["moznosti"])):
                 raise ValueError(f"Podotázka „{o['text']}“ musí nadväzovať na možnosť niektorej predchádzajúcej otázky.")
     return otazky
 
@@ -355,7 +368,9 @@ def nacitaj_otazky(db, anketa_id):
     # Podotázka: odkaz na nadradenú otázku a možnosť, pri ktorej sa zobrazí.
     for o in otazky:
         q, m = o.get("ak_otazka"), o.get("ak_moznost")
-        if q is not None and 0 <= q < len(otazky) and 0 <= (m or 0) < len(otazky[q]["moznosti"]):
+        if q is not None and 0 <= q < len(otazky) and m is None and otazky[q]["typ"] == TYP_SKUPINA:
+            o["rodic"] = {"otazka": otazky[q], "moznost": None}  # položka skupiny – zobrazí sa vždy s ňou
+        elif q is not None and 0 <= q < len(otazky) and m is not None and 0 <= m < len(otazky[q]["moznosti"]):
             o["rodic"] = {"otazka": otazky[q], "moznost": otazky[q]["moznosti"][m]}
     # Číslovanie: hlavné otázky 1, 2, 3…, podotázky podľa nadradenej otázky 1.1, 1.2…
     hlavne, pod = 0, {}
@@ -377,7 +392,8 @@ def aktivne_otazky(otazky, vybrane):
     aktivne = set()
     for o in otazky:
         r = o["rodic"]
-        if r is None or (r["otazka"]["id"] in aktivne and r["moznost"]["id"] in vybrane.get(r["otazka"]["id"], [])):
+        if r is None or (r["otazka"]["id"] in aktivne and (
+                r["moznost"] is None or r["moznost"]["id"] in vybrane.get(r["otazka"]["id"], []))):
             aktivne.add(o["id"])
     return aktivne
 
@@ -480,6 +496,9 @@ def text_odpovedi(anketa, otazky, odpovede, vpisy=None):
         if o["id"] not in aktivne:
             continue
         hodnoty = odpovede.get(o["id"], [])
+        if o["typ"] == TYP_SKUPINA:
+            riadky += [o["text"], ""]
+            continue
         if o["typ"] == TYP_TEXT:
             odpoved = hodnoty[0] if hodnoty else "–"
         else:
@@ -541,6 +560,8 @@ def dotaznik(anketa_id):
         for o in otazky:
             if o["id"] not in aktivne:
                 continue  # podotázka sa nezobrazila, odpoveď sa neukladá
+            if o["typ"] == TYP_SKUPINA:
+                continue  # len nadpis, odpovedá sa v položkách
             pole = f"otazka_{o['id']}"
             if o["typ"] == TYP_TEXT:
                 text = request.form.get(pole, "").strip()
@@ -843,7 +864,7 @@ def vysledky_ankety(db, anketa_id):
         o["odpovedalo"] = db.execute(
             "SELECT COUNT(DISTINCT d.hlas_id) FROM odpoved d JOIN hlas h ON h.id = d.hlas_id "
             "WHERE d.otazka_id = ? AND h.potvrdene = 1", (o["id"],)).fetchone()[0]
-        zaklad = o["odpovedalo"] if o["rodic"] else hlasov
+        zaklad = o["odpovedalo"] if o["rodic"] and o["rodic"]["moznost"] else hlasov
         for m in o["moznosti"]:
             m["pocet"] = db.execute(
                 "SELECT COUNT(*) FROM odpoved d JOIN hlas h ON h.id = d.hlas_id "
@@ -951,8 +972,11 @@ def export(anketa_id):
     w.writerow([])
     w.writerow(["Súhrn"])
     for o in otazky:
-        w.writerow([o["text"]] + ([f"podotázka – len ak v otázke {o['rodic']['cislo']} zvolil „{o['rodic']['moznost']['text']}“, "
-                                   f"odpovedalo {o['odpovedalo']}"] if o["rodic"] else []))
+        w.writerow([f"{o['cislo']}. {o['text']}"] + (
+            [f"podotázka – len ak v otázke {o['rodic']['cislo']} zvolil „{o['rodic']['moznost']['text']}“, "
+             f"odpovedalo {o['odpovedalo']}"] if o["rodic"] and o["rodic"]["moznost"] else []))
+        if o["typ"] == TYP_SKUPINA:
+            continue
         if o["typ"] == TYP_TEXT:
             for t in o["texty"]:
                 w.writerow(["", t])
@@ -964,7 +988,7 @@ def export(anketa_id):
                     w.writerow(["", "", "", v["text"], v["kto"] or "anonymne"])
         w.writerow([])
     w.writerow(["Hlasy jednotlivých členov"])
-    menovite = [o for o in otazky if not o["anonymna"]]
+    menovite = [o for o in otazky if not o["anonymna"] and o["typ"] != TYP_SKUPINA]
     w.writerow(["Odborárske číslo", "Meno", "Čas odoslania"] + [o["text"] for o in menovite])
     for h in hlasujuci:
         w.writerow([h["cislo"], h["meno"], h["cas"]] + [h["odpovede"].get(o["id"], "") for o in menovite])

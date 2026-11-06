@@ -13,10 +13,12 @@
     · {% if ukoncena %}Vypĺňanie je ukončené.{% elif anketa.koniec %}Vypĺňanie prebieha do {{ anketa.koniec|koniec }}.{% else %}Vypĺňanie prebieha.{% endif %}</p>
 
   {% for o in otazky %}
-    <section class="panel">
+    <section class="panel{% if o.typ == 'skupina' %} skupina-vysledky{% endif %}{% if o.rodic and not o.rodic.moznost %} polozka-vysledky{% endif %}">
       <h2>{{ o.cislo }}. {{ o.text }}{% if o.anonymna %} <span class="info">(anonymná)</span>{% endif %}</h2>
-      {% if o.rodic %}<p class="info">Podotázka – len pre tých, čo v otázke {{ o.rodic.cislo }} zvolili „{{ o.rodic.moznost.text }}“. Odpovedalo: {{ o.odpovedalo }}.</p>{% endif %}
-      {% if o.typ == 'text' %}
+      {% if o.typ == 'skupina' %}<p class="info">Odpovede sú v položkách nižšie.</p>{% endif %}
+      {% if o.rodic and o.rodic.moznost %}<p class="info">Podotázka – len pre tých, čo v otázke {{ o.rodic.cislo }} zvolili „{{ o.rodic.moznost.text }}“. Odpovedalo: {{ o.odpovedalo }}.</p>{% endif %}
+      {% if o.typ == 'skupina' %}
+      {% elif o.typ == 'text' %}
         {% if o.texty %}
           <ul class="texty">{% for t in o.texty_kto %}<li><span class="autor">{{ t.kto or 'anonymne' }}:</span> {{ t.text }}</li>{% endfor %}</ul>
         {% else %}
@@ -58,7 +60,7 @@
           <details class="kto">
             <summary><strong>{{ h.meno or 'bez mena' }}</strong> <span class="info">({{ h.cislo }}) · odoslané {{ h.cas }}</span></summary>
             <ol class="kto-odpovede">
-              {% for o in otazky if not o.anonymna and (not o.rodic or o.id in h.odpovede) %}
+              {% for o in otazky if not o.anonymna and o.typ != 'skupina' and (not o.rodic or not o.rodic.moznost or o.id in h.odpovede) %}
                 <li{% if o.rodic %} class="kto-pod"{% endif %}>
                   <span class="kto-otazka">{{ o.cislo }}. {{ o.text }}</span>
                   <span class="kto-odpoved">{{ h.odpovede.get(o.id) or '–' }}</span>
