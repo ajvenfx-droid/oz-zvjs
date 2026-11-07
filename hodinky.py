@@ -116,6 +116,17 @@ def aktualny_stav(db, h):
     return (so_zostatkom["zostatok"] if so_zostatkom else h["pociatocny_zostatok"]), posledny
 
 
+def minute_body(db, h):
+    """{id záznamu: minuté body} = predchádzajúci zapísaný zostatok − zostatok pri mene."""
+    minul, pred = {}, h["pociatocny_zostatok"]
+    for z in db.execute("SELECT id, typ, zostatok FROM hodinky_zaznam WHERE hodinky_id = ? AND zostatok IS NOT NULL "
+                        "ORDER BY datum, id", (h["id"],)):
+        if z["typ"] == "pozicanie" and pred is not None:
+            minul[z["id"]] = pred - z["zostatok"]
+        pred = z["zostatok"]
+    return minul
+
+
 def _mesiac(text):
     m = re.match(r"^(\d{4})-(\d{1,2})$", text or "")
     if m and 1 <= int(m.group(2)) <= 12:
@@ -219,8 +230,11 @@ def prehlad(slug):
         "WHERE h.zo_slug = ? AND z.typ = 'pozicanie' AND z.datum BETWEEN ? AND ? GROUP BY kluc "
         "ORDER BY dni DESC, kusov DESC", (slug, f"{rok}-01-01", f"{rok}-12-31"))]
     clenovia, _ = clenovia_zo(slug)
+    minul = {}
+    for h in stlpce:
+        minul.update(minute_body(db, h))
     return render_template(
-        "hodinky/prehlad.html", zo=zo, slug=slug, stav=stav, stlpce=stlpce, dni=dni, zaznamy=zaznamy,
+        "hodinky/prehlad.html", minul=minul, zo=zo, slug=slug, stav=stav, stlpce=stlpce, dni=dni, zaznamy=zaznamy,
         rok=rok, mesiac=mesiac, nazov_mesiaca=MESIACE[mesiac - 1], predch="%04d-%02d" % _posun(rok, mesiac, -1),
         dalsi="%04d-%02d" % _posun(rok, mesiac, 1), dnes=date.today().isoformat(), clenovia=clenovia,
         statistika=statistika, aktivne=[h for h in vsetky if h["aktivne"]])
@@ -236,14 +250,7 @@ def historia(slug, hodinky_id):
     zaznamy = db.execute("SELECT * FROM hodinky_zaznam WHERE hodinky_id = ? ORDER BY datum DESC, id DESC",
                          (h["id"],)).fetchall()
     zostatok, _ = aktualny_stav(db, h)
-    # minuté body = predchádzajúci zapísaný zostatok − zostatok pri mene
-    minul, pred = {}, h["pociatocny_zostatok"]
-    for z in reversed(zaznamy):
-        if z["zostatok"] is None:
-            continue
-        if z["typ"] == "pozicanie" and pred is not None:
-            minul[z["id"]] = pred - z["zostatok"]
-        pred = z["zostatok"]
+    minul = minute_body(db, h)
     pocty = {}
     for z in zaznamy:
         if z["typ"] == "pozicanie":
