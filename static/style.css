@@ -587,3 +587,9 @@ a.hodinky-karta:hover { border-color: var(--modra); box-shadow: 0 2px 8px rgba(0
 .rezervacia-formular { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 8px; }
 .zoznam-rezervacii li { display: flex; gap: 10px; align-items: center; }
 .zoznam-rezervacii form { display: inline; }
+.rezervacia-bodka.ciastocne { background: #fef3c7; color: #92400e; }
+.rezervacia-bodka small { font-weight: 400; }
+.rezervacia-den { cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rezervacia-casy { display: flex; flex-wrap: wrap; gap: 16px; }
+.rezervacia-zostatok { display: flex; gap: 6px; align-items: center; }
+.rezervacia-zostatok input { width: 150px; }

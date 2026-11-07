@@ -19,6 +19,7 @@ from evidencia import _bez_diakritiky, _nacitaj_zo, abecedne, vyzaduj
 bp = Blueprint("hodinky", __name__, url_prefix="/spravca/evidencia")
 bp_clen = Blueprint("hodinky_clen", __name__, url_prefix="/benefity")
 DNI_REZERVACIE = 30  # na koľko dní dopredu si člen môže rezervovať
+MAX_HODIN = 48  # rezervácia najviac na 2 dni
 DNI_TYZDNA = ["po", "ut", "st", "št", "pi", "so", "ne"]
 
 NEZISTENE = "Nezistené – nevie sa, kto mal"
@@ -50,15 +51,6 @@ def init_db(db):
             cas TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS hodinky_zaznam_datum ON hodinky_zaznam (hodinky_id, datum);
-        CREATE TABLE IF NOT EXISTS hodinky_rezervacia (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            hodinky_id INTEGER NOT NULL REFERENCES hodinky(id) ON DELETE CASCADE,
-            datum TEXT NOT NULL,
-            cislo TEXT NOT NULL,
-            meno TEXT NOT NULL DEFAULT '',
-            vytvorene TEXT NOT NULL DEFAULT '',
-            UNIQUE (hodinky_id, datum)
-        );
         CREATE TABLE IF NOT EXISTS benefit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             zo_slug TEXT NOT NULL,
@@ -69,6 +61,27 @@ def init_db(db):
         );
         """
     )
+    # rezervácie: čas od – do (pôvodne len deň, verzia 1.081)
+    stlpce = [r[1] for r in db.execute("PRAGMA table_info(hodinky_rezervacia)")]
+    if stlpce and "od" not in stlpce:
+        db.execute("ALTER TABLE hodinky_rezervacia RENAME TO hodinky_rezervacia_stara")
+    db.execute(
+        """CREATE TABLE IF NOT EXISTS hodinky_rezervacia (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            hodinky_id INTEGER NOT NULL REFERENCES hodinky(id) ON DELETE CASCADE,
+            od TEXT NOT NULL,                 -- YYYY-MM-DD HH:MM
+            do TEXT NOT NULL,
+            cislo TEXT NOT NULL,
+            meno TEXT NOT NULL DEFAULT '',
+            vytvorene TEXT NOT NULL DEFAULT '',
+            zaznam_id INTEGER                 -- záznam požičania so zostatkom, ktorý zapísal člen
+        )""")
+    if stlpce and "od" not in stlpce:
+        db.execute("INSERT INTO hodinky_rezervacia (hodinky_id, od, do, cislo, meno, vytvorene) "
+                   "SELECT hodinky_id, datum || ' 00:00', datum || ' 23:59', cislo, meno, vytvorene "
+                   "FROM hodinky_rezervacia_stara")
+        db.execute("DROP TABLE hodinky_rezervacia_stara")
+    db.commit()
     # prvé spustenie: ZO Banská Bystrica má benefit hodinky na plaváreň
     if db.execute("SELECT 1 FROM benefit LIMIT 1").fetchone() is None:
         db.execute("INSERT INTO benefit (zo_slug, nazov, popis, typ, poradie) VALUES (?, ?, ?, 'hodinky', 1)",
@@ -260,10 +273,12 @@ def prehlad(slug):
         minul.update(minute_body(db, h))
     rez = {}
     for r in db.execute("SELECT r.* FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
-                        "WHERE h.zo_slug = ? AND r.datum BETWEEN ? AND ?", (slug, od, do)):
-        rez[(r["datum"], r["hodinky_id"])] = r
+                        "WHERE h.zo_slug = ? AND r.zaznam_id IS NULL AND r.od <= ? AND r.do >= ?",
+                        (slug, do + " 23:59", od + " 00:00")):
+        for d in _dni_intervalu(r["od"], r["do"]):
+            rez.setdefault((d, r["hodinky_id"]), []).append(r)
     return render_template(
-        "hodinky/prehlad.html", minul=minul, rez=rez, rezervacie=rezervacie_zo(db, slug, date.today().isoformat()), zo=zo, slug=slug, stav=stav, stlpce=stlpce, dni=dni, zaznamy=zaznamy,
+        "hodinky/prehlad.html", minul=minul, rez=rez, rezervacie=rezervacie_zo(db, slug), zo=zo, slug=slug, stav=stav, stlpce=stlpce, dni=dni, zaznamy=zaznamy,
         rok=rok, mesiac=mesiac, nazov_mesiaca=MESIACE[mesiac - 1], predch="%04d-%02d" % _posun(rok, mesiac, -1),
         dalsi="%04d-%02d" % _posun(rok, mesiac, 1), dnes=date.today().isoformat(), clenovia=clenovia,
         aktivne=[h for h in vsetky if h["aktivne"]])
@@ -411,6 +426,7 @@ def zmaz_zaznam(slug, zaznam_id):
                    "WHERE z.id = ? AND h.zo_slug = ?", (zaznam_id, slug)).fetchone()
     if z is None:
         abort(404)
+    db.execute("UPDATE hodinky_rezervacia SET zaznam_id = NULL WHERE zaznam_id = ?", (zaznam_id,))
     db.execute("DELETE FROM hodinky_zaznam WHERE id = ?", (zaznam_id,))
     db.commit()
     flash("Záznam bol zmazaný.")
@@ -626,21 +642,57 @@ def export(slug):
 # --- rezervácia hodiniek členom ------------------------------------------------
 
 
-def _obsadene(db, slug, od, do):
-    """{(dátum, hodinky_id): ('rezervacia', riadok) | ('pozicanie', riadok)}"""
+def _cas(text):
+    """„YYYY-MM-DDTHH:MM“ z formulára -> „YYYY-MM-DD HH:MM“ alebo None."""
+    try:
+        return datetime.strptime((text or "").replace(" ", "T")[:16], "%Y-%m-%dT%H:%M").strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        return None
+
+
+def _dni_intervalu(od, do):
+    d1, d2 = date.fromisoformat(od[:10]), date.fromisoformat(do[:10])
+    return [date.fromordinal(o).isoformat() for o in range(d1.toordinal(), d2.toordinal() + 1)]
+
+
+def _kolizie(db, hodinky_id, od, do, okrem=None):
+    """Prekrýva sa interval s inou rezerváciou alebo s požičaním zapísaným predsedom (celý deň)?"""
+    if db.execute("SELECT 1 FROM hodinky_rezervacia WHERE hodinky_id = ? AND od < ? AND do > ? AND id IS NOT ?",
+                  (hodinky_id, do, od, okrem)).fetchone():
+        return True
+    return db.execute(
+        "SELECT 1 FROM hodinky_zaznam z WHERE z.hodinky_id = ? AND z.typ = 'pozicanie' AND z.datum BETWEEN ? AND ? "
+        "AND NOT EXISTS (SELECT 1 FROM hodinky_rezervacia r WHERE r.zaznam_id = z.id)",
+        (hodinky_id, od[:10], do[:10])).fetchone() is not None
+
+
+def _obsadenost(db, slug, od, do):
+    """{(dátum, hodinky_id): [(text, moje_cislo)]} – obsadené časy v jednotlivých dňoch."""
     obs = {}
     for z in db.execute("SELECT z.* FROM hodinky_zaznam z JOIN hodinky h ON h.id = z.hodinky_id WHERE h.zo_slug = ? "
-                        "AND z.typ = 'pozicanie' AND z.datum BETWEEN ? AND ?", (slug, od, do)):
-        obs[(z["datum"], z["hodinky_id"])] = ("pozicanie", z)
+                        "AND z.typ = 'pozicanie' AND z.datum BETWEEN ? AND ? "
+                        "AND NOT EXISTS (SELECT 1 FROM hodinky_rezervacia r WHERE r.zaznam_id = z.id)", (slug, od, do)):
+        obs.setdefault((z["datum"], z["hodinky_id"]), []).append(("celý deň", ""))
     for r in db.execute("SELECT r.* FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id WHERE h.zo_slug = ? "
-                        "AND r.datum BETWEEN ? AND ?", (slug, od, do)):
-        obs.setdefault((r["datum"], r["hodinky_id"]), ("rezervacia", r))
+                        "AND r.od <= ? AND r.do >= ? ORDER BY r.od", (slug, do + " 23:59", od + " 00:00")):
+        for d in _dni_intervalu(r["od"], r["do"]):
+            zac = r["od"][11:] if r["od"][:10] == d else "00:00"
+            kon = r["do"][11:] if r["do"][:10] == d else "24:00"
+            obs.setdefault((d, r["hodinky_id"]), []).append((f"{zac}–{kon}", r["cislo"]))
     return obs
 
 
-def rezervacie_zo(db, slug, od):
-    return db.execute("SELECT r.*, h.nazov FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
-                      "WHERE h.zo_slug = ? AND r.datum >= ? ORDER BY r.datum, h.poradie", (slug, od)).fetchall()
+def rezervacie_zo(db, slug):
+    """Aktuálne a budúce rezervácie a tie, pri ktorých ešte chýba zostatok."""
+    teraz = datetime.now().strftime("%Y-%m-%d %H:%M")
+    return db.execute("SELECT r.*, h.nazov, z.zostatok FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
+                      "LEFT JOIN hodinky_zaznam z ON z.id = r.zaznam_id "
+                      "WHERE h.zo_slug = ? AND (r.do >= ? OR r.zaznam_id IS NULL) AND r.od >= ? "
+                      "ORDER BY r.od, h.poradie", (slug, teraz, _pred_dnami(30))).fetchall()
+
+
+def _pred_dnami(n):
+    return date.fromordinal(date.today().toordinal() - n).isoformat()
 
 
 def _clen_zo(slug):
@@ -658,6 +710,10 @@ def _clen_zo(slug):
     return clen
 
 
+def _fmt(cas):
+    return datetime.strptime(cas, "%Y-%m-%d %H:%M").strftime("%d.%m.%Y %H:%M")
+
+
 @bp_clen.route("/<slug>/hodinky", methods=["GET", "POST"])
 def rezervacia(slug):
     clen = _clen_zo(slug)
@@ -666,59 +722,93 @@ def rezervacia(slug):
     db = get_db()
     zo = _nacitaj_zo(slug)[0]
     cislo = re.sub(r"\s+", "", clen["cislo"])
+    meno = clen["meno"] or cislo
     dnes = date.today()
-    od = dnes.isoformat()
-    do = date.fromordinal(dnes.toordinal() + DNI_REZERVACIE).isoformat()
+    teraz = datetime.now().strftime("%Y-%m-%d %H:%M")
+    hranica = date.fromordinal(dnes.toordinal() + DNI_REZERVACIE).isoformat() + " 23:59"
     hodinky = hodinky_zo(db, slug, aj_neaktivne=False)
+    spat = redirect(url_for("hodinky_clen.rezervacia", slug=slug))
     if request.method == "POST":
         f = request.form
-        if f.get("akcia") == "zrusit":
-            r = db.execute("SELECT r.id FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
-                           "WHERE r.id = ? AND r.cislo = ? AND h.zo_slug = ? AND r.datum >= ?",
-                           (int(f.get("rezervacia_id", 0) or 0), cislo, slug, od)).fetchone()
-            if r:
-                db.execute("DELETE FROM hodinky_rezervacia WHERE id = ?", (r["id"],))
-                db.commit()
-                flash("Rezervácia bola zrušená.")
-            return redirect(url_for("hodinky_clen.rezervacia", slug=slug))
-        datum = _datum(f.get("datum"))
-        vybrane = [h for h in hodinky if f.get(f"hodinky_{h['id']}")]
-        if not datum or not od <= datum <= do:
-            flash(f"Vyberte deň od dnes do {DNI_REZERVACIE} dní.")
-        elif not vybrane:
-            flash("Označte aspoň jedny voľné hodinky.")
-        else:
-            obs = _obsadene(db, slug, datum, datum)
-            if any((datum, h["id"]) in obs for h in vybrane):
-                flash("Niektoré z vybraných hodiniek si medzitým rezervoval niekto iný. Vyberte iné.")
+        akcia = f.get("akcia")
+        if akcia in ("zrusit", "zostatok"):
+            r = db.execute("SELECT r.*, h.nazov FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
+                           "WHERE r.id = ? AND r.cislo = ? AND h.zo_slug = ?",
+                           (int(f.get("rezervacia_id", 0) or 0), cislo, slug)).fetchone()
+            if r is None:
+                abort(404)
+            if akcia == "zrusit":
+                if r["od"] <= teraz:
+                    flash("Rezervácia už začala, nedá sa zrušiť.")
+                else:
+                    db.execute("DELETE FROM hodinky_rezervacia WHERE id = ?", (r["id"],))
+                    db.commit()
+                    flash("Rezervácia bola zrušená.")
+                return spat
+            zostatok = f.get("zostatok", "").strip()
+            if r["od"] > teraz:
+                flash("Zostatok sa dá zapísať až po začiatku rezervácie.")
+            elif not re.fullmatch(r"\d+", zostatok):
+                flash("Zostatok zadajte ako celé číslo.")
             else:
                 cas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                meno = clen["meno"] or cislo
-                for h in vybrane:
-                    db.execute("INSERT INTO hodinky_rezervacia (hodinky_id, datum, cislo, meno, vytvorene) "
-                               "VALUES (?, ?, ?, ?, ?)", (h["id"], datum, cislo, meno, cas))
+                if r["zaznam_id"] and db.execute("SELECT 1 FROM hodinky_zaznam WHERE id = ?", (r["zaznam_id"],)).fetchone():
+                    db.execute("UPDATE hodinky_zaznam SET zostatok = ?, zapisal = ?, cas = ? WHERE id = ?",
+                               (int(zostatok), meno, cas, r["zaznam_id"]))
+                else:
+                    zid = db.execute(
+                        "INSERT INTO hodinky_zaznam (hodinky_id, datum, typ, cislo, meno, zostatok, zapisal, cas) "
+                        "VALUES (?, ?, 'pozicanie', ?, ?, ?, ?, ?)",
+                        (r["hodinky_id"], r["od"][:10], cislo, meno, int(zostatok), meno, cas)).lastrowid
+                    db.execute("UPDATE hodinky_rezervacia SET zaznam_id = ? WHERE id = ?", (zid, r["id"]))
                 db.commit()
-                flash(f"Rezervované na {datetime.strptime(datum, '%Y-%m-%d'):%d.%m.%Y}: hodinky "
-                      + ", ".join(h["nazov"] for h in vybrane) + ".")
-                return redirect(url_for("hodinky_clen.rezervacia", slug=slug))
-        return redirect(url_for("hodinky_clen.rezervacia", slug=slug, datum=f.get("datum") or None))
-    obs = _obsadene(db, slug, od, do)
+                flash(f"Zapísaný zostatok {zostatok} pri hodinkách {r['nazov']}. Ďakujeme.")
+            return spat
+        od, do = _cas(f.get("od")), _cas(f.get("do"))
+        vybrane = [h for h in hodinky if f.get(f"hodinky_{h['id']}")]
+        if not od or not do:
+            flash("Zadajte dátum a čas od – do.")
+        elif do <= od:
+            flash("Čas „do“ musí byť neskôr ako „od“.")
+        elif (datetime.strptime(do, "%Y-%m-%d %H:%M") - datetime.strptime(od, "%Y-%m-%d %H:%M")).total_seconds() \
+                > MAX_HODIN * 3600:
+            flash("Rezervácia môže byť najviac na 2 dni (48 hodín).")
+        elif od < dnes.isoformat() + " 00:00" or od > hranica:
+            flash(f"Začiatok rezervácie musí byť od dnes do {DNI_REZERVACIE} dní.")
+        elif not vybrane:
+            flash("Označte aspoň jedny hodinky.")
+        elif any(_kolizie(db, h["id"], od, do) for h in vybrane):
+            obs = [h["nazov"] for h in vybrane if _kolizie(db, h["id"], od, do)]
+            flash("V tomto čase sú obsadené hodinky " + ", ".join(obs) + ". Vyberte iný čas alebo iné hodinky.")
+        else:
+            cas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for h in vybrane:
+                db.execute("INSERT INTO hodinky_rezervacia (hodinky_id, od, do, cislo, meno, vytvorene) "
+                           "VALUES (?, ?, ?, ?, ?, ?)", (h["id"], od, do, cislo, meno, cas))
+            db.commit()
+            flash(f"Rezervované {_fmt(od)} – {_fmt(do)}: hodinky " + ", ".join(h["nazov"] for h in vybrane) + ".")
+            return spat
+        return redirect(url_for("hodinky_clen.rezervacia", slug=slug, od=f.get("od") or None, do=f.get("do") or None))
+    obs = _obsadenost(db, slug, dnes.isoformat(), hranica[:10])
     dni = []
     for i in range(DNI_REZERVACIE + 1):
         d = date.fromordinal(dnes.toordinal() + i)
         iso = d.isoformat()
         stav = []
         for h in hodinky:
-            o = obs.get((iso, h["id"]))
-            stav.append({"h": h, "volne": o is None, "moje": o is not None and o[1]["cislo"] == cislo})
-        dni.append({"iso": iso, "d": d, "den": DNI_TYZDNA[d.weekday()], "vikend": d.weekday() >= 5, "stav": stav,
-                    "volnych": sum(1 for x in stav if x["volne"])})
-    moje = db.execute("SELECT r.*, h.nazov FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
-                      "WHERE r.cislo = ? AND h.zo_slug = ? AND r.datum >= ? ORDER BY r.datum, h.poradie",
-                      (cislo, slug, od)).fetchall()
-    vybrany = _datum(request.args.get("datum"))
+            o = obs.get((iso, h["id"]), [])
+            stav.append({"h": h, "casy": [t for t, _ in o], "moje": bool(o) and all(c == cislo for _, c in o),
+                         "cely": any(t in ("celý deň", "00:00–24:00") for t, _ in o)})
+        dni.append({"iso": iso, "d": d, "den": DNI_TYZDNA[d.weekday()], "vikend": d.weekday() >= 5, "stav": stav})
+    moje = db.execute("SELECT r.*, h.nazov, z.zostatok FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
+                      "LEFT JOIN hodinky_zaznam z ON z.id = r.zaznam_id "
+                      "WHERE r.cislo = ? AND h.zo_slug = ? AND (r.do >= ? OR r.od >= ?) ORDER BY r.od, h.poradie",
+                      (cislo, slug, teraz, _pred_dnami(30))).fetchall()
+    stav_hodiniek = {h["id"]: aktualny_stav(db, h)[0] for h in hodinky}
     return render_template("hodinky/rezervacia.html", zo=zo, slug=slug, dni=dni, hodinky=hodinky, moje=moje,
-                           vybrany=vybrany if vybrany and od <= vybrany <= do else None)
+                           teraz=teraz, stav_hodiniek=stav_hodiniek, max_od=hranica[:10] + "T23:59",
+                           min_od=dnes.isoformat() + "T00:00", od=request.args.get("od", ""),
+                           do=request.args.get("do", ""))
 
 
 @bp.route("/<slug>/hodinky/rezervacia/<int:rezervacia_id>/zrusit", methods=["POST"])
