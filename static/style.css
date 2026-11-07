@@ -547,8 +547,9 @@ summary.rozbalit strong { font-weight: 600; }
 .polozka-vysledky { margin-left: 28px; border-left: 4px solid #9a7f2a; }
 
 /* hodinky na plaváreň */
-.hodinky-stav { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
-.hodinky-karta { border: 1px solid #d5dde6; border-radius: 8px; padding: 10px 14px; min-width: 150px; display: flex; flex-direction: column; gap: 2px; background: #fff; }
+.hodinky-stav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+@media (max-width: 700px) { .hodinky-stav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.hodinky-karta { border: 1px solid #d5dde6; border-radius: 8px; padding: 10px 14px; min-width: 0; display: flex; flex-direction: column; gap: 2px; background: #fff; }
 .hodinky-zostatok { font-size: 1.6rem; font-weight: 700; color: var(--modra); }
 .hodinky-vyber { display: flex; gap: 10px; align-items: center; margin: 4px 0; }
 .hodinky-vyber input[type=number] { width: 110px; }
