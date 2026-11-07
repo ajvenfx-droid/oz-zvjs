@@ -18,6 +18,8 @@ from evidencia import _bez_diakritiky, _nacitaj_zo, abecedne, vyzaduj
 
 bp = Blueprint("hodinky", __name__, url_prefix="/spravca/evidencia")
 
+NEZISTENE = "Nezistené – nevie sa, kto mal"
+
 MESIACE = ["január", "február", "marec", "apríl", "máj", "jún", "júl", "august", "september", "október",
            "november", "december"]
 
@@ -37,7 +39,7 @@ def init_db(db):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             hodinky_id INTEGER NOT NULL REFERENCES hodinky(id) ON DELETE CASCADE,
             datum TEXT NOT NULL,              -- YYYY-MM-DD
-            typ TEXT NOT NULL DEFAULT 'pozicanie',   -- pozicanie | dobitie
+            typ TEXT NOT NULL DEFAULT 'pozicanie',   -- pozicanie | dobitie | rozdiel (úbytok, nevie sa kto mal)
             cislo TEXT NOT NULL DEFAULT '',   -- identifikačné číslo člena, ak sa dalo určiť
             meno TEXT NOT NULL DEFAULT '',
             zostatok INTEGER,                 -- zostatok na hodinkách po vrátení
@@ -61,6 +63,23 @@ def init_db(db):
                    ("banska-bystrica", "PLAVÁREŇ - permanentky",
                     "Požičiavanie hodiniek (permanentiek) na plaváreň pre členov ZO."))
         db.commit()
+    # stav na začiatku mesiaca nižší ako predtým = nezistený úbytok
+    for z in db.execute("SELECT * FROM hodinky_zaznam WHERE typ = 'dobitie' AND zapisal = 'import'").fetchall():
+        pred = db.execute("SELECT zostatok FROM hodinky_zaznam WHERE hodinky_id = ? AND datum < ? AND zostatok IS NOT NULL "
+                          "ORDER BY datum DESC, id DESC LIMIT 1", (z["hodinky_id"], z["datum"])).fetchone()
+        if pred is not None and z["zostatok"] is not None and z["zostatok"] < pred["zostatok"]:
+            db.execute("UPDATE hodinky_zaznam SET typ = 'rozdiel', meno = ? WHERE id = ?", (NEZISTENE, z["id"]))
+    # ZO BB, hodinky 4: tabuľka v auguste 2026 začína stavom 17 (v júni skončili na 35) – doplní sa raz
+    h4 = db.execute("SELECT id FROM hodinky WHERE zo_slug = 'banska-bystrica' AND nazov = '4'").fetchone()
+    if h4 and not db.execute("SELECT 1 FROM hodinky_zaznam WHERE hodinky_id = ? AND datum = '2026-08-01' "
+                             "AND typ IN ('rozdiel', 'dobitie')", (h4["id"],)).fetchone():
+        pred = db.execute("SELECT zostatok FROM hodinky_zaznam WHERE hodinky_id = ? AND datum < '2026-08-01' "
+                          "AND zostatok IS NOT NULL ORDER BY datum DESC, id DESC LIMIT 1", (h4["id"],)).fetchone()
+        if pred is not None and pred["zostatok"] == 35:
+            db.execute("INSERT INTO hodinky_zaznam (hodinky_id, datum, typ, meno, zostatok, zapisal, cas) "
+                       "VALUES (?, '2026-08-01', 'rozdiel', ?, 17, 'import', ?)",
+                       (h4["id"], NEZISTENE, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    db.commit()
     # premenovanie podľa želania predsedu ZO BB
     db.execute("UPDATE benefit SET nazov = 'PLAVÁREŇ - permanentky' WHERE typ = 'hodinky' AND nazov = 'Hodinky na plaváreň'")
     db.commit()
@@ -121,7 +140,7 @@ def minute_body(db, h):
     minul, pred = {}, h["pociatocny_zostatok"]
     for z in db.execute("SELECT id, typ, zostatok FROM hodinky_zaznam WHERE hodinky_id = ? AND zostatok IS NOT NULL "
                         "ORDER BY datum, id", (h["id"],)):
-        if z["typ"] == "pozicanie" and pred is not None:
+        if z["typ"] in ("pozicanie", "rozdiel") and pred is not None:
             minul[z["id"]] = pred - z["zostatok"]
         pred = z["zostatok"]
     return minul
@@ -287,7 +306,13 @@ def statistika(slug):
     platne = {c[1]: c[2] for c in clenovia if c[1]}
     ludia = {}
     for z in db.execute("SELECT z.* FROM hodinky_zaznam z JOIN hodinky h ON h.id = z.hodinky_id WHERE h.zo_slug = ? "
-                        "AND z.typ = 'pozicanie' AND z.datum BETWEEN ? AND ? ORDER BY z.datum, z.id", (slug, od, do)):
+                        "AND z.typ IN ('pozicanie', 'rozdiel') AND z.datum BETWEEN ? AND ? ORDER BY z.datum, z.id",
+                        (slug, od, do)):
+        if z["typ"] == "rozdiel":
+            p = ludia.setdefault("", {"meno": NEZISTENE, "cislo": "", "clen": False, "nezistene": True,
+                                      "body": 0, "pozicani": 0, "dni": set(), "bez_zostatku": 0})
+            p["body"] += minul.get(z["id"]) or 0
+            continue
         cislo = z["cislo"] if z["cislo"] in platne else index.get(_slova(z["meno"]), "")
         k = cislo or "?" + " ".join(sorted(_slova(z["meno"])))
         p = ludia.setdefault(k, {"meno": platne.get(cislo) or z["meno"], "cislo": cislo, "clen": bool(cislo),
@@ -298,7 +323,8 @@ def statistika(slug):
             p["body"] += minul[z["id"]]
         else:
             p["bez_zostatku"] += 1
-    zoznam = sorted(ludia.values(), key=lambda p: (not p["clen"], -p["body"], abecedne(p["meno"])))
+    zoznam = sorted(ludia.values(), key=lambda p: (p.get("nezistene", False), not p["clen"], -p["body"],
+                                                    abecedne(p["meno"])))
     for p in zoznam:
         p["dni"] = len(p["dni"])
     roky = sorted({int(r[0][:4]) for r in db.execute(
@@ -307,7 +333,7 @@ def statistika(slug):
     return render_template("hodinky/statistika.html", zo=zo, slug=slug, zoznam=zoznam, obdobie=obdobie, popis=popis,
                            od=od, do=do, roky=roky, rok=a.get("rok") or str(dnes.year),
                            mesiac=a.get("mesiac") or dnes.strftime("%Y-%m"),
-                           spolu=sum(p["body"] for p in zoznam), pozicani=sum(p["pozicani"] for p in zoznam))
+                           spolu=sum(p["body"] for p in zoznam), osob=sum(1 for p in zoznam if not p.get("nezistene")), pozicani=sum(p["pozicani"] for p in zoznam))
 
 
 def _spat(slug):
@@ -506,9 +532,11 @@ def importuj(slug):
         pred = db.execute("SELECT zostatok FROM hodinky_zaznam WHERE hodinky_id = ? AND datum < ? AND zostatok IS NOT NULL "
                           "ORDER BY datum DESC, id DESC LIMIT 1", (ids[nazov], datum)).fetchone()
         if pred is not None and pred["zostatok"] != z:
+            rozdiel = z < pred["zostatok"]
             db.execute("INSERT INTO hodinky_zaznam (hodinky_id, datum, typ, meno, zostatok, zapisal, cas) "
-                       "VALUES (?, ?, 'dobitie', 'Stav na začiatku mesiaca (z tabuľky)', ?, 'import', ?)",
-                       (ids[nazov], datum, z, cas))
+                       "VALUES (?, ?, ?, ?, ?, 'import', ?)",
+                       (ids[nazov], datum, "rozdiel" if rozdiel else "dobitie",
+                        NEZISTENE if rozdiel else "Stav na začiatku mesiaca (z tabuľky)", z, cas))
     db.commit()
     flash(f"Nahraté: {len(nove_hodinky)} hodiniek, {len(zaznamy)} záznamov."
           + (f" {len(nenajdene)} mien sa nenašlo v zozname členov ZO (uložené podľa súboru)." if nenajdene else ""))

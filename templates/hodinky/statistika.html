@@ -25,12 +25,19 @@
     prepniObdobie();
   </script>
   {% if zoznam %}
-    <p>Spolu <strong>{{ zoznam|length }}</strong> {{ 'osoba' if zoznam|length == 1 else ('osoby' if zoznam|length < 5 else 'osôb') }},
+    <p>Spolu <strong>{{ osob }}</strong> {{ 'osoba' if osob == 1 else ('osoby' if 1 < osob < 5 else 'osôb') }},
       {{ pozicani }} požičaní, minuté body spolu <strong>{{ spolu }}</strong>.</p>
     <table class="tabulka">
       <thead><tr><th>#</th><th>Člen</th><th class="cislo">Minuté body</th><th class="cislo">Požičaní</th><th class="cislo">Dní</th></tr></thead>
       <tbody>
         {% for p in zoznam %}
+          {% if p.nezistene %}
+          <tr class="nezistene">
+            <td></td>
+            <td><em>{{ p.meno }}</em> <span class="info">(úbytok bodov bez zápisu)</span></td>
+            <td class="cislo"><strong>{{ p.body }}</strong></td><td class="cislo">–</td><td class="cislo">–</td>
+          </tr>
+          {% else %}
           <tr{% if not p.clen %} class="nie-clen"{% endif %}>
             <td>{{ loop.index }}.</td>
             <td>{{ p.meno }}{% if p.cislo %} ({{ p.cislo }}){% else %} – nie je v zozname členov ZO{% endif %}</td>
@@ -38,6 +45,7 @@
             <td class="cislo">{{ p.pozicani }}</td>
             <td class="cislo">{{ p.dni }}</td>
           </tr>
+          {% endif %}
         {% endfor %}
       </tbody>
     </table>

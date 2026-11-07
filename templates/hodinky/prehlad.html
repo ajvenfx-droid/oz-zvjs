@@ -68,7 +68,7 @@
                 {% for h in stlpce %}
                   <td>
                     {% for z in zaznamy.get((iso, h.id), []) %}
-                      <div class="hodinky-zaznam{% if z.typ == 'dobitie' %} hodinky-dobitie{% endif %}">
+                      <div class="hodinky-zaznam{% if z.typ == 'dobitie' %} hodinky-dobitie{% elif z.typ == 'rozdiel' %} hodinky-rozdiel{% endif %}">
                         {{ z.meno }}{% if z.id in minul %} · <span class="hodinky-minul" title="minul">{{ "−%d"|format(minul[z.id]) if minul[z.id] >= 0 else "+%d"|format(-minul[z.id]) }}</span>{% endif %}{% if z.zostatok is not none %} · <strong title="zostatok">{{ z.zostatok }}</strong>{% endif %}
                         {% if moze_menit %}
                           <form method="post" action="{{ url_for('hodinky.zmaz_zaznam', slug=slug, zaznam_id=z.id) }}"

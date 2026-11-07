@@ -571,3 +571,5 @@ a.hodinky-karta:hover { border-color: var(--modra); box-shadow: 0 2px 8px rgba(0
 .hodinky-minul { color: #b42318; }
 .hodinky-obdobie { flex-wrap: wrap; gap: 8px; align-items: center; }
 .tabulka tr.nie-clen td { color: #b42318; }
+.hodinky-rozdiel, .tabulka tr.hodinky-rozdiel td { color: #8a5a00; font-style: italic; }
+.tabulka tr.nezistene td { border-top: 2px solid #d5dde6; color: #8a5a00; }
