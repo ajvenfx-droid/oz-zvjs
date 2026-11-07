@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Rezervácia hodiniek na plaváreň – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('obsah.stranka', slug='benefity') }}">&larr; Benefity</a>
+  <h1 class="nadpis">Plaváreň – rezervácia hodiniek</h1>
+  <p class="info">ZO {{ zo.mesto }}. Vyberte deň a voľné hodinky. Hodinky si vyzdvihnete u predsedu ZO.</p>
+
+  {% if moje %}
+    <section class="panel">
+      <h2>Moje rezervácie</h2>
+      <ul class="zoznam-rezervacii">
+        {% for r in moje %}
+          <li>{{ r.datum|datum }} – hodinky {{ r.nazov }}
+            <form method="post" onsubmit="return confirm('Zrušiť rezerváciu {{ r.datum|datum }}, hodinky {{ r.nazov }}?');">
+              <input type="hidden" name="akcia" value="zrusit"><input type="hidden" name="rezervacia_id" value="{{ r.id }}">
+              <button type="submit" class="odkaz-tlacidlo">Zrušiť</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if not hodinky %}
+    <p class="info">Momentálne nie sú k dispozícii žiadne hodinky.</p>
+  {% else %}
+    <section class="panel">
+      <h2>Voľné termíny</h2>
+      <div class="rezervacia-dni">
+        {% for d in dni %}
+          <details class="rezervacia-den{% if d.vikend %} vikend{% endif %}{% if not d.volnych %} plne{% endif %}" {% if d.iso == vybrany %}open{% endif %}>
+            <summary>
+              <span class="rezervacia-datum">{{ d.den }} {{ d.d.day }}.{{ d.d.month }}.</span>
+              {% for x in d.stav %}<span class="rezervacia-bodka {{ 'moje' if x.moje else ('volne' if x.volne else 'obsadene') }}" title="hodinky {{ x.h.nazov }}: {{ 'vaša rezervácia' if x.moje else ('voľné' if x.volne else 'obsadené') }}">{{ x.h.nazov }}</span>{% endfor %}
+              <span class="info">{{ 'obsadené' if not d.volnych else 'voľné: %d'|format(d.volnych) }}</span>
+            </summary>
+            {% if d.volnych %}
+              <form method="post" class="rezervacia-formular">
+                <input type="hidden" name="datum" value="{{ d.iso }}">
+                {% for x in d.stav if x.volne %}
+                  <label><input type="checkbox" name="hodinky_{{ x.h.id }}" value="1"> hodinky {{ x.h.nazov }}</label>
+                {% endfor %}
+                <button type="submit" class="tlacidlo">Rezervovať</button>
+              </form>
+            {% endif %}
+          </details>
+        {% endfor %}
+      </div>
+      <p class="info"><span class="rezervacia-bodka volne">1</span> voľné · <span class="rezervacia-bodka obsadene">1</span> obsadené · <span class="rezervacia-bodka moje">1</span> vaša rezervácia</p>
+    </section>
+  {% endif %}
+{% endblock %}

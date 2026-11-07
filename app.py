@@ -88,6 +88,7 @@ app.register_blueprint(ucet.bp)
 app.register_blueprint(obsah.bp)
 app.register_blueprint(evidencia.bp)
 app.register_blueprint(hodinky.bp)
+app.register_blueprint(hodinky.bp_clen)
 app.register_blueprint(nasadenie.bp)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # nahrávané dokumenty
 

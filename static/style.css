@@ -573,3 +573,17 @@ a.hodinky-karta:hover { border-color: var(--modra); box-shadow: 0 2px 8px rgba(0
 .tabulka tr.nie-clen td { color: #b42318; }
 .hodinky-rozdiel, .tabulka tr.hodinky-rozdiel td { color: #8a5a00; font-style: italic; }
 .tabulka tr.nezistene td { border-top: 2px solid #d5dde6; color: #8a5a00; }
+.hodinky-rezervacia { color: #1d4ed8; font-style: italic; }
+.rezervacia-dni { display: flex; flex-direction: column; gap: 4px; }
+.rezervacia-den { border: 1px solid #e3e8ee; border-radius: 6px; padding: 6px 10px; background: #fff; }
+.rezervacia-den.vikend { background: #f6f7f9; }
+.rezervacia-den summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rezervacia-den.plne summary { cursor: default; opacity: .7; }
+.rezervacia-datum { display: inline-block; min-width: 70px; font-weight: 600; }
+.rezervacia-bodka { display: inline-block; min-width: 24px; text-align: center; border-radius: 12px; padding: 1px 6px; font-size: .85rem; font-weight: 600; }
+.rezervacia-bodka.volne { background: #dcfce7; color: #166534; }
+.rezervacia-bodka.obsadene { background: #fee2e2; color: #991b1b; }
+.rezervacia-bodka.moje { background: #dbeafe; color: #1e40af; }
+.rezervacia-formular { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 8px; }
+.zoznam-rezervacii li { display: flex; gap: 10px; align-items: center; }
+.zoznam-rezervacii form { display: inline; }

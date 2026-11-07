@@ -14,6 +14,7 @@
         <div class="benefit">
           <h3>{{ b.nazov }}</h3>
           {% if b.popis %}<div>{{ b.popis|text }}</div>{% endif %}
+          {% if b.typ == 'hodinky' %}<p><a class="tlacidlo" href="{{ url_for('hodinky_clen.rezervacia', slug=z.zo.slug) }}">Rezervovať hodinky</a></p>{% endif %}
         </div>
       {% else %}
         <p class="info">Vaša ZO zatiaľ nemá nastavené žiadne benefity.</p>

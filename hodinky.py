@@ -17,6 +17,9 @@ from db import get_db
 from evidencia import _bez_diakritiky, _nacitaj_zo, abecedne, vyzaduj
 
 bp = Blueprint("hodinky", __name__, url_prefix="/spravca/evidencia")
+bp_clen = Blueprint("hodinky_clen", __name__, url_prefix="/benefity")
+DNI_REZERVACIE = 30  # na koľko dní dopredu si člen môže rezervovať
+DNI_TYZDNA = ["po", "ut", "st", "št", "pi", "so", "ne"]
 
 NEZISTENE = "Nezistené – nevie sa, kto mal"
 
@@ -47,6 +50,15 @@ def init_db(db):
             cas TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS hodinky_zaznam_datum ON hodinky_zaznam (hodinky_id, datum);
+        CREATE TABLE IF NOT EXISTS hodinky_rezervacia (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            hodinky_id INTEGER NOT NULL REFERENCES hodinky(id) ON DELETE CASCADE,
+            datum TEXT NOT NULL,
+            cislo TEXT NOT NULL,
+            meno TEXT NOT NULL DEFAULT '',
+            vytvorene TEXT NOT NULL DEFAULT '',
+            UNIQUE (hodinky_id, datum)
+        );
         CREATE TABLE IF NOT EXISTS benefit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             zo_slug TEXT NOT NULL,
@@ -246,8 +258,12 @@ def prehlad(slug):
     minul = {}
     for h in stlpce:
         minul.update(minute_body(db, h))
+    rez = {}
+    for r in db.execute("SELECT r.* FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
+                        "WHERE h.zo_slug = ? AND r.datum BETWEEN ? AND ?", (slug, od, do)):
+        rez[(r["datum"], r["hodinky_id"])] = r
     return render_template(
-        "hodinky/prehlad.html", minul=minul, zo=zo, slug=slug, stav=stav, stlpce=stlpce, dni=dni, zaznamy=zaznamy,
+        "hodinky/prehlad.html", minul=minul, rez=rez, rezervacie=rezervacie_zo(db, slug, date.today().isoformat()), zo=zo, slug=slug, stav=stav, stlpce=stlpce, dni=dni, zaznamy=zaznamy,
         rok=rok, mesiac=mesiac, nazov_mesiaca=MESIACE[mesiac - 1], predch="%04d-%02d" % _posun(rok, mesiac, -1),
         dalsi="%04d-%02d" % _posun(rok, mesiac, 1), dnes=date.today().isoformat(), clenovia=clenovia,
         aktivne=[h for h in vsetky if h["aktivne"]])
@@ -605,3 +621,115 @@ def export(slug):
     wb.save(out)
     return Response(out.getvalue(), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="hodinky-{slug}.xlsx"'})
+
+
+# --- rezervácia hodiniek členom ------------------------------------------------
+
+
+def _obsadene(db, slug, od, do):
+    """{(dátum, hodinky_id): ('rezervacia', riadok) | ('pozicanie', riadok)}"""
+    obs = {}
+    for z in db.execute("SELECT z.* FROM hodinky_zaznam z JOIN hodinky h ON h.id = z.hodinky_id WHERE h.zo_slug = ? "
+                        "AND z.typ = 'pozicanie' AND z.datum BETWEEN ? AND ?", (slug, od, do)):
+        obs[(z["datum"], z["hodinky_id"])] = ("pozicanie", z)
+    for r in db.execute("SELECT r.* FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id WHERE h.zo_slug = ? "
+                        "AND r.datum BETWEEN ? AND ?", (slug, od, do)):
+        obs.setdefault((r["datum"], r["hodinky_id"]), ("rezervacia", r))
+    return obs
+
+
+def rezervacie_zo(db, slug, od):
+    return db.execute("SELECT r.*, h.nazov FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
+                      "WHERE h.zo_slug = ? AND r.datum >= ? ORDER BY r.datum, h.poradie", (slug, od)).fetchall()
+
+
+def _clen_zo(slug):
+    """Prihlásený člen, ktorý patrí do ZO s benefitom hodiniek; inak presmerovanie / 403."""
+    from anketa import zo_clena
+
+    clen = g.get("clen")
+    if clen is None:
+        return None
+    db = get_db()
+    if slug not in zo_clena(db, clen["cislo"]) and clen["zo_slug"] != slug:
+        abort(403)
+    if not db.execute("SELECT 1 FROM benefit WHERE zo_slug = ? AND typ = 'hodinky'", (slug,)).fetchone():
+        abort(404)
+    return clen
+
+
+@bp_clen.route("/<slug>/hodinky", methods=["GET", "POST"])
+def rezervacia(slug):
+    clen = _clen_zo(slug)
+    if clen is None:
+        return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+    db = get_db()
+    zo = _nacitaj_zo(slug)[0]
+    cislo = re.sub(r"\s+", "", clen["cislo"])
+    dnes = date.today()
+    od = dnes.isoformat()
+    do = date.fromordinal(dnes.toordinal() + DNI_REZERVACIE).isoformat()
+    hodinky = hodinky_zo(db, slug, aj_neaktivne=False)
+    if request.method == "POST":
+        f = request.form
+        if f.get("akcia") == "zrusit":
+            r = db.execute("SELECT r.id FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
+                           "WHERE r.id = ? AND r.cislo = ? AND h.zo_slug = ? AND r.datum >= ?",
+                           (int(f.get("rezervacia_id", 0) or 0), cislo, slug, od)).fetchone()
+            if r:
+                db.execute("DELETE FROM hodinky_rezervacia WHERE id = ?", (r["id"],))
+                db.commit()
+                flash("Rezervácia bola zrušená.")
+            return redirect(url_for("hodinky_clen.rezervacia", slug=slug))
+        datum = _datum(f.get("datum"))
+        vybrane = [h for h in hodinky if f.get(f"hodinky_{h['id']}")]
+        if not datum or not od <= datum <= do:
+            flash(f"Vyberte deň od dnes do {DNI_REZERVACIE} dní.")
+        elif not vybrane:
+            flash("Označte aspoň jedny voľné hodinky.")
+        else:
+            obs = _obsadene(db, slug, datum, datum)
+            if any((datum, h["id"]) in obs for h in vybrane):
+                flash("Niektoré z vybraných hodiniek si medzitým rezervoval niekto iný. Vyberte iné.")
+            else:
+                cas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                meno = clen["meno"] or cislo
+                for h in vybrane:
+                    db.execute("INSERT INTO hodinky_rezervacia (hodinky_id, datum, cislo, meno, vytvorene) "
+                               "VALUES (?, ?, ?, ?, ?)", (h["id"], datum, cislo, meno, cas))
+                db.commit()
+                flash(f"Rezervované na {datetime.strptime(datum, '%Y-%m-%d'):%d.%m.%Y}: hodinky "
+                      + ", ".join(h["nazov"] for h in vybrane) + ".")
+                return redirect(url_for("hodinky_clen.rezervacia", slug=slug))
+        return redirect(url_for("hodinky_clen.rezervacia", slug=slug, datum=f.get("datum") or None))
+    obs = _obsadene(db, slug, od, do)
+    dni = []
+    for i in range(DNI_REZERVACIE + 1):
+        d = date.fromordinal(dnes.toordinal() + i)
+        iso = d.isoformat()
+        stav = []
+        for h in hodinky:
+            o = obs.get((iso, h["id"]))
+            stav.append({"h": h, "volne": o is None, "moje": o is not None and o[1]["cislo"] == cislo})
+        dni.append({"iso": iso, "d": d, "den": DNI_TYZDNA[d.weekday()], "vikend": d.weekday() >= 5, "stav": stav,
+                    "volnych": sum(1 for x in stav if x["volne"])})
+    moje = db.execute("SELECT r.*, h.nazov FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
+                      "WHERE r.cislo = ? AND h.zo_slug = ? AND r.datum >= ? ORDER BY r.datum, h.poradie",
+                      (cislo, slug, od)).fetchall()
+    vybrany = _datum(request.args.get("datum"))
+    return render_template("hodinky/rezervacia.html", zo=zo, slug=slug, dni=dni, hodinky=hodinky, moje=moje,
+                           vybrany=vybrany if vybrany and od <= vybrany <= do else None)
+
+
+@bp.route("/<slug>/hodinky/rezervacia/<int:rezervacia_id>/zrusit", methods=["POST"])
+@vyzaduj(menit=True)
+def zrus_rezervaciu(slug, rezervacia_id):
+    db = get_db()
+    r = db.execute("SELECT r.id FROM hodinky_rezervacia r JOIN hodinky h ON h.id = r.hodinky_id "
+                   "WHERE r.id = ? AND h.zo_slug = ?", (rezervacia_id, slug)).fetchone()
+    if r is None:
+        abort(404)
+    db.execute("DELETE FROM hodinky_rezervacia WHERE id = ?", (rezervacia_id,))
+    db.commit()
+    flash("Rezervácia bola zrušená.")
+    return _spat(slug)

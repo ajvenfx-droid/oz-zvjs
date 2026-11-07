@@ -21,6 +21,25 @@
     <p class="info">Zatiaľ nie sú pridané žiadne hodinky. Nahrajte doterajšiu tabuľku (.xlsx) alebo pridajte hodinky nižšie.</p>
   {% endif %}
 
+  {% if rezervacie %}
+    <section class="panel">
+      <details open>
+        <summary><strong>Rezervácie členov</strong> ({{ rezervacie|length }})</summary>
+        <table class="tabulka">
+          <thead><tr><th>Dátum</th><th>Hodinky</th><th>Člen</th><th></th></tr></thead>
+          <tbody>
+            {% for r in rezervacie %}
+              <tr><td>{{ r.datum|datum }}</td><td>{{ r.nazov }}</td><td>{{ r.meno }} ({{ r.cislo }})</td>
+                <td>{% if moze_menit %}<form method="post" action="{{ url_for('hodinky.zrus_rezervaciu', slug=slug, rezervacia_id=r.id) }}"
+                      onsubmit="return confirm('Zrušiť rezerváciu {{ r.meno }}?');"><input type="hidden" name="mesiac" value="{{ mes }}">
+                  <button type="submit" class="odkaz-tlacidlo">Zrušiť</button></form>{% endif %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    </section>
+  {% endif %}
+
   {% if moze_menit and aktivne %}
     <section class="panel">
       <h2>Zapísať požičanie</h2>
@@ -79,6 +98,10 @@
                         {% endif %}
                       </div>
                     {% endfor %}
+                    {% set r = rez.get((iso, h.id)) %}
+                    {% if r and not zaznamy.get((iso, h.id)) %}
+                      <div class="hodinky-rezervacia" title="rezervácia člena">🕑 {{ r.meno }} <span class="info">(rezervácia)</span></div>
+                    {% endif %}
                   </td>
                 {% endfor %}
               </tr>
