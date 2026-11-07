@@ -31,10 +31,13 @@
           <input type="text" name="clen" list="hodinky-clenovia" autocomplete="off" required placeholder="Začnite písať priezvisko…">
           <datalist id="hodinky-clenovia">{% for z in clenovia %}<option value="{{ z[0] }}">{% endfor %}</datalist></label>
         <div class="pole"><span class="pole__nazov">Hodinky a zostatok po vrátení</span>
-          {% for h in aktivne %}
+          {% for s in stav if s.h.aktivne %}
+            {% set h = s.h %}
             <div class="hodinky-vyber">
               <label><input type="checkbox" name="hodinky_{{ h.id }}" value="1"> {{ h.nazov }}</label>
-              <input type="number" name="zostatok_{{ h.id }}" placeholder="zostatok" inputmode="numeric">
+              <input type="number" name="zostatok_{{ h.id }}" placeholder="zostatok" inputmode="numeric"
+                     value="{{ s.zostatok if s.zostatok is not none else '' }}">
+              <span class="info">aktuálny zostatok: <strong>{{ s.zostatok if s.zostatok is not none else '–' }}</strong></span>
             </div>
           {% endfor %}
         </div>
