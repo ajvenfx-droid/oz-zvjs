@@ -8,8 +8,8 @@
     <details class="panel">
       <summary><strong>Kto koľkokrát</strong> ({{ pocty|length }})</summary>
       <table class="tabulka">
-        <thead><tr><th>Člen</th><th class="cislo">Koľkokrát</th></tr></thead>
-        <tbody>{% for meno, cislo, n in pocty %}<tr><td>{{ meno }}{% if cislo %} ({{ cislo }}){% endif %}</td><td class="cislo">{{ n }}</td></tr>{% endfor %}</tbody>
+        <thead><tr><th>Člen</th><th class="cislo">Koľkokrát</th><th class="cislo">Minul bodov</th></tr></thead>
+        <tbody>{% for meno, cislo, n, b in pocty %}<tr><td>{{ meno }}{% if cislo %} ({{ cislo }}){% endif %}</td><td class="cislo">{{ n }}</td><td class="cislo">{{ b }}</td></tr>{% endfor %}</tbody>
       </table>
     </details>
   {% endif %}
@@ -17,11 +17,12 @@
     <h2>Kto mal hodinky</h2>
     {% if zaznamy %}
       <table class="tabulka">
-        <thead><tr><th>Dátum</th><th>Člen</th><th class="cislo">Zostatok</th></tr></thead>
+        <thead><tr><th>Dátum</th><th>Člen</th><th class="cislo">Minul</th><th class="cislo">Zostatok</th></tr></thead>
         <tbody>
           {% for z in zaznamy %}
             <tr{% if z.typ == 'dobitie' %} class="hodinky-dobitie"{% endif %}>
               <td>{{ z.datum|datum }}</td><td>{{ z.meno }}</td>
+              <td class="cislo">{{ minul[z.id] if z.id in minul else '' }}</td>
               <td class="cislo">{{ z.zostatok if z.zostatok is not none else '' }}</td>
             </tr>
           {% endfor %}

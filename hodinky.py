@@ -236,13 +236,23 @@ def historia(slug, hodinky_id):
     zaznamy = db.execute("SELECT * FROM hodinky_zaznam WHERE hodinky_id = ? ORDER BY datum DESC, id DESC",
                          (h["id"],)).fetchall()
     zostatok, _ = aktualny_stav(db, h)
+    # minuté body = predchádzajúci zapísaný zostatok − zostatok pri mene
+    minul, pred = {}, h["pociatocny_zostatok"]
+    for z in reversed(zaznamy):
+        if z["zostatok"] is None:
+            continue
+        if z["typ"] == "pozicanie" and pred is not None:
+            minul[z["id"]] = pred - z["zostatok"]
+        pred = z["zostatok"]
     pocty = {}
     for z in zaznamy:
         if z["typ"] == "pozicanie":
             k = z["cislo"] or z["meno"]
-            pocty.setdefault(k, [z["meno"], z["cislo"], 0])[2] += 1
+            p = pocty.setdefault(k, [z["meno"], z["cislo"], 0, 0])
+            p[2] += 1
+            p[3] += minul.get(z["id"]) or 0
     return render_template("hodinky/historia.html", zo=zo, slug=slug, h=h, zaznamy=zaznamy, zostatok=zostatok,
-                           pocty=sorted(pocty.values(), key=lambda p: (-p[2], abecedne(p[0]))))
+                           minul=minul, pocty=sorted(pocty.values(), key=lambda p: (-p[2], abecedne(p[0]))))
 
 
 def _spat(slug):
