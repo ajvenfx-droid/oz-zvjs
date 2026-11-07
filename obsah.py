@@ -480,9 +480,8 @@ def stranka(slug):
 
 
 def benefity_clena():
-    """Benefity ZO prihláseného člena: [{zo, benefity, moze_spravovat}]."""
+    """Benefity ZO prihláseného člena (len na čítanie): [{zo, benefity}]."""
     from anketa import zo_clena
-    from evidencia import pristup
 
     clen = g.get("clen")
     if clen is None:
@@ -496,9 +495,8 @@ def benefity_clena():
         if zo["slug"] not in slugy:
             continue
         benefity = db.execute("SELECT * FROM benefit WHERE zo_slug = ? ORDER BY poradie, id", (zo["slug"],)).fetchall()
-        p = pristup(zo["slug"])
-        if benefity or p == "menit":
-            vysledok.append({"zo": zo, "benefity": benefity, "moze_spravovat": p == "menit", "moze_citat": p is not None})
+        if benefity:
+            vysledok.append({"zo": zo, "benefity": benefity})
     return vysledok
 
 
