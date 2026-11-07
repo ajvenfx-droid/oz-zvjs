@@ -58,9 +58,12 @@ def init_db(db):
     # prvé spustenie: ZO Banská Bystrica má benefit hodinky na plaváreň
     if db.execute("SELECT 1 FROM benefit LIMIT 1").fetchone() is None:
         db.execute("INSERT INTO benefit (zo_slug, nazov, popis, typ, poradie) VALUES (?, ?, ?, 'hodinky', 1)",
-                   ("banska-bystrica", "Hodinky na plaváreň",
+                   ("banska-bystrica", "PLAVÁREŇ - permanentky",
                     "Požičiavanie hodiniek (permanentiek) na plaváreň pre členov ZO."))
         db.commit()
+    # premenovanie podľa želania predsedu ZO BB
+    db.execute("UPDATE benefit SET nazov = 'PLAVÁREŇ - permanentky' WHERE typ = 'hodinky' AND nazov = 'Hodinky na plaváreň'")
+    db.commit()
 
 
 # --- pomocné ------------------------------------------------------------------
@@ -136,7 +139,7 @@ def _datum(text):
 # --- benefity ZO ------------------------------------------------------------
 
 
-TYPY_BENEFITU = {"text": "Bežný benefit (názov a popis)", "hodinky": "Hodinky na plaváreň (evidencia požičiavania)"}
+TYPY_BENEFITU = {"text": "Bežný benefit (názov a popis)", "hodinky": "Plaváreň – permanentky (evidencia požičiavania)"}
 
 
 @bp.route("/<slug>/benefity")
@@ -159,7 +162,7 @@ def uloz_benefit(slug):
         if typ not in TYPY_BENEFITU:
             abort(400)
         if typ == "hodinky" and not nazov:
-            nazov = "Hodinky na plaváreň"
+            nazov = "PLAVÁREŇ - permanentky"
         if not nazov:
             flash("Zadajte názov benefitu.")
             return redirect(url_for("hodinky.benefity", slug=slug))

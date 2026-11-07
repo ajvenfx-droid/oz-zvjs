@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Hodinky na plaváreň – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block title %}Plaváreň – permanentky – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
 {% block content %}
   {% set mes = '%04d-%02d'|format(rok, mesiac) %}
   <a class="spat" href="{{ url_for('hodinky.benefity', slug=slug) }}">&larr; Benefity ZO {{ zo.mesto }}</a>
-  <h1 class="nadpis">Hodinky na plaváreň – ZO {{ zo.mesto }}</h1>
+  <h1 class="nadpis">Plaváreň – permanentky – ZO {{ zo.mesto }}</h1>
   {% if not moze_menit %}<p class="info">Len prezeranie.</p>{% endif %}
 
   {% if stav %}

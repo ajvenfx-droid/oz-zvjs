@@ -563,3 +563,5 @@ summary.rozbalit strong { font-weight: 600; }
 .benefit h2 a { color: inherit; }
 .benefit-uprava { margin-top: 10px; }
 .benefit-uprava summary { cursor: pointer; color: var(--sivy); }
+details.benefit > summary { cursor: pointer; font-size: 1.1rem; color: var(--modra); }
+details.benefit[open] > summary { margin-bottom: 10px; }
