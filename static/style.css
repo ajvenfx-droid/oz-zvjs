@@ -545,3 +545,21 @@ summary.rozbalit strong { font-weight: 600; }
 #dotaznik .otazka.polozka, .editor-otazka.polozka { border-color: #9a7f2a; background: #fffaf0; border-left-width: 6px; }
 #dotaznik .otazka.polozka legend, .editor-otazka.polozka legend { background: #9a7f2a; }
 .polozka-vysledky { margin-left: 28px; border-left: 4px solid #9a7f2a; }
+
+/* hodinky na plaváreň */
+.hodinky-stav { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.hodinky-karta { border: 1px solid #d5dde6; border-radius: 8px; padding: 10px 14px; min-width: 150px; display: flex; flex-direction: column; gap: 2px; background: #fff; }
+.hodinky-zostatok { font-size: 1.6rem; font-weight: 700; color: var(--modra); }
+.hodinky-vyber { display: flex; gap: 10px; align-items: center; margin: 4px 0; }
+.hodinky-vyber input[type=number] { width: 110px; }
+.hodinky-tabulka td, .hodinky-tabulka th { padding: 3px 8px; white-space: nowrap; }
+.hodinky-tabulka tr.vikend td { background: #f3f4f6; }
+.hodinky-tabulka tr.dnes td { background: #fff7d6; }
+.hodinky-zaznam { display: flex; gap: 6px; align-items: center; }
+.hodinky-zaznam form { display: inline; }
+.hodinky-dobitie { color: #1a7f37; font-style: italic; }
+.hodinky-sprava { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; padding-bottom: 8px; border-bottom: 1px solid #eef1f4; }
+.hodinky-sprava form { display: flex; gap: 4px; align-items: center; }
+.benefit h2 a { color: inherit; }
+.benefit-uprava { margin-top: 10px; }
+.benefit-uprava summary { cursor: pointer; color: var(--sivy); }

@@ -6,6 +6,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 import anketa
 import evidencia
+import hodinky
 import nasadenie
 import obsah
 import ucet
@@ -86,6 +87,7 @@ app.register_blueprint(anketa.bp)
 app.register_blueprint(ucet.bp)
 app.register_blueprint(obsah.bp)
 app.register_blueprint(evidencia.bp)
+app.register_blueprint(hodinky.bp)
 app.register_blueprint(nasadenie.bp)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # nahrávané dokumenty
 
@@ -121,6 +123,7 @@ def init_db():
     ucet.init_db(db)
     obsah.init_db(db)
     evidencia.init_db(db)
+    hodinky.init_db(db)
     # Dotazníky pripravené ako súbory v priečinku dotazniky/ (pridávajú sa cez GitHub).
     anketa.importuj_dotazniky(db, os.path.join(os.path.dirname(os.path.abspath(__file__)), "dotazniky"))
     app.secret_key = anketa.secret_key(db)

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Hodinky na plaváreň – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  {% set mes = '%04d-%02d'|format(rok, mesiac) %}
+  <a class="spat" href="{{ url_for('hodinky.benefity', slug=slug) }}">&larr; Benefity ZO {{ zo.mesto }}</a>
+  <h1 class="nadpis">Hodinky na plaváreň – ZO {{ zo.mesto }}</h1>
+  {% if not moze_menit %}<p class="info">Len prezeranie.</p>{% endif %}
+
+  {% if stav %}
+    <div class="hodinky-stav">
+      {% for s in stav if s.h.aktivne %}
+        <div class="hodinky-karta">
+          <strong>{{ s.h.nazov }}</strong>
+          <span class="hodinky-zostatok">{{ s.zostatok if s.zostatok is not none else '–' }}</span>
+          <span class="info">{% if s.posledny %}naposledy {{ s.posledny.datum|datum }}: {{ s.posledny.meno }}{% else %}zatiaľ nepožičané{% endif %}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="info">Zatiaľ nie sú pridané žiadne hodinky. Nahrajte doterajšiu tabuľku (.xlsx) alebo pridajte hodinky nižšie.</p>
+  {% endif %}
+
+  {% if moze_menit and aktivne %}
+    <section class="panel">
+      <h2>Zapísať požičanie</h2>
+      <form method="post" action="{{ url_for('hodinky.pozicanie', slug=slug) }}" class="formular">
+        <input type="hidden" name="mesiac" value="{{ mes }}">
+        <label class="pole"><span class="pole__nazov">Dátum</span>
+          <input type="date" name="datum" value="{{ dnes }}" required></label>
+        <label class="pole"><span class="pole__nazov">Člen</span>
+          <input type="text" name="clen" list="hodinky-clenovia" autocomplete="off" required placeholder="Začnite písať priezvisko…">
+          <datalist id="hodinky-clenovia">{% for z in clenovia %}<option value="{{ z[0] }}">{% endfor %}</datalist></label>
+        <div class="pole"><span class="pole__nazov">Hodinky a zostatok po vrátení</span>
+          {% for h in aktivne %}
+            <div class="hodinky-vyber">
+              <label><input type="checkbox" name="hodinky_{{ h.id }}" value="1"> {{ h.nazov }}</label>
+              <input type="number" name="zostatok_{{ h.id }}" placeholder="zostatok" inputmode="numeric">
+            </div>
+          {% endfor %}
+        </div>
+        <button type="submit" class="tlacidlo">Zapísať</button>
+      </form>
+    </section>
+  {% endif %}
+
+  <section class="panel">
+    <div class="riadok-nadpis">
+      <h2>{{ nazov_mesiaca|capitalize }} {{ rok }}</h2>
+      <div class="akcie">
+        <a href="{{ url_for('hodinky.prehlad', slug=slug, mesiac=predch) }}">&larr; Predchádzajúci</a>
+        <a href="{{ url_for('hodinky.prehlad', slug=slug) }}">Tento mesiac</a>
+        <a href="{{ url_for('hodinky.prehlad', slug=slug, mesiac=dalsi) }}">Ďalší &rarr;</a>
+        {% if stav %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('hodinky.export', slug=slug) }}">Stiahnuť Excel (.xlsx)</a>{% endif %}
+      </div>
+    </div>
+    {% if stlpce %}
+      <div class="tabulka-obal">
+        <table class="tabulka hodinky-tabulka">
+          <thead><tr><th>Dátum</th>{% for h in stlpce %}<th>{{ h.nazov }}{% if not h.aktivne %} <span class="info">(vyradené)</span>{% endif %}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for iso, den, vikend in dni %}
+              <tr class="{% if vikend %}vikend{% endif %}{% if iso == dnes %} dnes{% endif %}">
+                <td class="cislo">{{ den }}.{{ mesiac }}.</td>
+                {% for h in stlpce %}
+                  <td>
+                    {% for z in zaznamy.get((iso, h.id), []) %}
+                      <div class="hodinky-zaznam{% if z.typ == 'dobitie' %} hodinky-dobitie{% endif %}">
+                        {{ z.meno }}{% if z.zostatok is not none %} · <strong>{{ z.zostatok }}</strong>{% endif %}
+                        {% if moze_menit %}
+                          <form method="post" action="{{ url_for('hodinky.zmaz_zaznam', slug=slug, zaznam_id=z.id) }}"
+                                onsubmit="return confirm('Zmazať záznam {{ z.meno }} ({{ den }}.{{ mesiac }}.)?');">
+                            <input type="hidden" name="mesiac" value="{{ mes }}">
+                            <button type="submit" class="odkaz-tlacidlo" title="Zmazať">✕</button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+
+  {% if statistika %}
+    <section class="panel">
+      <details>
+        <summary><strong>Kto koľkokrát si požičal v roku {{ rok }}</strong> ({{ statistika|length }} členov)</summary>
+        <table class="tabulka">
+          <thead><tr><th>Člen</th><th class="cislo">Dní</th><th class="cislo">Hodiniek spolu</th></tr></thead>
+          <tbody>
+            {% for s in statistika %}
+              <tr><td>{{ s.meno }}{% if s.cislo %} ({{ s.cislo }}){% else %} <span class="info">(nenájdený v zozname členov)</span>{% endif %}</td>
+                <td class="cislo">{{ s.dni }}</td><td class="cislo">{{ s.kusov }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    </section>
+  {% endif %}
+
+  {% if moze_menit %}
+    <section class="panel">
+      <details>
+        <summary><strong>Správa hodiniek</strong></summary>
+        {% for s in stav %}
+          {% set h = s.h %}
+          <div class="hodinky-sprava">
+            <form method="post" action="{{ url_for('hodinky.sprava', slug=slug) }}">
+              <input type="hidden" name="mesiac" value="{{ mes }}"><input type="hidden" name="hodinky_id" value="{{ h.id }}">
+              <input type="hidden" name="akcia" value="premenovat">
+              <input type="text" name="nazov" value="{{ h.nazov }}" size="12"><button type="submit" class="odkaz-tlacidlo">Premenovať</button>
+            </form>
+            <form method="post" action="{{ url_for('hodinky.sprava', slug=slug) }}">
+              <input type="hidden" name="mesiac" value="{{ mes }}"><input type="hidden" name="hodinky_id" value="{{ h.id }}">
+              <input type="hidden" name="akcia" value="dobitie">
+              <input type="date" name="datum" value="{{ dnes }}"><input type="number" name="zostatok" placeholder="nový zostatok" required>
+              <button type="submit" class="odkaz-tlacidlo">Dobiť</button>
+            </form>
+            <form method="post" action="{{ url_for('hodinky.sprava', slug=slug) }}">
+              <input type="hidden" name="mesiac" value="{{ mes }}"><input type="hidden" name="hodinky_id" value="{{ h.id }}">
+              <input type="hidden" name="akcia" value="vyradit">
+              <button type="submit" class="odkaz-tlacidlo">{{ 'Vyradiť' if h.aktivne else 'Vrátiť do používania' }}</button>
+            </form>
+            {% if not s.posledny %}
+              <form method="post" action="{{ url_for('hodinky.sprava', slug=slug) }}" onsubmit="return confirm('Zmazať hodinky {{ h.nazov }}?');">
+                <input type="hidden" name="mesiac" value="{{ mes }}"><input type="hidden" name="hodinky_id" value="{{ h.id }}">
+                <input type="hidden" name="akcia" value="zmazat"><button type="submit" class="odkaz-tlacidlo">Zmazať</button>
+              </form>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <form method="post" action="{{ url_for('hodinky.sprava', slug=slug) }}" class="hodinky-sprava">
+          <input type="hidden" name="mesiac" value="{{ mes }}"><input type="hidden" name="akcia" value="pridat">
+          <input type="text" name="nazov" placeholder="názov, napr. 6" required size="12">
+          <input type="number" name="zostatok" placeholder="zostatok">
+          <button type="submit" class="tlacidlo tlacidlo--sekundarne">+ Pridať hodinky</button>
+        </form>
+        <h3>Nahrať tabuľku z Excelu</h3>
+        <p class="info">Tabuľka v tvare „HODINKY 2025-2026.xlsx“ (hárok na mesiac, v prvej bunke „Hodinky“). Nahratím sa nahradia všetky doterajšie hodinky a záznamy tejto ZO.</p>
+        <form method="post" action="{{ url_for('hodinky.importuj', slug=slug) }}" enctype="multipart/form-data" class="nahratie"
+              onsubmit="return confirm('Nahradiť všetky doterajšie hodinky a záznamy údajmi zo súboru?');">
+          <input type="hidden" name="mesiac" value="{{ mes }}">
+          <input type="file" name="subor" accept=".xlsx" required>
+          <button type="submit" class="tlacidlo tlacidlo--sekundarne">Nahrať</button>
+        </form>
+      </details>
+    </section>
+  {% endif %}
+{% endblock %}

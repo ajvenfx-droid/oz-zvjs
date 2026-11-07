@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Benefity ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('evidencia.zo', slug=slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+  <h1 class="nadpis">Benefity ZO {{ zo.mesto }}</h1>
+  {% if benefity %}
+    <div class="benefity">
+      {% for b in benefity %}
+        <section class="panel benefit">
+          <h2>{% if b.typ == 'hodinky' %}<a href="{{ url_for('hodinky.prehlad', slug=slug) }}">{{ b.nazov }}</a>{% else %}{{ b.nazov }}{% endif %}</h2>
+          {% if b.popis %}<div>{{ b.popis|text }}</div>{% endif %}
+          {% if b.typ == 'hodinky' %}<a class="tlacidlo" href="{{ url_for('hodinky.prehlad', slug=slug) }}">Otvoriť evidenciu požičiavania</a>{% endif %}
+          {% if moze_menit %}
+            <details class="benefit-uprava">
+              <summary>✎ Upraviť</summary>
+              <form method="post" action="{{ url_for('hodinky.uloz_benefit', slug=slug) }}" class="formular">
+                <input type="hidden" name="benefit_id" value="{{ b.id }}"><input type="hidden" name="akcia" value="upravit">
+                <label class="pole"><span class="pole__nazov">Názov</span><input type="text" name="nazov" value="{{ b.nazov }}" required></label>
+                <label class="pole"><span class="pole__nazov">Popis</span><textarea name="popis" rows="3">{{ b.popis }}</textarea></label>
+                <button type="submit" class="tlacidlo">Uložiť</button>
+              </form>
+              <form method="post" action="{{ url_for('hodinky.uloz_benefit', slug=slug) }}"
+                    onsubmit="return confirm('Odstrániť benefit {{ b.nazov }}?');">
+                <input type="hidden" name="benefit_id" value="{{ b.id }}"><input type="hidden" name="akcia" value="zmazat">
+                <button type="submit" class="odkaz-tlacidlo">Odstrániť benefit</button>
+              </form>
+            </details>
+          {% endif %}
+        </section>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="info">ZO {{ zo.mesto }} zatiaľ nemá žiadne benefity.</p>
+  {% endif %}
+
+  {% if moze_menit %}
+    <section class="panel">
+      <h2>Pridať benefit</h2>
+      <form method="post" action="{{ url_for('hodinky.uloz_benefit', slug=slug) }}" class="formular">
+        <input type="hidden" name="akcia" value="pridat">
+        <label class="pole"><span class="pole__nazov">Druh</span>
+          <select name="typ">{% for k, n in typy.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+        <label class="pole"><span class="pole__nazov">Názov</span><input type="text" name="nazov" placeholder="napr. Zľava v posilňovni"></label>
+        <label class="pole"><span class="pole__nazov">Popis</span><textarea name="popis" rows="3"></textarea></label>
+        <button type="submit" class="tlacidlo">Pridať</button>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}

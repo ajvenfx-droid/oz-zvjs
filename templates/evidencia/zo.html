@@ -21,6 +21,7 @@
       <a href="{{ url_for('evidencia.export', slug=zo.slug, hladat=hladat or None, zoradit=zoradit) }}">CSV</a>
       <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Archív odídených</a>
       {% if moze_menit %}<a href="{{ url_for('anketa.dotazniky_zo', slug=zo.slug) }}">Dotazníky</a>{% endif %}
+      <a href="{{ url_for('hodinky.benefity', slug=zo.slug) }}">Benefity</a>
     </div>
   </div>
   {% macro vyber_clena(meno_pola, vybrane, prazdne='– nikto –') %}
