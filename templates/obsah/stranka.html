@@ -7,6 +7,21 @@
   {% else %}
     <p class="info">Obsah tejto stránky pripravujeme.</p>
   {% endif %}
+  {% for z in zo_benefity %}
+    <section class="panel benefity-zo">
+      <h2>Benefity vašej ZO {{ z.zo.mesto }}</h2>
+      {% for b in z.benefity %}
+        <div class="benefit">
+          <h3>{{ b.nazov }}</h3>
+          {% if b.popis %}<div>{{ b.popis|text }}</div>{% endif %}
+          {% if b.typ == 'hodinky' and z.moze_citat %}<a href="{{ url_for('hodinky.prehlad', slug=z.zo.slug) }}">Evidencia požičiavania</a>{% endif %}
+        </div>
+      {% else %}
+        <p class="info">Vaša ZO zatiaľ nemá nastavené žiadne benefity.</p>
+      {% endfor %}
+      {% if z.moze_spravovat %}<p><a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('hodinky.benefity', slug=z.zo.slug) }}">Spravovať benefity ZO</a></p>{% endif %}
+    </section>
+  {% endfor %}
   {% for skupina, zoznam in dokumenty.items() %}
     <h2 class="podnadpis">{{ skupina }}</h2>
     <ul class="zoznam-dokumentov">

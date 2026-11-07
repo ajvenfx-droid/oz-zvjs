@@ -475,7 +475,31 @@ def stranka(slug):
                 "WHERE kategoria = ? AND (len_pre_clenov = 0 OR ?) ORDER BY datum DESC, id DESC",
                 (sk, int(prihlaseny)),
             ).fetchall()
-    return render_template("obsah/stranka.html", stranka=s, dokumenty=dokumenty)
+    return render_template("obsah/stranka.html", stranka=s, dokumenty=dokumenty,
+                           zo_benefity=benefity_clena() if slug == "benefity" else [])
+
+
+def benefity_clena():
+    """Benefity ZO prihláseného člena: [{zo, benefity, moze_spravovat}]."""
+    from anketa import zo_clena
+    from evidencia import pristup
+
+    clen = g.get("clen")
+    if clen is None:
+        return []
+    db = get_db()
+    slugy = set(zo_clena(db, clen["cislo"]))
+    if clen["zo_slug"]:
+        slugy.add(clen["zo_slug"])
+    vysledok = []
+    for zo in db.execute("SELECT slug, mesto FROM zakladna_organizacia ORDER BY poradie, mesto"):
+        if zo["slug"] not in slugy:
+            continue
+        benefity = db.execute("SELECT * FROM benefit WHERE zo_slug = ? ORDER BY poradie, id", (zo["slug"],)).fetchall()
+        p = pristup(zo["slug"])
+        if benefity or p == "menit":
+            vysledok.append({"zo": zo, "benefity": benefity, "moze_spravovat": p == "menit", "moze_citat": p is not None})
+    return vysledok
 
 
 @bp.route("/o-nas")
