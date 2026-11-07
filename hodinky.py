@@ -226,6 +226,25 @@ def prehlad(slug):
         statistika=statistika, aktivne=[h for h in vsetky if h["aktivne"]])
 
 
+@bp.route("/<slug>/hodinky/<int:hodinky_id>")
+@vyzaduj()
+def historia(slug, hodinky_id):
+    """Prehľad, kto mal dané hodinky (od najnovšieho)."""
+    db = get_db()
+    zo = _nacitaj_zo(slug)[0]
+    h = _hodinky_zo(db, slug, hodinky_id)
+    zaznamy = db.execute("SELECT * FROM hodinky_zaznam WHERE hodinky_id = ? ORDER BY datum DESC, id DESC",
+                         (h["id"],)).fetchall()
+    zostatok, _ = aktualny_stav(db, h)
+    pocty = {}
+    for z in zaznamy:
+        if z["typ"] == "pozicanie":
+            k = z["cislo"] or z["meno"]
+            pocty.setdefault(k, [z["meno"], z["cislo"], 0])[2] += 1
+    return render_template("hodinky/historia.html", zo=zo, slug=slug, h=h, zaznamy=zaznamy, zostatok=zostatok,
+                           pocty=sorted(pocty.values(), key=lambda p: (-p[2], abecedne(p[0]))))
+
+
 def _spat(slug):
     return redirect(url_for("hodinky.prehlad", slug=slug, mesiac=request.form.get("mesiac") or None))
 

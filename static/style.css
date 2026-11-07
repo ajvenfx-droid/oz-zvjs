@@ -566,3 +566,5 @@ summary.rozbalit strong { font-weight: 600; }
 .benefit-uprava summary { cursor: pointer; color: var(--sivy); }
 details.benefit > summary { cursor: pointer; font-size: 1.1rem; color: var(--modra); }
 details.benefit[open] > summary { margin-bottom: 10px; }
+a.hodinky-karta { color: inherit; text-decoration: none; }
+a.hodinky-karta:hover { border-color: var(--modra); box-shadow: 0 2px 8px rgba(0,0,0,.08); }

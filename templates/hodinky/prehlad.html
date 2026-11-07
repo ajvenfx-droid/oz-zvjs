@@ -9,11 +9,11 @@
   {% if stav %}
     <div class="hodinky-stav">
       {% for s in stav if s.h.aktivne %}
-        <div class="hodinky-karta">
+        <a class="hodinky-karta" href="{{ url_for('hodinky.historia', slug=slug, hodinky_id=s.h.id) }}" title="Kto mal hodinky {{ s.h.nazov }}">
           <strong>{{ s.h.nazov }}</strong>
           <span class="hodinky-zostatok">{{ s.zostatok if s.zostatok is not none else '–' }}</span>
           <span class="info">{% if s.posledny %}naposledy {{ s.posledny.datum|datum }}: {{ s.posledny.meno }}{% else %}zatiaľ nepožičané{% endif %}</span>
-        </div>
+        </a>
       {% endfor %}
     </div>
   {% else %}
