@@ -5,6 +5,7 @@
   <a class="spat" href="{{ url_for('hodinky.benefity', slug=slug) }}">&larr; Benefity ZO {{ zo.mesto }}</a>
   <h1 class="nadpis">Plaváreň – permanentky – ZO {{ zo.mesto }}</h1>
   {% if not moze_menit %}<p class="info">Len prezeranie.</p>{% endif %}
+  <p><a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('hodinky.statistika', slug=slug) }}">Štatistika členov – minuté body</a></p>
 
   {% if stav %}
     <div class="hodinky-stav">
@@ -88,22 +89,6 @@
     {% endif %}
   </section>
 
-  {% if statistika %}
-    <section class="panel">
-      <details>
-        <summary><strong>Kto koľkokrát si požičal v roku {{ rok }}</strong> ({{ statistika|length }} členov)</summary>
-        <table class="tabulka">
-          <thead><tr><th>Člen</th><th class="cislo">Dní</th><th class="cislo">Hodiniek spolu</th></tr></thead>
-          <tbody>
-            {% for s in statistika %}
-              <tr><td>{{ s.meno }}{% if s.cislo %} ({{ s.cislo }}){% else %} <span class="info">(nenájdený v zozname členov)</span>{% endif %}</td>
-                <td class="cislo">{{ s.dni }}</td><td class="cislo">{{ s.kusov }}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </details>
-    </section>
-  {% endif %}
 
   {% if moze_menit %}
     <section class="panel">

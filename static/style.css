@@ -569,3 +569,5 @@ details.benefit[open] > summary { margin-bottom: 10px; }
 a.hodinky-karta { color: inherit; text-decoration: none; }
 a.hodinky-karta:hover { border-color: var(--modra); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
 .hodinky-minul { color: #b42318; }
+.hodinky-obdobie { flex-wrap: wrap; gap: 8px; align-items: center; }
+.tabulka tr.nie-clen td { color: #b42318; }

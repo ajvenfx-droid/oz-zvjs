@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Štatistika – Plaváreň – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('hodinky.prehlad', slug=slug) }}">&larr; Plaváreň – permanentky</a>
+  <h1 class="nadpis">Štatistika členov – {{ popis }}</h1>
+  <form method="get" class="nahratie hodinky-obdobie">
+    <select name="obdobie" onchange="prepniObdobie()">
+      <option value="mesiac" {% if obdobie == 'mesiac' %}selected{% endif %}>Mesiac</option>
+      <option value="rok" {% if obdobie == 'rok' %}selected{% endif %}>Rok</option>
+      <option value="vlastne" {% if obdobie == 'vlastne' %}selected{% endif %}>Dátum od – do</option>
+    </select>
+    <span data-obdobie="mesiac"><input type="month" name="mesiac" value="{{ mesiac }}"></span>
+    <span data-obdobie="rok"><select name="rok">{% for r in roky %}<option value="{{ r }}" {% if rok == r|string %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></span>
+    <span data-obdobie="vlastne">od <input type="date" name="od" value="{{ od }}"> do <input type="date" name="do" value="{{ do }}"></span>
+    <button type="submit" class="tlacidlo">Zobraziť</button>
+  </form>
+  <script>
+    function prepniObdobie() {
+      var v = document.querySelector('[name=obdobie]').value;
+      document.querySelectorAll('[data-obdobie]').forEach(function (e) {
+        e.hidden = e.dataset.obdobie !== v;
+        e.querySelectorAll('input,select').forEach(function (i) { i.disabled = e.hidden; });
+      });
+    }
+    prepniObdobie();
+  </script>
+  {% if zoznam %}
+    <p>Spolu <strong>{{ zoznam|length }}</strong> {{ 'osoba' if zoznam|length == 1 else ('osoby' if zoznam|length < 5 else 'osôb') }},
+      {{ pozicani }} požičaní, minuté body spolu <strong>{{ spolu }}</strong>.</p>
+    <table class="tabulka">
+      <thead><tr><th>#</th><th>Člen</th><th class="cislo">Minuté body</th><th class="cislo">Požičaní</th><th class="cislo">Dní</th></tr></thead>
+      <tbody>
+        {% for p in zoznam %}
+          <tr{% if not p.clen %} class="nie-clen"{% endif %}>
+            <td>{{ loop.index }}.</td>
+            <td>{{ p.meno }}{% if p.cislo %} ({{ p.cislo }}){% else %} – nie je v zozname členov ZO{% endif %}</td>
+            <td class="cislo"><strong>{{ p.body }}</strong>{% if p.bez_zostatku %} <span class="info" title="požičania bez zapísaného zostatku sa nedajú započítať">(+{{ p.bez_zostatku }}× bez zostatku)</span>{% endif %}</td>
+            <td class="cislo">{{ p.pozicani }}</td>
+            <td class="cislo">{{ p.dni }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="info">V tomto období si nikto hodinky nepožičal.</p>
+  {% endif %}
+{% endblock %}

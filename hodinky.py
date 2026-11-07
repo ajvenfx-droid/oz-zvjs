@@ -223,12 +223,6 @@ def prehlad(slug):
     # stĺpce mesiaca: aktívne hodinky + neaktívne, ktoré v mesiaci majú záznam
     stlpce = [h for h in vsetky if h["aktivne"] or any(k[1] == h["id"] for k in zaznamy)]
     dni = [(f"{rok:04d}-{mesiac:02d}-{d:02d}", d, date(rok, mesiac, d).weekday() >= 5) for d in range(1, pocet_dni + 1)]
-    # štatistika za rok
-    statistika = [dict(r) for r in db.execute(
-        "SELECT CASE WHEN z.cislo != '' THEN z.cislo ELSE z.meno END AS kluc, MAX(z.meno) AS meno, z.cislo, "
-        "COUNT(DISTINCT z.datum) AS dni, COUNT(*) AS kusov FROM hodinky_zaznam z JOIN hodinky h ON h.id = z.hodinky_id "
-        "WHERE h.zo_slug = ? AND z.typ = 'pozicanie' AND z.datum BETWEEN ? AND ? GROUP BY kluc "
-        "ORDER BY dni DESC, kusov DESC", (slug, f"{rok}-01-01", f"{rok}-12-31"))]
     clenovia, _ = clenovia_zo(slug)
     minul = {}
     for h in stlpce:
@@ -237,7 +231,7 @@ def prehlad(slug):
         "hodinky/prehlad.html", minul=minul, zo=zo, slug=slug, stav=stav, stlpce=stlpce, dni=dni, zaznamy=zaznamy,
         rok=rok, mesiac=mesiac, nazov_mesiaca=MESIACE[mesiac - 1], predch="%04d-%02d" % _posun(rok, mesiac, -1),
         dalsi="%04d-%02d" % _posun(rok, mesiac, 1), dnes=date.today().isoformat(), clenovia=clenovia,
-        statistika=statistika, aktivne=[h for h in vsetky if h["aktivne"]])
+        aktivne=[h for h in vsetky if h["aktivne"]])
 
 
 @bp.route("/<slug>/hodinky/<int:hodinky_id>")
@@ -260,6 +254,60 @@ def historia(slug, hodinky_id):
             p[3] += minul.get(z["id"]) or 0
     return render_template("hodinky/historia.html", zo=zo, slug=slug, h=h, zaznamy=zaznamy, zostatok=zostatok,
                            minul=minul, pocty=sorted(pocty.values(), key=lambda p: (-p[2], abecedne(p[0]))))
+
+
+@bp.route("/<slug>/hodinky/statistika")
+@vyzaduj()
+def statistika(slug):
+    """Členovia, ktorí mali požičané hodinky, a súčet minutých bodov za zvolené obdobie."""
+    db = get_db()
+    zo = _nacitaj_zo(slug)[0]
+    a = request.args
+    dnes = date.today()
+    obdobie = a.get("obdobie", "rok")
+    if obdobie == "mesiac":
+        r, m = _mesiac(a.get("mesiac"))
+        od, do = f"{r:04d}-{m:02d}-01", f"{r:04d}-{m:02d}-{calendar.monthrange(r, m)[1]:02d}"
+        popis = f"{MESIACE[m - 1]} {r}"
+    elif obdobie == "vlastne":
+        od = _datum(a.get("od")) or f"{dnes.year}-01-01"
+        do = _datum(a.get("do")) or dnes.isoformat()
+        if od > do:
+            od, do = do, od
+        popis = f"{datetime.strptime(od, '%Y-%m-%d'):%d.%m.%Y} – {datetime.strptime(do, '%Y-%m-%d'):%d.%m.%Y}"
+    else:
+        obdobie = "rok"
+        r = int(a.get("rok")) if (a.get("rok") or "").isdigit() else dnes.year
+        od, do = f"{r}-01-01", f"{r}-12-31"
+        popis = f"rok {r}"
+    minul = {}
+    for h in hodinky_zo(db, slug):
+        minul.update(minute_body(db, h))
+    clenovia, index = clenovia_zo(slug)
+    platne = {c[1]: c[2] for c in clenovia if c[1]}
+    ludia = {}
+    for z in db.execute("SELECT z.* FROM hodinky_zaznam z JOIN hodinky h ON h.id = z.hodinky_id WHERE h.zo_slug = ? "
+                        "AND z.typ = 'pozicanie' AND z.datum BETWEEN ? AND ? ORDER BY z.datum, z.id", (slug, od, do)):
+        cislo = z["cislo"] if z["cislo"] in platne else index.get(_slova(z["meno"]), "")
+        k = cislo or "?" + " ".join(sorted(_slova(z["meno"])))
+        p = ludia.setdefault(k, {"meno": platne.get(cislo) or z["meno"], "cislo": cislo, "clen": bool(cislo),
+                                 "body": 0, "pozicani": 0, "dni": set(), "bez_zostatku": 0})
+        p["pozicani"] += 1
+        p["dni"].add(z["datum"])
+        if z["id"] in minul:
+            p["body"] += minul[z["id"]]
+        else:
+            p["bez_zostatku"] += 1
+    zoznam = sorted(ludia.values(), key=lambda p: (not p["clen"], -p["body"], abecedne(p["meno"])))
+    for p in zoznam:
+        p["dni"] = len(p["dni"])
+    roky = sorted({int(r[0][:4]) for r in db.execute(
+        "SELECT z.datum FROM hodinky_zaznam z JOIN hodinky h ON h.id = z.hodinky_id WHERE h.zo_slug = ?", (slug,))}
+        | {dnes.year}, reverse=True)
+    return render_template("hodinky/statistika.html", zo=zo, slug=slug, zoznam=zoznam, obdobie=obdobie, popis=popis,
+                           od=od, do=do, roky=roky, rok=a.get("rok") or str(dnes.year),
+                           mesiac=a.get("mesiac") or dnes.strftime("%Y-%m"),
+                           spolu=sum(p["body"] for p in zoznam), pozicani=sum(p["pozicani"] for p in zoznam))
 
 
 def _spat(slug):
@@ -383,7 +431,7 @@ def precitaj_excel(data):
     import openpyxl
 
     wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
-    poradie, pociatok, zaznamy, posledny_harok = [], {}, [], set()
+    poradie, pociatok, zaznamy, posledny_harok, stavy = [], {}, [], set(), []
     for ws in wb.worksheets:
         riadky = list(ws.iter_rows(values_only=True))
         if len(riadky) < 3 or str(riadky[0][0] or "").strip().lower() != "hodinky":
@@ -391,6 +439,8 @@ def precitaj_excel(data):
         hlavicka = riadky[0]
         stlpce = []  # (index stĺpca s menom, názov hodiniek)
         posledny_harok = set()
+        prvy_den = next(((d.date() if isinstance(d, datetime) else d).isoformat() for d in (r[0] for r in riadky[2:])
+                         if isinstance(d, (datetime, date))), None)
         for i in range(1, len(hlavicka), 2):
             if hlavicka[i] is not None and str(hlavicka[i]).strip() != "":
                 nazov = str(hlavicka[i]).strip()
@@ -398,10 +448,13 @@ def precitaj_excel(data):
                     nazov = str(int(hlavicka[i]))
                 stlpce.append((i, nazov))
                 posledny_harok.add(nazov)
+                z = riadky[1][i + 1] if len(riadky[1]) > i + 1 else None
+                z = int(z) if isinstance(z, (int, float)) else None
                 if nazov not in pociatok:
                     poradie.append(nazov)
-                    z = riadky[1][i + 1] if len(riadky[1]) > i + 1 else None
-                    pociatok[nazov] = int(z) if isinstance(z, (int, float)) else None
+                    pociatok[nazov] = z
+                elif z is not None and prvy_den:
+                    stavy.append((nazov, prvy_den, z))
         for r in riadky[2:]:
             d = r[0]
             if not isinstance(d, (datetime, date)):
@@ -413,7 +466,7 @@ def precitaj_excel(data):
                     continue
                 z = r[i + 1] if len(r) > i + 1 else None
                 zaznamy.append((nazov, d.isoformat(), str(meno).strip(), int(z) if isinstance(z, (int, float)) else None))
-    return [(n, pociatok[n], n in posledny_harok) for n in poradie], zaznamy
+    return [(n, pociatok[n], n in posledny_harok) for n in poradie], zaznamy, stavy
 
 
 @bp.route("/<slug>/hodinky/import", methods=["POST"])
@@ -424,7 +477,7 @@ def importuj(slug):
         flash("Vyberte súbor .xlsx.")
         return _spat(slug)
     try:
-        nove_hodinky, zaznamy = precitaj_excel(subor.read())
+        nove_hodinky, zaznamy, stavy = precitaj_excel(subor.read())
     except Exception:  # poškodený alebo iný súbor
         flash("Súbor sa nepodarilo prečítať. Musí to byť tabuľka hodiniek (.xlsx).")
         return _spat(slug)
@@ -448,6 +501,14 @@ def importuj(slug):
             nenajdene.add(meno)
         db.execute("INSERT INTO hodinky_zaznam (hodinky_id, datum, typ, cislo, meno, zostatok, zapisal, cas) "
                    "VALUES (?, ?, 'pozicanie', ?, ?, ?, ?, ?)", (ids[nazov], datum, cislo, meno, zostatok, "import", cas))
+    # stav na začiatku mesiaca (2. riadok hárku), ak sa líši od posledného zapísaného zostatku
+    for nazov, datum, z in stavy:
+        pred = db.execute("SELECT zostatok FROM hodinky_zaznam WHERE hodinky_id = ? AND datum < ? AND zostatok IS NOT NULL "
+                          "ORDER BY datum DESC, id DESC LIMIT 1", (ids[nazov], datum)).fetchone()
+        if pred is not None and pred["zostatok"] != z:
+            db.execute("INSERT INTO hodinky_zaznam (hodinky_id, datum, typ, meno, zostatok, zapisal, cas) "
+                       "VALUES (?, ?, 'dobitie', 'Stav na začiatku mesiaca (z tabuľky)', ?, 'import', ?)",
+                       (ids[nazov], datum, z, cas))
     db.commit()
     flash(f"Nahraté: {len(nove_hodinky)} hodiniek, {len(zaznamy)} záznamov."
           + (f" {len(nenajdene)} mien sa nenašlo v zozname členov ZO (uložené podľa súboru)." if nenajdene else ""))
