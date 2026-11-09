@@ -286,7 +286,9 @@ def uloz_anketu(db, anketa_id, nazov, uvod, koniec, otazky_text, menit_otazky=Tr
             "UPDATE anketa SET nazov = ?, uvod = ?, koniec = ? WHERE id = ?",
             (nazov, uvod, koniec, anketa_id),
         )
-    if menit_otazky:
+    if menit_otazky == "zachovat":
+        prepis_otazky(db, anketa_id, otazky_text)
+    elif menit_otazky:
         otazky = rozober_otazky(otazky_text)
         db.execute("DELETE FROM otazka WHERE anketa_id = ?", (anketa_id,))
         db.execute("UPDATE anketa SET otazky_text = ? WHERE id = ?", (otazky_text, anketa_id))
@@ -301,6 +303,41 @@ def uloz_anketu(db, anketa_id, nazov, uvod, koniec, otazky_text, menit_otazky=Tr
                 [(cur.lastrowid, j, m["text"] or "Iné", int(m["vpisovat"])) for j, m in enumerate(o["moznosti"])],
             )
     return anketa_id
+
+
+def prepis_otazky(db, anketa_id, otazky_text):
+    """Úprava otázok dotazníka, ktorý už niekto vypĺňa: otázky a možnosti sa prepíšu podľa poradia,
+    takže doterajšie odpovede zostanú pri tých istých otázkach a možnostiach. Odpovede na odstránené
+    otázky alebo možnosti sa zmažú."""
+    otazky = rozober_otazky(otazky_text)
+    stare = db.execute("SELECT id FROM otazka WHERE anketa_id = ? ORDER BY poradie, id", (anketa_id,)).fetchall()
+    db.execute("UPDATE anketa SET otazky_text = ? WHERE id = ?", (otazky_text, anketa_id))
+    for i, o in enumerate(otazky):
+        hodnoty = (o["text"], o["typ"], int(o["anonymna"]), *(o["ak"] or (None, None)), o["max"], int(o["s_menom"]))
+        if i < len(stare):
+            oid = stare[i]["id"]
+            db.execute("UPDATE otazka SET poradie = ?, text = ?, typ = ?, anonymna = ?, ak_otazka = ?, ak_moznost = ?, "
+                       "max_volieb = ?, s_menom = ? WHERE id = ?", (i, *hodnoty, oid))
+        else:
+            oid = db.execute("INSERT INTO otazka (anketa_id, poradie, text, typ, anonymna, ak_otazka, ak_moznost, "
+                             "max_volieb, s_menom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (anketa_id, i, *hodnoty)).lastrowid
+        stare_m = db.execute("SELECT id FROM moznost WHERE otazka_id = ? ORDER BY poradie, id", (oid,)).fetchall()
+        for j, m in enumerate(o["moznosti"]):
+            if j < len(stare_m):
+                db.execute("UPDATE moznost SET poradie = ?, text = ?, vpisovat = ? WHERE id = ?",
+                           (j, m["text"] or "Iné", int(m["vpisovat"]), stare_m[j]["id"]))
+            else:
+                db.execute("INSERT INTO moznost (otazka_id, poradie, text, vpisovat) VALUES (?, ?, ?, ?)",
+                           (oid, j, m["text"] or "Iné", int(m["vpisovat"])))
+        for m in stare_m[len(o["moznosti"]):]:
+            db.execute("DELETE FROM odpoved WHERE moznost_id = ?", (m["id"],))
+            db.execute("DELETE FROM moznost WHERE id = ?", (m["id"],))
+        if o["typ"] == TYP_TEXT:
+            db.execute("DELETE FROM odpoved WHERE otazka_id = ? AND moznost_id IS NOT NULL", (oid,))
+    for o in stare[len(otazky):]:
+        db.execute("DELETE FROM odpoved WHERE otazka_id = ?", (o["id"],))
+        db.execute("DELETE FROM moznost WHERE otazka_id = ?", (o["id"],))
+        db.execute("DELETE FROM otazka WHERE id = ?", (o["id"],))
 
 
 # --- dotazníky zo súborov v repozitári ----------------------------------------
@@ -784,7 +821,7 @@ def uprav_anketu(anketa_id=None):
             if koniec:
                 datetime.strptime(koniec, "%Y-%m-%dT%H:%M")
             anketa_id = uloz_anketu(db, anketa_id, nazov, f.get("uvod", "").strip(), koniec,
-                                    f.get("otazky", ""), menit_otazky=not ma_hlasy)
+                                    f.get("otazky", ""), menit_otazky="zachovat" if ma_hlasy else True)
             zo_slug = pevna_zo or f.get("zo_slug", "")
             db.execute("UPDATE anketa SET zo_slug = ?, povolit_anonymne = ? WHERE id = ?",
                        (zo_slug if mesto_zo(db, zo_slug) else "", int(bool(f.get("povolit_anonymne"))), anketa_id))

@@ -34,17 +34,15 @@
     <div class="pole">
       <span class="pole__nazov">Otázky</span>
       {% if ma_hlasy %}
-        <span class="varovanie">Dotazník už niekto začal vypĺňať, preto otázky nie je možné meniť.</span>
-        <textarea rows="10" disabled>{{ anketa.otazky }}</textarea>
-      {% else %}
+        <span class="varovanie">Dotazník už niekto vypĺňa. Opravy textov sa prenesú a doterajšie odpovede zostanú.
+          Ak otázku alebo možnosť odstránite, zmažú sa aj odpovede na ňu. Neposúvajte otázky ani možnosti, odpovede sú viazané na ich poradie.</span>
+      {% endif %}
         <textarea name="otazky" id="otazky-text" hidden>{{ anketa.otazky }}</textarea>
         <div id="editor-otazok"></div>
         <button type="button" class="tlacidlo tlacidlo--sekundarne" id="pridat-otazku">+ Pridať otázku</button>
-      {% endif %}
     </div>
     <button type="submit" class="tlacidlo">Uložiť dotazník</button>
   </form>
-  {% if not ma_hlasy %}
   <template id="sablona-otazky">
     <fieldset class="otazka editor-otazka">
       <legend>Otázka <span class="cislo-otazky"></span></legend>
@@ -414,5 +412,4 @@
     });
   })();
   </script>
-  {% endif %}
 {% endblock %}
