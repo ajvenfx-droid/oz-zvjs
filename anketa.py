@@ -520,15 +520,18 @@ def dotazniky_clena(db, cislo):
     moje_zo = zo_clena(db, cislo)
     vysledok = []
     for a in db.execute("SELECT * FROM anketa ORDER BY id DESC"):
-        if a["zo_slug"] and a["zo_slug"] not in moje_zo:
-            continue
         if not a["zverejneny"]:
             continue  # koncept členovia nevidia, kým ho predseda nezverejní
+        rk = moze_vidiet_vysledky(db, a["zo_slug"])
+        if a["zo_slug"] and a["zo_slug"] not in moje_zo:
+            if rk:  # správca, predseda či revízna komisia vidí výsledky aj bez vyplnenia
+                vysledok.append({"anketa": a, "stav": "", "ukoncena": je_ukoncena(a), "zo_mesto": mesto_zo(db, a["zo_slug"]),
+                                 "vysledky": True})
+            continue
         h = db.execute("SELECT id, potvrdene FROM hlas WHERE anketa_id = ? AND cislo = ?", (a["id"], cislo)).fetchone()
         stav = "nevyplneny" if h is None else ("odoslany" if h["potvrdene"] else "rozpracovany")
         if stav == "odoslany" and not je_ukoncena(a) and na_doplnenie(nacitaj_otazky(db, a["id"]), moje_odpovede(db, h["id"])[0]):
             stav = "doplnit"
-        rk = je_v_reviznej_komisii(db, a["zo_slug"], cislo)
         if je_ukoncena(a) and stav not in ("odoslany", "doplnit") and not rk:
             continue
         vysledok.append({"anketa": a, "stav": stav, "ukoncena": je_ukoncena(a), "zo_mesto": mesto_zo(db, a["zo_slug"]),

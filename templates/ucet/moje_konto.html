@@ -29,12 +29,12 @@
       <tbody>
         {% for d in dotazniky %}
           <tr>
-            <td><a href="{{ url_for('anketa.dotaznik', anketa_id=d.anketa.id) }}"><strong>{{ d.anketa.nazov }}</strong></a>
+            <td><a href="{{ url_for('anketa.dotaznik' if d.stav else 'anketa.vysledky', anketa_id=d.anketa.id) }}"><strong>{{ d.anketa.nazov }}</strong></a>
               {% if d.zo_mesto %}<br><span class="info">ZO {{ d.zo_mesto }}</span>{% endif %}</td>
-            <td>{% if d.stav == 'odoslany' %}<span class="ok">Odoslaný</span>{% elif d.stav == 'doplnit' %}<span class="varovanie">Odoslaný – doplňte odpoveď na novú otázku</span>{% elif d.stav == 'rozpracovany' %}<span class="varovanie">Rozpracovaný, treba potvrdiť</span>{% else %}<span class="varovanie">Nevyplnený</span>{% endif %}
+            <td>{% if not d.stav %}<span class="info">len výsledky</span>{% elif d.stav == 'odoslany' %}<span class="ok">Odoslaný</span>{% elif d.stav == 'doplnit' %}<span class="varovanie">Odoslaný – doplňte odpoveď na novú otázku</span>{% elif d.stav == 'rozpracovany' %}<span class="varovanie">Rozpracovaný, treba potvrdiť</span>{% else %}<span class="varovanie">Nevyplnený</span>{% endif %}
               {% if d.anketa.koniec and not d.ukoncena and d.stav != 'odoslany' %}<br><span class="info">do {{ d.anketa.koniec|koniec }}</span>{% endif %}</td>
-            <td class="akcie"><a class="tlacidlo{% if d.stav == 'odoslany' %} tlacidlo--sekundarne{% endif %}" href="{{ url_for('anketa.dotaznik', anketa_id=d.anketa.id) }}">{{ 'Pozrieť odpovede' if d.stav == 'odoslany' else ('Doplniť' if d.stav == 'doplnit' else ('Pokračovať' if d.stav == 'rozpracovany' else 'Vyplniť')) }}</a>
-              {% if d.vysledky %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('anketa.vysledky', anketa_id=d.anketa.id) }}">Výsledky</a>{% endif %}</td>
+            <td class="akcie">{% if d.stav %}<a class="tlacidlo{% if d.stav == 'odoslany' %} tlacidlo--sekundarne{% endif %}" href="{{ url_for('anketa.dotaznik', anketa_id=d.anketa.id) }}">{{ 'Pozrieť odpovede' if d.stav == 'odoslany' else ('Doplniť' if d.stav == 'doplnit' else ('Pokračovať' if d.stav == 'rozpracovany' else 'Vyplniť')) }}</a>{% endif %}
+              {% if d.vysledky %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('anketa.vysledky', anketa_id=d.anketa.id) }}">Výsledky – odpovede všetkých</a>{% endif %}</td>
           </tr>
         {% endfor %}
       </tbody>
