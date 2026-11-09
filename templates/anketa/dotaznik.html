@@ -9,6 +9,7 @@
 
   {% if uzavrety %}
     <p class="ok">Dotazník ste odoslali {{ hlas.cas[8:10] }}.{{ hlas.cas[5:7] }}.{{ hlas.cas[:4] }} o {{ hlas.cas[11:16] }}. Odpovede sa už nedajú meniť.</p>
+    {% if doplnit %}<p class="varovanie">V dotazníku pribudla alebo bola opravená otázka, na ktorú ste ešte neodpovedali. Doplňte, prosím, odpoveď (zvýraznená nižšie) a kliknite na „Doplniť odpovede“.</p>{% endif %}
   {% elif ukoncena %}
     <p class="varovanie">Vypĺňanie dotazníka sa už skončilo.</p>
   {% elif hlas %}
@@ -20,26 +21,28 @@
   {% endif %}
 
   {% set zamknute = uzavrety or ukoncena %}
+  {% set doplnit = doplnit or [] %}
   <form method="post" class="formular" id="dotaznik">
     {% for o in otazky %}
       {% set pole = 'otazka_' ~ o.id %}
       {% set moje = odpovede.get(o.id, []) %}
-      <fieldset class="otazka{% if o.rodic %} podotazka{% if not o.rodic.moznost %} polozka{% endif %}{% endif %}{% if o.typ == 'skupina' %} skupina{% endif %}"{% if o.max_volieb %} data-max="{{ o.max_volieb }}"{% endif %}{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id if o.rodic.moznost else '' }}"{% endif %} data-otazka="{{ o.id }}">
+      {% set zamk = zamknute and o.id not in doplnit %}
+      <fieldset{% if o.id in doplnit %} data-doplnit="1"{% endif %} class="otazka{% if o.id in doplnit %} doplnit{% endif %}{% if o.rodic %} podotazka{% if not o.rodic.moznost %} polozka{% endif %}{% endif %}{% if o.typ == 'skupina' %} skupina{% endif %}"{% if o.max_volieb %} data-max="{{ o.max_volieb }}"{% endif %}{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id if o.rodic.moznost else '' }}"{% endif %} data-otazka="{{ o.id }}">
         <legend>{{ o.cislo }}. {{ o.text }}</legend>
         {% if o.anonymna %}<p class="info">Anonymná otázka: nikto neuvidí, ako ste odpovedali.</p>{% endif %}
         {% if o.typ == 'skupina' %}
         {% elif o.typ == 'text' %}
-          <textarea name="{{ pole }}" rows="3" {% if zamknute %}disabled{% endif %}>{{ moje[0] if moje else '' }}</textarea>
+          <textarea name="{{ pole }}" rows="3" {% if zamk %}disabled{% endif %}>{{ moje[0] if moje else '' }}</textarea>
         {% else %}
           {% if o.typ == 'viac' %}<p class="info">{% if o.max_volieb %}Môžete označiť najviac {{ o.max_volieb }} {{ 'možnosti' if o.max_volieb < 5 else 'možností' }}.{% else %}Môžete označiť viac možností.{% endif %}</p>{% endif %}
           {% for m in o.moznosti %}
             <label class="moznost">
               <input type="{{ 'checkbox' if o.typ == 'viac' else 'radio' }}" name="{{ pole }}" value="{{ m.id }}"
-                {% if m.id in moje %}checked{% endif %} {% if zamknute %}disabled{% endif %}>
+                {% if m.id in moje %}checked{% endif %} {% if zamk %}disabled{% endif %}>
               {{ m.text }}
               {% if m.vpisovat %}
                 <input type="text" name="vpis_{{ m.id }}" class="vpis" value="{{ vpisy.get(m.id, '') }}" placeholder="napíšte…" maxlength="500"
-                       {% if zamknute %}disabled{% endif %}
+                       {% if zamk %}disabled{% endif %}
                        oninput="if (this.value) { var r = this.parentNode.querySelector('input[type=radio],input[type=checkbox]'); r.checked = true; }">
               {% endif %}
             </label>
@@ -47,13 +50,18 @@
         {% endif %}
         {% if not o.anonymna and not o.s_menom and anketa.povolit_anonymne and o.typ != 'skupina' %}
           <label class="moznost anonymne-volba">
-            <input type="checkbox" name="anonymne_{{ o.id }}" value="1" {% if o.id in anonymne %}checked{% endif %} {% if zamknute %}disabled{% endif %}>
+            <input type="checkbox" name="anonymne_{{ o.id }}" value="1" {% if o.id in anonymne %}checked{% endif %} {% if zamk %}disabled{% endif %}>
             Odpovedať anonymne (vedenie uvidí len súhrn, nie moju odpoveď)
           </label>
         {% endif %}
       </fieldset>
     {% endfor %}
 
+    {% if zamknute and doplnit %}
+      <div class="akcie">
+        <button type="submit" name="akcia" value="doplnit" class="tlacidlo">Doplniť odpovede</button>
+      </div>
+    {% endif %}
     {% if not zamknute %}
       <div class="akcie">
         <button type="submit" name="akcia" value="ulozit" class="tlacidlo tlacidlo--sekundarne">Uložiť rozpracované</button>
@@ -81,14 +89,13 @@
         }
         viditelne[f.dataset.otazka] = ok;
         f.hidden = !ok;
-        if (!zamknute) f.querySelectorAll("input, textarea").forEach(function (el) { el.disabled = !ok; });
+        if (!zamknute || f.dataset.doplnit) f.querySelectorAll("input, textarea").forEach(function (el) { el.disabled = !ok; });
       });
     }
     // obmedzenie počtu označených možností
     function limity() {
-      if (zamknute) return;
       form.querySelectorAll("fieldset[data-max]").forEach(function (f) {
-        if (f.hidden) return;
+        if (f.hidden || (zamknute && !f.dataset.doplnit)) return;
         var boxy = f.querySelectorAll('input[type=checkbox][name^="otazka_"]');
         var n = Array.prototype.filter.call(boxy, function (b) { return b.checked; }).length;
         boxy.forEach(function (b) { if (!b.checked) b.disabled = n >= parseInt(f.dataset.max, 10); });

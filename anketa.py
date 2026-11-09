@@ -439,6 +439,23 @@ def aktivne_otazky(otazky, vybrane):
     return aktivne
 
 
+def na_doplnenie(otazky, odpovede):
+    """Otázky, ktoré člen v odoslanom dotazníku nemá zodpovedané (napr. pridané alebo opravené neskôr),
+    aj s ich podotázkami. Ide o výberové otázky; textové len ako podotázky doplňovaných."""
+    zvolene = {k: [x for x in v if isinstance(x, int)] for k, v in odpovede.items()}
+    aktivne = aktivne_otazky(otazky, zvolene)
+    doplnit = set()
+    for o in otazky:
+        if o["id"] in odpovede:
+            continue
+        rodic = o["rodic"]["otazka"]["id"] if o["rodic"] else None
+        if rodic in doplnit:
+            doplnit.add(o["id"])
+        elif o["id"] in aktivne and o["typ"] in (TYP_JEDNA, TYP_VIAC):
+            doplnit.add(o["id"])
+    return doplnit
+
+
 def pocet_hlasov(db, anketa_id):
     return db.execute("SELECT COUNT(*) FROM hlas WHERE anketa_id = ?", (anketa_id,)).fetchone()[0]
 
@@ -507,10 +524,12 @@ def dotazniky_clena(db, cislo):
             continue
         if not a["zverejneny"]:
             continue  # koncept členovia nevidia, kým ho predseda nezverejní
-        h = db.execute("SELECT potvrdene FROM hlas WHERE anketa_id = ? AND cislo = ?", (a["id"], cislo)).fetchone()
+        h = db.execute("SELECT id, potvrdene FROM hlas WHERE anketa_id = ? AND cislo = ?", (a["id"], cislo)).fetchone()
         stav = "nevyplneny" if h is None else ("odoslany" if h["potvrdene"] else "rozpracovany")
+        if stav == "odoslany" and not je_ukoncena(a) and na_doplnenie(nacitaj_otazky(db, a["id"]), moje_odpovede(db, h["id"])[0]):
+            stav = "doplnit"
         rk = je_v_reviznej_komisii(db, a["zo_slug"], cislo)
-        if je_ukoncena(a) and stav != "odoslany" and not rk:
+        if je_ukoncena(a) and stav not in ("odoslany", "doplnit") and not rk:
             continue
         vysledok.append({"anketa": a, "stav": stav, "ukoncena": je_ukoncena(a), "zo_mesto": mesto_zo(db, a["zo_slug"]),
                          "vysledky": rk})
@@ -589,6 +608,47 @@ def dotaznik(anketa_id):
                     except Exception:
                         flash("E-mail sa nepodarilo odoslať, skúste to neskôr.")
             return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
+        doplnit = na_doplnenie(otazky, odpovede) if uzavrety and not ukoncena else set()
+        if akcia == "doplnit" and doplnit:
+            zvolene = {k: [x for x in v if isinstance(x, int)] for k, v in odpovede.items()}
+            for o in otazky:
+                if o["id"] in doplnit and o["typ"] != TYP_TEXT:
+                    zvolene[o["id"]] = [int(v) for v in request.form.getlist(f"otazka_{o['id']}") if v.isdigit()]
+            aktivne = aktivne_otazky(otazky, zvolene)
+            nove = []
+            for o in otazky:
+                if o["id"] not in doplnit or o["id"] not in aktivne or o["typ"] == TYP_SKUPINA:
+                    continue
+                anon = int(bool(request.form.get(f"anonymne_{o['id']}")) and not o["anonymna"] and not o["s_menom"]
+                           and bool(anketa["povolit_anonymne"]))
+                pole = f"otazka_{o['id']}"
+                if o["typ"] == TYP_TEXT:
+                    text = request.form.get(pole, "").strip()
+                    if text:
+                        nove.append((o["id"], None, text[:2000], anon))
+                    continue
+                platne = {str(m["id"]) for m in o["moznosti"]}
+                vybrane = [v for v in request.form.getlist(pole) if v in platne]
+                if o["typ"] == TYP_JEDNA:
+                    vybrane = vybrane[:1]
+                elif o.get("max_volieb") and len(vybrane) > o["max_volieb"]:
+                    chyby.append(f"Pri otázke „{o['text']}“ môžete označiť najviac {o['max_volieb']} možnosti.")
+                if not vybrane:
+                    chyby.append(f"Odpovedzte na otázku „{o['text']}“.")
+                vpisovacie = {str(m["id"]) for m in o["moznosti"] if m["vpisovat"]}
+                nove += [(o["id"], int(v), request.form.get(f"vpis_{v}", "").strip()[:500] if v in vpisovacie else "",
+                          anon) for v in vybrane]
+            if not chyby:
+                db.executemany("INSERT INTO odpoved (hlas_id, otazka_id, moznost_id, text, anonymna) VALUES (?, ?, ?, ?, ?)",
+                               [(hlas["id"], *o) for o in nove])
+                db.commit()
+                flash("Odpovede boli doplnené. Ďakujeme.")
+                return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
+            for oid, mid, text, _ in nove:
+                odpovede.setdefault(oid, []).append(mid if mid is not None else text)
+            return render_template("anketa/dotaznik.html", anketa=anketa, otazky=otazky, odpovede=odpovede,
+                                   uzavrety=uzavrety, ukoncena=ukoncena, chyby=chyby, hlas=hlas, anonymne=anonymne,
+                                   vpisy=vpisy, zo_mesto=mesto_zo(db, anketa["zo_slug"]), doplnit=doplnit)
         if uzavrety or ukoncena:
             flash("Dotazník je už uzavretý, odpovede sa nedajú meniť.")
             return redirect(url_for("anketa.dotaznik", anketa_id=anketa_id))
@@ -644,7 +704,8 @@ def dotaznik(anketa_id):
 
     return render_template("anketa/dotaznik.html", anketa=anketa, otazky=otazky, odpovede=odpovede,
                            uzavrety=uzavrety, ukoncena=ukoncena, chyby=chyby, hlas=hlas, anonymne=anonymne, vpisy=vpisy,
-                           zo_mesto=mesto_zo(db, anketa["zo_slug"]))
+                           zo_mesto=mesto_zo(db, anketa["zo_slug"]),
+                           doplnit=na_doplnenie(otazky, odpovede) if uzavrety and not ukoncena else set())
 
 
 # --- správca ----------------------------------------------------------------

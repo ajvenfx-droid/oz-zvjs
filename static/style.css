@@ -593,3 +593,4 @@ a.hodinky-karta:hover { border-color: var(--modra); box-shadow: 0 2px 8px rgba(0
 .rezervacia-casy { display: flex; flex-wrap: wrap; gap: 16px; }
 .rezervacia-zostatok { display: flex; gap: 6px; align-items: center; }
 .rezervacia-zostatok input { width: 150px; }
+fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fffbeb !important; box-shadow: 0 0 0 3px #fde68a; }
