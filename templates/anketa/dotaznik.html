@@ -9,7 +9,7 @@
 
   {% if uzavrety %}
     <p class="ok">Dotazník ste odoslali {{ hlas.cas[8:10] }}.{{ hlas.cas[5:7] }}.{{ hlas.cas[:4] }} o {{ hlas.cas[11:16] }}. Odpovede sa už nedajú meniť.</p>
-    {% if doplnit %}<p class="varovanie">V dotazníku pribudla alebo bola opravená otázka, na ktorú ste ešte neodpovedali. Doplňte, prosím, odpoveď (zvýraznená nižšie) a kliknite na „Doplniť odpovede“.</p>{% endif %}
+    {% if doplnit %}<p class="varovanie">V dotazníku pribudla alebo bola opravená otázka, na ktorú ste ešte neodpovedali. Doplňte, prosím, odpoveď a kliknite na „Doplniť odpovede“. Ostatné vaše odpovede zostávajú tak, ako ste ich odoslali.</p>{% endif %}
   {% elif ukoncena %}
     <p class="varovanie">Vypĺňanie dotazníka sa už skončilo.</p>
   {% elif hlas %}
@@ -27,7 +27,7 @@
       {% set pole = 'otazka_' ~ o.id %}
       {% set moje = odpovede.get(o.id, []) %}
       {% set zamk = zamknute and o.id not in doplnit %}
-      <fieldset{% if o.id in doplnit %} data-doplnit="1"{% endif %} class="otazka{% if o.id in doplnit %} doplnit{% endif %}{% if o.rodic %} podotazka{% if not o.rodic.moznost %} polozka{% endif %}{% endif %}{% if o.typ == 'skupina' %} skupina{% endif %}"{% if o.max_volieb %} data-max="{{ o.max_volieb }}"{% endif %}{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id if o.rodic.moznost else '' }}"{% endif %} data-otazka="{{ o.id }}">
+      <fieldset{% if o.id in doplnit %} data-doplnit="1"{% elif zamknute and doplnit %} data-skryt="1"{% endif %} class="otazka{% if o.id in doplnit %} doplnit{% endif %}{% if o.rodic %} podotazka{% if not o.rodic.moznost %} polozka{% endif %}{% endif %}{% if o.typ == 'skupina' %} skupina{% endif %}"{% if o.max_volieb %} data-max="{{ o.max_volieb }}"{% endif %}{% if o.rodic %} data-ak-otazka="{{ o.rodic.otazka.id }}" data-ak-moznost="{{ o.rodic.moznost.id if o.rodic.moznost else '' }}"{% endif %} data-otazka="{{ o.id }}">
         <legend>{{ o.cislo }}. {{ o.text }}</legend>
         {% if o.anonymna %}<p class="info">Anonymná otázka: nikto neuvidí, ako ste odpovedali.</p>{% endif %}
         {% if o.typ == 'skupina' %}
@@ -88,7 +88,7 @@
           }
         }
         viditelne[f.dataset.otazka] = ok;
-        f.hidden = !ok;
+        f.hidden = !ok || !!f.dataset.skryt;
         if (!zamknute || f.dataset.doplnit) f.querySelectorAll("input, textarea").forEach(function (el) { el.disabled = !ok; });
       });
     }
