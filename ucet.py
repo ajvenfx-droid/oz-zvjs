@@ -152,6 +152,10 @@ def nacitaj_prihlaseneho():
     if clen["rola"] == "clen" and clen["funkcia"]:
         clen["rola"] = "zo"
         clen["skutocna_rola"] = "zo"
+    clen["skutocna_funkcia"] = clen["funkcia"]
+    zo = get_db().execute("SELECT mesto FROM zakladna_organizacia WHERE slug = ?", (clen["zo_slug"],)).fetchone() \
+        if clen["zo_slug"] else None
+    clen["zo_mesto"] = zo["mesto"] if zo else ""
     if clen["rola"] != "clen" and session.get("ako_clen"):
         clen["rola"] = "clen"
         clen["funkcia"] = ""
