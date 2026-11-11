@@ -40,6 +40,7 @@
     <h2 class="prezencna__nadpis">Prezenčná listina {{ nazov }}{% if datum_text %} {{ 'dňa ' if vzor == 'prazdna' else '' }}{{ datum_text }}{% endif %}</h2>
     {% if not hlavicka %}<p class="prezencna__zo">{{ zo.nazov }}</p>{% endif %}
     <p class="prezencna__pocet">Celkový počet členov: <strong>{{ zoznam|length }}</strong></p>
+    <p class="prezencna__pocet">Členská schôdza je uznášaniaschopná, ak je prítomných 30 % všetkých jej členov, t. j. najmenej <strong>{{ ((zoznam|length) * 3 + 9) // 10 }}</strong> podpísaných členov.</p>
     {% if hostia %}
       <table class="prezencna__tabulka prezencna__hostia">
         <thead><tr><th colspan="3" class="hostia-nadpis">Pozvaní hostia</th></tr>
