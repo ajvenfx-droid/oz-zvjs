@@ -881,6 +881,54 @@ def prezencna_listina(slug):
                            rk_predseda=rk_predseda, rk_funkcia=rk_funkcia)
 
 
+def text_peciatky(db, zo):
+    """Text pečiatky ZO na zadnú stranu hlasovacieho lístka (uložený pre ZO, inak názov ZO)."""
+    r = db.execute("SELECT hodnota FROM nastavenie WHERE kluc = ?", (f"peciatka:{zo['slug']}",)).fetchone()
+    return r["hodnota"] if r else zo["nazov"]
+
+
+@bp.route("/<slug>/volby", methods=["GET", "POST"])
+def volby(slug):
+    """Voľby: hlasovacie lístky na tlač (niekoľko na A4, poradové číslo, vzadu pečiatka ZO)."""
+    if not prezencnu_listinu_moze(slug):
+        if not je_spravca() and g.get("clen") is None:
+            return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+        abort(403)
+    g.moze_menit = pristup(slug) == "menit"
+    db = get_db()
+    if request.method == "POST":  # uloženie textu pečiatky ZO
+        if not g.moze_menit:
+            abort(403)
+        text = "\n".join(r.strip() for r in request.form.get("peciatka", "").strip().splitlines())[:600]
+        if text:
+            db.execute("INSERT INTO nastavenie (kluc, hodnota) VALUES (?, ?) "
+                       "ON CONFLICT(kluc) DO UPDATE SET hodnota = excluded.hodnota", (f"peciatka:{slug}", text))
+        else:
+            db.execute("DELETE FROM nastavenie WHERE kluc = ?", (f"peciatka:{slug}",))
+        db.commit()
+        flash("Text pečiatky bol uložený.")
+        return redirect(url_for("evidencia.volby", slug=slug))
+    zo, _, clenovia, _ = _nacitaj_zo(slug)
+    a = request.args
+    def cislo(kluc, predvolene, od, do):
+        v = a.get(kluc) or ""
+        return min(max(int(v), od), do) if v.isdigit() else predvolene
+    pocet = cislo("pocet", max(len(clenovia), 1), 1, 1000)
+    od = cislo("od", 1, 1, 100000)
+    na_stranu = cislo("na_stranu", 4, 2, 4)
+    kandidati = [k.strip()[:120] for k in (a.get("kandidati") or "").splitlines() if k.strip()][:30]
+    peciatka = text_peciatky(db, zo)
+    s_peciatkou = a.get("peciatka") == "1" or not a
+    cisla = list(range(od, od + pocet))
+    strany = [cisla[i:i + na_stranu] for i in range(0, len(cisla), na_stranu)]
+    return render_template("evidencia/volby.html", zo=zo, strany=strany, pocet=pocet, od=od, na_stranu=na_stranu,
+                           nazov=(a.get("nazov") or "Hlasovací lístok").strip()[:120],
+                           podnadpis=(a.get("podnadpis") or "").strip()[:200],
+                           pokyn=(a.get("pokyn") or "").strip()[:300], kandidati=kandidati,
+                           kandidati_text="\n".join(kandidati), peciatka=peciatka, s_peciatkou=s_peciatkou,
+                           uz_zadane=bool(a))
+
+
 @bp.route("/<slug>/export.xlsx")
 @vyzaduj()
 def export_xlsx(slug):

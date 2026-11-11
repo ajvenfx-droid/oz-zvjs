@@ -631,3 +631,23 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .prezencna__pocet { margin: 2px 0 10px; }
 .prezencna__overenie { margin-top: 18px; page-break-inside: avoid; break-inside: avoid; color: #000; }
 .prezencna__overenie p { margin: 0 0 12px; }
+/* Voľby – hlasovacie lístky */
+.listky { margin-top: 16px; overflow-x: auto; }
+.listok-strana { display: grid; box-sizing: border-box; padding: 8mm; gap: 6mm; background: #fff; color: #000;
+  margin: 0 auto 12px; box-shadow: 0 0 0 1px #ccc; page-break-after: always; break-after: page; }
+.listok-strana:last-child { page-break-after: auto; break-after: auto; }
+.listok { position: relative; box-sizing: border-box; border: 1.2px solid #000; padding: 6mm 7mm; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.listok--prazdny, .listok-strana--zadna .listok { border-color: transparent; }
+.listok__cislo { position: absolute; top: 3mm; right: 4mm; font-weight: 700; font-size: 12pt; }
+.listok__nadpis { font-size: 18pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.listok__podnadpis { font-size: 12pt; margin-top: 2mm; }
+.listok__kandidati { text-align: left; margin: 4mm 0 0; font-size: 12pt; line-height: 1.5; }
+.listok__pokyn { font-size: 9pt; margin-top: 4mm; font-style: italic; }
+.listok__peciatka { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; line-height: 1.3; }
+@media print {
+  body:has(.listky) > *:not(main), main:has(.listky) > *:not(.listky):not(style), .netlacit { display: none !important; }
+  main:has(.listky) { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  .listky { margin: 0; overflow: visible; }
+  .listok-strana { margin: 0; box-shadow: none; }
+}

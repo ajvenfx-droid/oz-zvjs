@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Voľby – hlasovacie lístky – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  {% set na_sirku = na_stranu == 4 %}
+  {% set pw, ph = (297, 210) if na_sirku else (210, 297) %}
+  {% set stlpcov = 2 if na_stranu == 4 else 1 %}
+  {% set riadkov = 2 if na_stranu in (2, 4) else 3 %}
+  <style>
+    .listok-strana { width: {{ pw }}mm; height: {{ ph }}mm; grid-template-columns: repeat({{ stlpcov }}, 1fr); grid-template-rows: repeat({{ riadkov }}, 1fr); }
+    @media print {
+      @page { size: A4 {{ 'landscape' if na_sirku else 'portrait' }}; margin: 0; }
+    }
+  </style>
+  <div class="netlacit">
+    {% if moze_menit or je_spravca or (prihlaseny_clen and prihlaseny_clen.rola == 'vedenie') %}<a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+    {% else %}<a class="spat" href="{{ url_for('ucet.moje_konto') }}">&larr; Moje konto</a>{% endif %}
+    <h1 class="nadpis">Voľby – hlasovacie lístky – ZO {{ zo.mesto }}</h1>
+    <form method="get" class="formular prezencna-nastavenie">
+      <label class="pole prezencna-siroke"><span class="pole__nazov">Nadpis</span>
+        <input type="text" name="nazov" value="{{ nazov }}" maxlength="120"></label>
+      <label class="pole prezencna-siroke"><span class="pole__nazov">Podnadpis (napr. Voľba predsedu ZO)</span>
+        <input type="text" name="podnadpis" value="{{ podnadpis }}" maxlength="200"></label>
+      <label class="pole prezencna-siroke"><span class="pole__nazov">Kandidáti (každý na nový riadok, nepovinné)</span>
+        <textarea name="kandidati" rows="3">{{ kandidati_text }}</textarea></label>
+      <label class="pole prezencna-siroke"><span class="pole__nazov">Pokyn dolu (nepovinné)</span>
+        <input type="text" name="pokyn" value="{{ pokyn }}" maxlength="300" placeholder="napr. Zakrúžkujte číslo kandidáta"></label>
+      <label class="pole"><span class="pole__nazov">Počet lístkov</span>
+        <input type="number" name="pocet" value="{{ pocet }}" min="1" max="1000"></label>
+      <label class="pole"><span class="pole__nazov">Prvé číslo</span>
+        <input type="number" name="od" value="{{ od }}" min="1"></label>
+      <label class="pole"><span class="pole__nazov">Lístkov na A4</span>
+        <select name="na_stranu">
+          <option value="4" {% if na_stranu == 4 %}selected{% endif %}>4 (A6)</option>
+          <option value="3" {% if na_stranu == 3 %}selected{% endif %}>3 (DL – do obálky)</option>
+          <option value="2" {% if na_stranu == 2 %}selected{% endif %}>2 (A5)</option>
+        </select></label>
+      <label class="moznost"><input type="checkbox" name="peciatka" value="1" {% if s_peciatkou %}checked{% endif %}> pečiatka na zadnej strane</label>
+      <button type="submit" class="tlacidlo tlacidlo--sekundarne">Obnoviť náhľad</button>
+      <button type="button" class="tlacidlo" onclick="window.print()">Vytlačiť</button>
+    </form>
+    <p class="info">Tlačte obojstranne{% if na_sirku %} (otáčanie po kratšej strane){% endif %}, s mierkou 100 % a bez okrajov. Každý list má vpredu lístky s poradovými číslami a vzadu pečiatku ZO. Lístky rozstrihajte podľa orámovania.</p>
+    {% if moze_menit %}
+      <details class="panel">
+        <summary>Text pečiatky ZO na zadnej strane</summary>
+        <form method="post" class="formular">
+          <label class="pole prezencna-siroke"><span class="pole__nazov">Každý riadok pečiatky na nový riadok</span>
+            <textarea name="peciatka" rows="5">{{ peciatka }}</textarea></label>
+          <button type="submit" class="tlacidlo tlacidlo--sekundarne">Uložiť pečiatku</button>
+        </form>
+      </details>
+    {% endif %}
+  </div>
+  <div class="listky">
+    {% for strana in strany %}
+      <div class="listok-strana">
+        {% for n in strana %}
+          <div class="listok">
+            <div class="listok__cislo">č. {{ n }}</div>
+            <div class="listok__nadpis">{{ nazov }}</div>
+            {% if podnadpis %}<div class="listok__podnadpis">{{ podnadpis }}</div>{% endif %}
+            {% if kandidati %}
+              <ol class="listok__kandidati">{% for k in kandidati %}<li>{{ k }}</li>{% endfor %}</ol>
+            {% endif %}
+            {% if pokyn %}<div class="listok__pokyn">{{ pokyn }}</div>{% endif %}
+          </div>
+        {% endfor %}
+        {% for _ in range(na_stranu - strana|length) %}<div class="listok listok--prazdny"></div>{% endfor %}
+      </div>
+      {% if s_peciatkou %}
+        <div class="listok-strana listok-strana--zadna">
+          {% for _ in range(na_stranu) %}
+            <div class="listok"><div class="listok__peciatka">{% for r in peciatka.splitlines() %}{{ r }}<br>{% endfor %}</div></div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endblock %}
