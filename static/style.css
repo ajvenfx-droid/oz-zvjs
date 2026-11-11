@@ -662,3 +662,7 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .listky--male .listok__podnadpis, .listky--male .listok__kandidati { font-size: 10pt; margin-top: 1.5mm; line-height: 1.35; }
 .listky--male .listok__pokyn { font-size: 8pt; margin-top: 2mm; }
 .listky--male .listok__peciatka { font-size: 9pt; }
+/* lístky tesne vedľa seba – spoločné čiary na strihanie */
+.listok-strana, .listky--male .listok-strana { gap: 0; }
+.listok { border: 0; border-right: 1.2px solid #000; border-bottom: 1.2px solid #000; }
+.listok-strana--zadna .listok { border-color: transparent !important; }
