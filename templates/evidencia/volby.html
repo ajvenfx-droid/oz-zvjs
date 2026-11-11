@@ -3,8 +3,8 @@
 {% block content %}
   {% set na_sirku = na_stranu == 4 %}
   {% set pw, ph = (297, 210) if na_sirku else (210, 297) %}
-  {% set stlpcov = 2 if na_stranu == 4 else 1 %}
-  {% set riadkov = 2 if na_stranu in (2, 4) else 3 %}
+  {% set stlpcov = 2 if na_stranu in (4, 8) else 1 %}
+  {% set riadkov = {2: 2, 3: 3, 4: 2, 8: 4}[na_stranu] %}
   <style>
     .listok-strana { width: {{ pw }}mm; height: {{ ph }}mm; grid-template-columns: repeat({{ stlpcov }}, 1fr); grid-template-rows: repeat({{ riadkov }}, 1fr); }
     @media print {
@@ -30,11 +30,17 @@
         <input type="number" name="od" value="{{ od }}" min="1"></label>
       <label class="pole"><span class="pole__nazov">Lístkov na A4</span>
         <select name="na_stranu">
+          <option value="8" {% if na_stranu == 8 %}selected{% endif %}>8 (A7)</option>
           <option value="4" {% if na_stranu == 4 %}selected{% endif %}>4 (A6)</option>
           <option value="3" {% if na_stranu == 3 %}selected{% endif %}>3 (DL – do obálky)</option>
           <option value="2" {% if na_stranu == 2 %}selected{% endif %}>2 (A5)</option>
         </select></label>
       <label class="moznost"><input type="checkbox" name="peciatka" value="1" {% if s_peciatkou %}checked{% endif %}> pečiatka na zadnej strane</label>
+      <label class="pole"><span class="pole__nazov">Vzhľad pečiatky</span>
+        <select name="styl">
+          <option value="razitko" {% if styl == 'razitko' %}selected{% endif %}>ako razítko</option>
+          <option value="text" {% if styl == 'text' %}selected{% endif %}>tlačený text</option>
+        </select></label>
       <button type="submit" class="tlacidlo tlacidlo--sekundarne">Obnoviť náhľad</button>
       <button type="button" class="tlacidlo" onclick="window.print()">Vytlačiť</button>
     </form>
@@ -50,7 +56,7 @@
       </details>
     {% endif %}
   </div>
-  <div class="listky">
+  <div class="listky{% if na_stranu == 8 %} listky--male{% endif %}">
     {% for strana in strany %}
       <div class="listok-strana">
         {% for n in strana %}
@@ -69,7 +75,7 @@
       {% if s_peciatkou %}
         <div class="listok-strana listok-strana--zadna">
           {% for _ in range(na_stranu) %}
-            <div class="listok"><div class="listok__peciatka">{% for r in peciatka.splitlines() %}{{ r }}<br>{% endfor %}</div></div>
+            <div class="listok"><div class="listok__peciatka{% if styl == 'razitko' %} listok__peciatka--razitko{% endif %}">{% for r in peciatka.splitlines() %}{{ r }}<br>{% endfor %}</div></div>
           {% endfor %}
         </div>
       {% endif %}

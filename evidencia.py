@@ -915,17 +915,18 @@ def volby(slug):
         return min(max(int(v), od), do) if v.isdigit() else predvolene
     pocet = cislo("pocet", max(len(clenovia), 1), 1, 1000)
     od = cislo("od", 1, 1, 100000)
-    na_stranu = cislo("na_stranu", 4, 2, 4)
+    na_stranu = int(a["na_stranu"]) if a.get("na_stranu") in ("2", "3", "4", "8") else 8
     kandidati = [k.strip()[:120] for k in (a.get("kandidati") or "").splitlines() if k.strip()][:30]
     peciatka = text_peciatky(db, zo)
     s_peciatkou = a.get("peciatka") == "1" or not a
+    styl = a.get("styl") if a.get("styl") in ("razitko", "text") else "razitko"
     cisla = list(range(od, od + pocet))
     strany = [cisla[i:i + na_stranu] for i in range(0, len(cisla), na_stranu)]
     return render_template("evidencia/volby.html", zo=zo, strany=strany, pocet=pocet, od=od, na_stranu=na_stranu,
                            nazov=(a.get("nazov") or "Hlasovací lístok").strip()[:120],
                            podnadpis=(a.get("podnadpis") or "").strip()[:200],
                            pokyn=(a.get("pokyn") or "").strip()[:300], kandidati=kandidati,
-                           kandidati_text="\n".join(kandidati), peciatka=peciatka, s_peciatkou=s_peciatkou,
+                           kandidati_text="\n".join(kandidati), peciatka=peciatka, s_peciatkou=s_peciatkou, styl=styl,
                            uz_zadane=bool(a))
 
 

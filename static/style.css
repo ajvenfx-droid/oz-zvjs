@@ -651,3 +651,13 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
   .listky { margin: 0; overflow: visible; }
   .listok-strana { margin: 0; box-shadow: none; }
 }
+.listok__peciatka--razitko { font-family: "Courier New", Courier, monospace; font-weight: 700; font-size: 11pt;
+  line-height: 1.15; color: #000; transform: rotate(-4deg); letter-spacing: .02em;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.listky--male .listok-strana { gap: 4mm; }
+.listky--male .listok { padding: 4mm 5mm; }
+.listky--male .listok__cislo { top: 2mm; right: 3mm; font-size: 10pt; }
+.listky--male .listok__nadpis { font-size: 13pt; }
+.listky--male .listok__podnadpis, .listky--male .listok__kandidati { font-size: 10pt; margin-top: 1.5mm; line-height: 1.35; }
+.listky--male .listok__pokyn { font-size: 8pt; margin-top: 2mm; }
+.listky--male .listok__peciatka { font-size: 9pt; }
