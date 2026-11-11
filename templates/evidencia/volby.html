@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Voľby – hlasovacie lístky – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block title %}Voľby – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
 {% block content %}
   {% set na_sirku = na_stranu == 4 %}
   {% set pw, ph = (297, 210) if na_sirku else (210, 297) %}
@@ -14,7 +14,11 @@
   <div class="netlacit">
     {% if moze_menit or je_spravca or (prihlaseny_clen and prihlaseny_clen.rola == 'vedenie') %}<a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
     {% else %}<a class="spat" href="{{ url_for('ucet.moje_konto') }}">&larr; Moje konto</a>{% endif %}
-    <h1 class="nadpis">Voľby – hlasovacie lístky – ZO {{ zo.mesto }}</h1>
+    <h1 class="nadpis">Voľby – ZO {{ zo.mesto }}</h1>
+  </div>
+  <details class="panel volby-okno"{% if uz_zadane %} open{% endif %}>
+    <summary><strong>Hlasovací lístok</strong></summary>
+    <div class="netlacit">
     <form method="get" class="formular prezencna-nastavenie">
       <label class="pole prezencna-siroke"><span class="pole__nazov">Nadpis</span>
         <input type="text" name="nazov" value="{{ nazov }}" maxlength="120"></label>
@@ -55,7 +59,7 @@
         </form>
       </details>
     {% endif %}
-  </div>
+    </div>
   <div class="listky{% if na_stranu == 8 %} listky--male{% endif %}">
     {% for strana in strany %}
       <div class="listok-strana">
@@ -81,4 +85,5 @@
       {% endif %}
     {% endfor %}
   </div>
+  </details>
 {% endblock %}
