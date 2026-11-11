@@ -7,8 +7,9 @@
   {% set riadkov = {2: 2, 3: 3, 4: 2, 8: 4}[na_stranu] %}
   <style>
     .listok-strana { width: {{ pw }}mm; height: {{ ph }}mm; grid-template-columns: repeat({{ stlpcov }}, 1fr); grid-template-rows: repeat({{ riadkov }}, 1fr); }
-    .listok-strana > .listok:nth-child(-n+{{ stlpcov }}) { border-top: 1.2px solid #000; }
-    .listok-strana > .listok:nth-child({{ stlpcov }}n+1) { border-left: 1.2px solid #000; }
+    .listok-strana { padding: 0; }
+    .listok-strana > .listok:nth-child({{ stlpcov }}n) { border-right: 0; }
+    .listok-strana > .listok:nth-child(n+{{ na_stranu - stlpcov + 1 }}) { border-bottom: 0; }
     @media print {
       @page { size: A4 {{ 'landscape' if na_sirku else 'portrait' }}; margin: 0; }
     }

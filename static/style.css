@@ -666,3 +666,5 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .listok-strana, .listky--male .listok-strana { gap: 0; }
 .listok { border: 0; border-right: 1.2px solid #000; border-bottom: 1.2px solid #000; }
 .listok-strana--zadna .listok { border-color: transparent !important; }
+.listok__cislo, .listky--male .listok__cislo { top: 6mm; right: 7mm; }
+.listok, .listky--male .listok { padding: 8mm; }
