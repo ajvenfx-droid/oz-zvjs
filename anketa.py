@@ -146,6 +146,11 @@ def init_db(db):
         # Ukážková anketa „Nákup hodiniek na plaváreň“ pre všetkých členov – na žiadosť vedenia zmazaná.
         db.execute("DELETE FROM anketa WHERE nazov = ? AND zo_slug = ''", (PRVA_ANKETA["nazov"],))
         nastav(db, "ukazkova_anketa_zmazana", "1")
+    if nastavenie(db, "clenska_schodza_2026_predlzena") is None:
+        # Na žiadosť predsedu ZO BB (11.11.2026): vypĺňanie predĺžené do konca dňa.
+        db.execute("UPDATE anketa SET koniec = '2026-11-11T23:59' WHERE nazov = 'Členská schôdza 2026' "
+                   "AND zo_slug = 'banska-bystrica'")
+        nastav(db, "clenska_schodza_2026_predlzena", "1")
     db.commit()
 
 
