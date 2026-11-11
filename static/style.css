@@ -605,7 +605,7 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .prezencna__tabulka th { background: #eee; font-size: .85rem; }
 .prezencna__tabulka .por { width: 3.5em; text-align: right; }
 .prezencna__tabulka .cis { width: 6em; }
-.prezencna__tabulka .tit { width: 4.5em; }
+.prezencna__tabulka .tit { width: 8em; white-space: nowrap; }
 .prezencna__tabulka .podpis { width: 32%; }
 @media print {
   @page { size: A4 portrait; margin: 12mm; }
