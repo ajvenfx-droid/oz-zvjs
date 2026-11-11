@@ -44,7 +44,7 @@
     {% if hostia %}
       <table class="prezencna__tabulka prezencna__hostia">
         <thead><tr><th colspan="3" class="hostia-nadpis">Pozvaní hostia</th></tr>
-          <tr><th class="por">Číslo</th><th>Meno a priezvisko, funkcia</th><th class="podpis">Podpis</th></tr></thead>
+          <tr><th class="por">Číslo</th><th>Meno a priezvisko</th><th class="podpis">Podpis</th></tr></thead>
         <tbody>{% for i in range(1, hostia + 1) %}<tr><td class="por">{{ i }}</td><td></td><td class="podpis"></td></tr>{% endfor %}</tbody>
       </table>
       <p class="prezencna__clenovia">Členovia</p>
