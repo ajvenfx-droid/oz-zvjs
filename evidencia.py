@@ -842,13 +842,17 @@ def prezencna_listina(slug):
     riadkov = int(a["riadkov"]) if (a.get("riadkov") or "").isdigit() else max(len(zoznam), 40)
     riadkov = min(max(riadkov, 1), 300)
     hostia = int(a["hostia"]) if (a.get("hostia") or "").isdigit() else 3
-    rk = organy_zo(get_db(), slug, clenovia).get("rk_predseda") or []
-    rk_predseda = rk[0]["meno"] if rk else ""
+    organy = organy_zo(get_db(), slug, clenovia)
+    rk_predseda, rk_funkcia = "", "Predseda revíznej komisie"
+    for kluc, funkcia in RK_MIESTA:  # chýba predseda RK → ďalší člen revíznej komisie
+        if organy.get(kluc):
+            rk_predseda, rk_funkcia = organy[kluc][0]["meno"], funkcia
+            break
     return render_template("evidencia/prezencna_listina.html", zo=zo, zoznam=zoznam, nazov=nazov,
                            datum=a.get("datum", ""), datum_text=datum, s_cislom=s_cislom, vzor=vzor,
                            riadkov=riadkov, hostia=min(hostia, 20), hlavicka=(a.get("hlavicka") or "").strip()[:200],
                            adresa=(a.get("adresa") or "").strip()[:200], uz_zadane=bool(a),
-                           rk_predseda=rk_predseda)
+                           rk_predseda=rk_predseda, rk_funkcia=rk_funkcia)
 
 
 @bp.route("/<slug>/export.xlsx")

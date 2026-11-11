@@ -71,7 +71,7 @@
       <p><strong>Overenie uznášaniaschopnosti</strong></p>
       <p>Počet prítomných členov: ................ z {{ zoznam|length }} (potrebných najmenej {{ ((zoznam|length) * 3 + 9) // 10 }})</p>
       <p>Členská schôdza je uznášaniaschopná od: ............ hod.</p>
-      <p>Predseda revíznej komisie: {% if rk_predseda %}<strong>{{ rk_predseda }}</strong>{% else %}........................................{% endif %} &nbsp; Podpis: ........................................</p>
+      <p>{{ rk_funkcia }}: {% if rk_predseda %}<strong>{{ rk_predseda }}</strong>{% else %}........................................{% endif %} &nbsp; Podpis: ........................................</p>
     </div>
   </div>
   <script>
