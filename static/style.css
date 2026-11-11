@@ -616,3 +616,16 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
   .prezencna__tabulka tr { page-break-inside: avoid; }
   .prezencna__tabulka th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+.prezencna-siroke { min-width: 320px; flex: 1; }
+.prezencna__hlavicka { text-align: center; font-weight: 700; font-size: 1.2rem; margin: 0; color: #000; }
+.prezencna__adresa { text-align: center; text-decoration: underline; margin: 2px 0 10px; color: #000; }
+.prezencna__telo.s-hostami { display: grid; grid-template-columns: 1fr 22%; gap: 18px; align-items: start; }
+.prezencna__hostia p { margin: 0 0 6px; color: #000; }
+.prezencna__host { border-bottom: 1px dotted #000; height: 26px; }
+.prezencna__tabulka.husta td, .prezencna__tabulka.husta th { height: 19px; padding: 1px 6px; }
+.prezencna__host { overflow: hidden; }
+.prezencna__hostia { margin-bottom: 14px; }
+.prezencna__hostia .hostia-nadpis { text-align: left; font-size: .95rem; background: #ddd; }
+.prezencna__clenovia { font-weight: 700; margin: 0 0 4px; color: #000; }
+
+.prezencna__pocet { margin: 2px 0 10px; }

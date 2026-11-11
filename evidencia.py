@@ -838,9 +838,14 @@ def prezencna_listina(slug):
                        "titul_za": u.get("Titul za menom", "").strip(),
                        "cislo": re.sub(r"\s+", "", u.get("Identifikačné číslo", ""))})
     zoznam.sort(key=lambda z: (abecedne(z["priezvisko"]), abecedne(z["meno"])))
+    vzor = a.get("vzor") if a.get("vzor") in ("mena", "prazdna") else "mena"
+    riadkov = int(a["riadkov"]) if (a.get("riadkov") or "").isdigit() else max(len(zoznam), 40)
+    riadkov = min(max(riadkov, 1), 300)
+    hostia = int(a["hostia"]) if (a.get("hostia") or "").isdigit() else 3
     return render_template("evidencia/prezencna_listina.html", zo=zo, zoznam=zoznam, nazov=nazov,
-                           datum=a.get("datum", ""), datum_text=datum, s_cislom=s_cislom,
-                           tlac=bool(a.get("tlac")))
+                           datum=a.get("datum", ""), datum_text=datum, s_cislom=s_cislom, vzor=vzor,
+                           riadkov=riadkov, hostia=min(hostia, 20), hlavicka=(a.get("hlavicka") or "").strip()[:200],
+                           adresa=(a.get("adresa") or "").strip()[:200], uz_zadane=bool(a))
 
 
 @bp.route("/<slug>/export.xlsx")

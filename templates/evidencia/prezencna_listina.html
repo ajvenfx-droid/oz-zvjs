@@ -4,33 +4,85 @@
   <div class="netlacit">
     <a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
     <h1 class="nadpis">Prezenčná listina – ZO {{ zo.mesto }}</h1>
-    <form method="get" class="formular prezencna-nastavenie">
+    <form method="get" class="formular prezencna-nastavenie" id="prezencna-form">
+      <label class="pole"><span class="pole__nazov">Vzor</span>
+        <select name="vzor" onchange="this.form.submit()">
+          <option value="mena" {% if vzor == 'mena' %}selected{% endif %}>S menami členov z evidencie</option>
+          <option value="prazdna" {% if vzor == 'prazdna' %}selected{% endif %}>Prázdna – mená sa vpisujú</option>
+        </select></label>
       <label class="pole"><span class="pole__nazov">Názov schôdze</span>
         <input type="text" name="nazov" value="{{ nazov }}" maxlength="120"></label>
       <label class="pole"><span class="pole__nazov">Dátum</span>
         <input type="date" name="datum" value="{{ datum }}"></label>
-      <label class="moznost"><input type="checkbox" name="cislo" value="1" {% if s_cislom %}checked{% endif %}> stĺpec Identifikačné číslo</label>
+      <label class="pole prezencna-siroke"><span class="pole__nazov">Hlavička (názov ZO)</span>
+        <input type="text" name="hlavicka" value="{{ hlavicka }}" maxlength="200" placeholder="napr. Základná organizácia OZ ZVJS pri ÚVV a ÚVTOS BB"></label>
+      <label class="pole prezencna-siroke"><span class="pole__nazov">Adresa (nepovinné)</span>
+        <input type="text" name="adresa" value="{{ adresa }}" maxlength="200"></label>
+      {% if vzor == 'prazdna' %}
+        <label class="pole"><span class="pole__nazov">Počet riadkov</span>
+          <input type="number" name="riadkov" value="{{ riadkov }}" min="1" max="300"></label>
+      {% else %}
+        <label class="moznost"><input type="checkbox" name="cislo" value="1" {% if s_cislom %}checked{% endif %}> stĺpec Identifikačné číslo</label>
+      {% endif %}
+      <label class="pole"><span class="pole__nazov">Pozvaní hostia (riadkov)</span>
+        <input type="number" name="hostia" value="{{ hostia }}" min="0" max="20"></label>
       <div class="akcie">
         <button type="submit" class="tlacidlo tlacidlo--sekundarne">Obnoviť náhľad</button>
         <button type="button" class="tlacidlo" onclick="window.print()">Vytlačiť</button>
       </div>
     </form>
-    <p class="info">{{ zoznam|length }} členov podľa abecedy. Pri tlači sa vytlačí len listina, hlavička tabuľky sa opakuje na každej strane.</p>
+    <p class="info">{% if vzor == 'mena' %}{{ zoznam|length }} členov podľa abecedy. {% endif %}Pri tlači sa vytlačí len listina, hlavička tabuľky sa opakuje na každej strane. Hlavičku a adresu si stránka v tomto prehliadači zapamätá.</p>
   </div>
 
   <div class="prezencna">
-    <h2 class="prezencna__nadpis">Prezenčná listina {{ nazov }}{% if datum_text %} {{ datum_text }}{% endif %}</h2>
-    <p class="prezencna__zo">{{ zo.nazov }}</p>
-    <table class="prezencna__tabulka">
-      <thead>
-        <tr><th class="por">Por. č.</th>{% if s_cislom %}<th class="cis">Ident. číslo</th>{% endif %}<th class="tit">Titul</th><th>Meno</th><th>Priezvisko</th><th class="podpis">Podpis</th></tr>
-      </thead>
-      <tbody>
-        {% for c in zoznam %}
-          <tr><td class="por">{{ loop.index }}</td>{% if s_cislom %}<td class="cis">{{ c.cislo }}</td>{% endif %}<td class="tit">{{ c.titul }}</td>
-            <td>{{ c.meno }}</td><td>{{ c.priezvisko }}{% if c.titul_za %}, {{ c.titul_za }}{% endif %}</td><td class="podpis"></td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    {% if hlavicka %}<p class="prezencna__hlavicka">{{ hlavicka }}</p>{% endif %}
+    {% if adresa %}<p class="prezencna__adresa">{{ adresa }}</p>{% endif %}
+    <h2 class="prezencna__nadpis">Prezenčná listina {{ nazov }}{% if datum_text %} {{ 'dňa ' if vzor == 'prazdna' else '' }}{{ datum_text }}{% endif %}</h2>
+    {% if not hlavicka %}<p class="prezencna__zo">{{ zo.nazov }}</p>{% endif %}
+    <p class="prezencna__pocet">Celkový počet členov: <strong>{{ zoznam|length }}</strong></p>
+    {% if hostia %}
+      <table class="prezencna__tabulka prezencna__hostia">
+        <thead><tr><th colspan="3" class="hostia-nadpis">Pozvaní hostia</th></tr>
+          <tr><th class="por">Číslo</th><th>Meno a priezvisko, funkcia</th><th class="podpis">Podpis</th></tr></thead>
+        <tbody>{% for i in range(1, hostia + 1) %}<tr><td class="por">{{ i }}</td><td></td><td class="podpis"></td></tr>{% endfor %}</tbody>
+      </table>
+      <p class="prezencna__clenovia">Členovia</p>
+    {% endif %}
+    <div class="prezencna__telo">
+      <table class="prezencna__tabulka{% if vzor == 'prazdna' %} husta{% endif %}">
+        {% if vzor == 'prazdna' %}
+          <thead><tr><th class="por">Číslo</th><th>Meno a priezvisko</th><th class="podpis">Podpis</th></tr></thead>
+          <tbody>{% for i in range(1, riadkov + 1) %}<tr><td class="por">{{ i }}</td><td></td><td class="podpis"></td></tr>{% endfor %}</tbody>
+        {% else %}
+          <thead>
+            <tr><th class="por">Por. č.</th>{% if s_cislom %}<th class="cis">Ident. číslo</th>{% endif %}<th class="tit">Titul</th><th>Meno</th><th>Priezvisko</th><th class="podpis">Podpis</th></tr>
+          </thead>
+          <tbody>
+            {% for c in zoznam %}
+              <tr><td class="por">{{ loop.index }}</td>{% if s_cislom %}<td class="cis">{{ c.cislo }}</td>{% endif %}<td class="tit">{{ c.titul }}</td>
+                <td>{{ c.meno }}</td><td>{{ c.priezvisko }}{% if c.titul_za %}, {{ c.titul_za }}{% endif %}</td><td class="podpis"></td></tr>
+            {% endfor %}
+          </tbody>
+        {% endif %}
+      </table>
+    </div>
   </div>
+  <script>
+    (function () {
+      var f = document.getElementById('prezencna-form'), k = 'prezencna-{{ zo.slug }}';
+      try {
+        var ulozene = JSON.parse(localStorage.getItem(k) || '{}');
+        {% if not uz_zadane %}
+        if (ulozene.hlavicka || ulozene.adresa) {
+          f.hlavicka.value = ulozene.hlavicka || ''; f.adresa.value = ulozene.adresa || '';
+          if (ulozene.hostia) f.hostia.value = ulozene.hostia;
+          f.submit();
+        }
+        {% endif %}
+        f.addEventListener('submit', function () {
+          localStorage.setItem(k, JSON.stringify({hlavicka: f.hlavicka.value, adresa: f.adresa.value, hostia: f.hostia.value}));
+        });
+      } catch (e) {}
+    })();
+  </script>
 {% endblock %}
