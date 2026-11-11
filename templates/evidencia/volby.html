@@ -50,7 +50,22 @@
         </select></label>
       <button type="submit" class="tlacidlo tlacidlo--sekundarne">Obnoviť náhľad</button>
       <button type="button" class="tlacidlo" onclick="window.print()">Vytlačiť</button>
+      <button type="submit" class="tlacidlo tlacidlo--sekundarne" formmethod="post" name="akcia" value="ulozit_listok">Uložiť lístok</button>
     </form>
+    {% if ulozene %}
+      <div class="volby-ulozene">
+        <strong>Uložené hlasovacie lístky</strong>
+        <table class="tabulka">
+          {% for u in ulozene %}
+            <tr><td><a href="{{ url_for('evidencia.volby', slug=zo.slug) }}?{{ u.parametre }}">{{ u.nazov }}</a></td>
+              <td class="info">{{ u.vytvorene[:10]|datum }} {{ u.vytvorene[11:] }}</td>
+              <td><form method="post" onsubmit="return confirm('Odstrániť uložený lístok {{ u.nazov }}?');">
+                <input type="hidden" name="akcia" value="zmazat_listok"><input type="hidden" name="listok_id" value="{{ u.id }}">
+                <button type="submit" class="odkaz-tlacidlo">Odstrániť</button></form></td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    {% endif %}
     <p class="info">Tlačte obojstranne{% if na_sirku %} (otáčanie po kratšej strane){% endif %}, s mierkou 100 % a bez okrajov. Každý list má vpredu lístky s poradovými číslami a vzadu pečiatku ZO. Lístky rozstrihajte podľa orámovania.</p>
     {% if moze_menit %}
       <details class="panel">

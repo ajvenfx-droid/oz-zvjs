@@ -147,6 +147,17 @@ def init_db(db):
     )
     db.execute(
         """
+        CREATE TABLE IF NOT EXISTS volby_listok (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            zo_slug TEXT NOT NULL,
+            nazov TEXT NOT NULL,
+            parametre TEXT NOT NULL,
+            vytvorene TEXT NOT NULL
+        )
+        """
+    )
+    db.execute(
+        """
         CREATE TABLE IF NOT EXISTS evidencia_archiv (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             zo_slug TEXT NOT NULL,
@@ -881,6 +892,9 @@ def prezencna_listina(slug):
                            rk_predseda=rk_predseda, rk_funkcia=rk_funkcia)
 
 
+VOLBY_PARAMETRE = ("nazov", "podnadpis", "kandidati", "pokyn", "pocet", "od", "na_stranu", "peciatka", "styl")
+
+
 def text_peciatky(db, zo):
     """Text pečiatky ZO na zadnú stranu hlasovacieho lístka (uložený pre ZO, inak názov ZO)."""
     r = db.execute("SELECT hodnota FROM nastavenie WHERE kluc = ?", (f"peciatka:{zo['slug']}",)).fetchone()
@@ -896,6 +910,21 @@ def volby(slug):
         abort(403)
     g.moze_menit = pristup(slug) == "menit"
     db = get_db()
+    if request.method == "POST" and request.form.get("akcia") == "ulozit_listok":
+        from urllib.parse import urlencode
+        f = request.form
+        param = {k: f.get(k, "") for k in VOLBY_PARAMETRE if f.get(k)}
+        nazov = (f.get("podnadpis") or f.get("nazov") or "Hlasovací lístok").strip()[:120]
+        db.execute("INSERT INTO volby_listok (zo_slug, nazov, parametre, vytvorene) VALUES (?, ?, ?, ?)",
+                   (slug, nazov, urlencode(param), datetime.now().strftime("%Y-%m-%d %H:%M")))
+        db.commit()
+        flash(f"Hlasovací lístok „{nazov}“ bol uložený.")
+        return redirect(url_for("evidencia.volby", slug=slug) + "?" + urlencode(param))
+    if request.method == "POST" and request.form.get("akcia") == "zmazat_listok":
+        db.execute("DELETE FROM volby_listok WHERE id = ? AND zo_slug = ?", (request.form.get("listok_id", ""), slug))
+        db.commit()
+        flash("Uložený hlasovací lístok bol odstránený.")
+        return redirect(url_for("evidencia.volby", slug=slug))
     if request.method == "POST":  # uloženie textu pečiatky ZO
         if not g.moze_menit:
             abort(403)
@@ -927,6 +956,7 @@ def volby(slug):
                            podnadpis=(a.get("podnadpis") or "").strip()[:200],
                            pokyn=(a.get("pokyn") or "").strip()[:300], kandidati=kandidati,
                            kandidati_text="\n".join(kandidati), peciatka=peciatka, s_peciatkou=s_peciatkou, styl=styl,
+                           ulozene=db.execute("SELECT * FROM volby_listok WHERE zo_slug = ? ORDER BY id DESC", (slug,)).fetchall(),
                            uz_zadane=bool(a))
 
 
