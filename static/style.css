@@ -600,8 +600,8 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .prezencna { background: #fff; margin-top: 16px; }
 .prezencna__nadpis { font-size: 1.15rem; margin: 0 0 2px; color: #000; text-transform: none; }
 .prezencna__zo { font-size: .85rem; margin: 0 0 8px; color: #333; }
-.prezencna__tabulka { width: 100%; border-collapse: collapse; font-size: .95rem; color: #000; }
-.prezencna__tabulka th, .prezencna__tabulka td { border: 1px solid #000; padding: 4px 6px; height: 26px; text-align: left; }
+.prezencna__tabulka { width: 100%; border-collapse: collapse; font-size: .9rem; color: #000; }
+.prezencna__tabulka th, .prezencna__tabulka td { border: 1px solid #000; padding: 1px 6px; height: 20px; text-align: left; }
 .prezencna__tabulka th { background: #eee; font-size: .85rem; }
 .prezencna__tabulka .por { width: 3.5em; text-align: right; }
 .prezencna__tabulka .cis { width: 6em; }
@@ -622,7 +622,7 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .prezencna__telo.s-hostami { display: grid; grid-template-columns: 1fr 22%; gap: 18px; align-items: start; }
 .prezencna__hostia p { margin: 0 0 6px; color: #000; }
 .prezencna__host { border-bottom: 1px dotted #000; height: 26px; }
-.prezencna__tabulka.husta td, .prezencna__tabulka.husta th { height: 19px; padding: 1px 6px; }
+.prezencna__tabulka.husta td, .prezencna__tabulka.husta th { height: 17px; padding: 0 6px; }
 .prezencna__host { overflow: hidden; }
 .prezencna__hostia { margin-bottom: 14px; }
 .prezencna__hostia .hostia-nadpis { text-align: left; font-size: .95rem; background: #ddd; }
