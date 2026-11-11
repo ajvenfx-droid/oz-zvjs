@@ -67,6 +67,12 @@
         {% endif %}
       </table>
     </div>
+    <div class="prezencna__overenie">
+      <p><strong>Overenie uznášaniaschopnosti</strong></p>
+      <p>Počet prítomných členov: ................ z {{ zoznam|length }} (potrebných najmenej {{ ((zoznam|length) * 3 + 9) // 10 }})</p>
+      <p>Členská schôdza je uznášaniaschopná od: ............ hod.</p>
+      <p>Predseda revíznej komisie: ........................................ &nbsp; Podpis: ........................................</p>
+    </div>
   </div>
   <script>
     (function () {

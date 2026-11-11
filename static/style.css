@@ -629,3 +629,5 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .prezencna__clenovia { font-weight: 700; margin: 0 0 4px; color: #000; }
 
 .prezencna__pocet { margin: 2px 0 10px; }
+.prezencna__overenie { margin-top: 18px; page-break-inside: avoid; break-inside: avoid; color: #000; }
+.prezencna__overenie p { margin: 0 0 12px; }
