@@ -492,6 +492,8 @@ def pristup(slug=None):
         return "menit"
     if clen["rola"] == "vedenie":
         return "citat"
+    if slug is not None and slug in zo_organov_clena(get_db(), clen["cislo"]):
+        return "citat"  # výbor a revízna komisia ZO: len prezeranie
     return None
 
 

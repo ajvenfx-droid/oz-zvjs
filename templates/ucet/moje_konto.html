@@ -24,8 +24,9 @@
   </section>
   {% if listiny %}
     <section class="panel">
-      <h2>Prezenčná listina na schôdzu</h2>
-      <p>{% for z in listiny %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.prezencna_listina', slug=z.slug) }}">Prezenčná listina – ZO {{ z.mesto }}</a> {% endfor %}</p>
+      <h2>Členovia ZO</h2>
+      {% for z in listiny %}<p><a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.zo', slug=z.slug) }}">Zoznam členov ZO {{ z.mesto }}</a>
+        <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.prezencna_listina', slug=z.slug) }}">Prezenčná listina – ZO {{ z.mesto }}</a></p>{% endfor %}
     </section>
   {% endif %}
   {% if dotazniky %}
