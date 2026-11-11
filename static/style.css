@@ -594,3 +594,25 @@ a.hodinky-karta:hover { border-color: var(--modra); box-shadow: 0 2px 8px rgba(0
 .rezervacia-zostatok { display: flex; gap: 6px; align-items: center; }
 .rezervacia-zostatok input { width: 150px; }
 fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fffbeb !important; box-shadow: 0 0 0 3px #fde68a; }
+
+/* prezenčná listina */
+.prezencna-nastavenie { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.prezencna { background: #fff; margin-top: 16px; }
+.prezencna__nadpis { font-size: 1.15rem; margin: 0 0 2px; color: #000; text-transform: none; }
+.prezencna__zo { font-size: .85rem; margin: 0 0 8px; color: #333; }
+.prezencna__tabulka { width: 100%; border-collapse: collapse; font-size: .95rem; color: #000; }
+.prezencna__tabulka th, .prezencna__tabulka td { border: 1px solid #000; padding: 4px 6px; height: 26px; text-align: left; }
+.prezencna__tabulka th { background: #eee; font-size: .85rem; }
+.prezencna__tabulka .por { width: 3.5em; text-align: right; }
+.prezencna__tabulka .cis { width: 6em; }
+.prezencna__tabulka .tit { width: 4.5em; }
+.prezencna__tabulka .podpis { width: 32%; }
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  body:has(.prezencna) > *:not(main), main:has(.prezencna) > *:not(.prezencna), .netlacit { display: none !important; }
+  main:has(.prezencna) { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  .prezencna { margin: 0; }
+  .prezencna__tabulka thead { display: table-header-group; }
+  .prezencna__tabulka tr { page-break-inside: avoid; }
+  .prezencna__tabulka th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

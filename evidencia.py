@@ -817,6 +817,32 @@ def export(slug):
     )
 
 
+@bp.route("/<slug>/prezencna-listina")
+@vyzaduj()
+def prezencna_listina(slug):
+    """Prezenčná listina na schôdzu: zoznam členov ZO podľa abecedy so stĺpcom na podpis, na tlač."""
+    zo, _, clenovia, _ = _nacitaj_zo(slug)
+    a = request.args
+    nazov = (a.get("nazov") or "Členská schôdza").strip()[:120]
+    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", a.get("datum") or "")
+    datum = f"{m.group(3)}.{m.group(2)}.{m.group(1)}" if m else ""
+    s_cislom = bool(a.get("cislo"))
+    zoznam = []
+    for c in clenovia:
+        u = c["udaje"]
+        priezvisko = u.get("Priezvisko / Názov poisteného", "").strip()
+        meno = u.get("Meno poisteného", "").strip()
+        if not (priezvisko or meno):
+            continue
+        zoznam.append({"titul": u.get("Titul", "").strip(), "meno": meno, "priezvisko": priezvisko,
+                       "titul_za": u.get("Titul za menom", "").strip(),
+                       "cislo": re.sub(r"\s+", "", u.get("Identifikačné číslo", ""))})
+    zoznam.sort(key=lambda z: (abecedne(z["priezvisko"]), abecedne(z["meno"])))
+    return render_template("evidencia/prezencna_listina.html", zo=zo, zoznam=zoznam, nazov=nazov,
+                           datum=a.get("datum", ""), datum_text=datum, s_cislom=s_cislom,
+                           tlac=bool(a.get("tlac")))
+
+
 @bp.route("/<slug>/export.xlsx")
 @vyzaduj()
 def export_xlsx(slug):

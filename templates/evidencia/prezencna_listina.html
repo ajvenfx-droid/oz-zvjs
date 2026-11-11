@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Prezenčná listina – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <div class="netlacit">
+    <a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+    <h1 class="nadpis">Prezenčná listina – ZO {{ zo.mesto }}</h1>
+    <form method="get" class="formular prezencna-nastavenie">
+      <label class="pole"><span class="pole__nazov">Názov schôdze</span>
+        <input type="text" name="nazov" value="{{ nazov }}" maxlength="120"></label>
+      <label class="pole"><span class="pole__nazov">Dátum</span>
+        <input type="date" name="datum" value="{{ datum }}"></label>
+      <label class="moznost"><input type="checkbox" name="cislo" value="1" {% if s_cislom %}checked{% endif %}> stĺpec Identifikačné číslo</label>
+      <div class="akcie">
+        <button type="submit" class="tlacidlo tlacidlo--sekundarne">Obnoviť náhľad</button>
+        <button type="button" class="tlacidlo" onclick="window.print()">Vytlačiť</button>
+      </div>
+    </form>
+    <p class="info">{{ zoznam|length }} členov podľa abecedy. Pri tlači sa vytlačí len listina, hlavička tabuľky sa opakuje na každej strane.</p>
+  </div>
+
+  <div class="prezencna">
+    <h2 class="prezencna__nadpis">Prezenčná listina {{ nazov }}{% if datum_text %} {{ datum_text }}{% endif %}</h2>
+    <p class="prezencna__zo">{{ zo.nazov }}</p>
+    <table class="prezencna__tabulka">
+      <thead>
+        <tr><th class="por">Por. č.</th>{% if s_cislom %}<th class="cis">Ident. číslo</th>{% endif %}<th class="tit">Titul</th><th>Meno</th><th>Priezvisko</th><th class="podpis">Podpis</th></tr>
+      </thead>
+      <tbody>
+        {% for c in zoznam %}
+          <tr><td class="por">{{ loop.index }}</td>{% if s_cislom %}<td class="cis">{{ c.cislo }}</td>{% endif %}<td class="tit">{{ c.titul }}</td>
+            <td>{{ c.meno }}</td><td>{{ c.priezvisko }}{% if c.titul_za %}, {{ c.titul_za }}{% endif %}</td><td class="podpis"></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
