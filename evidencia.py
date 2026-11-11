@@ -817,10 +817,34 @@ def export(slug):
     )
 
 
+def zo_organov_clena(db, cislo):
+    """Slugy ZO, v ktorých je člen vo výbore alebo revíznej komisii."""
+    if not cislo:
+        return []
+    return [r["zo_slug"] for r in db.execute(
+        "SELECT DISTINCT zo_slug FROM evidencia_organ WHERE cislo = ? ORDER BY zo_slug", (cislo,))]
+
+
+def prezencnu_listinu_moze(slug):
+    """Predseda, podpredseda ZO, výbor ZO, revízna komisia ZO (a správca, predsedníctvo)."""
+    if pristup(slug) is not None:
+        return True
+    clen = g.get("clen")
+    if clen is None:
+        return False
+    if clen.get("zo_slug") == slug and (clen.get("skutocna_funkcia") or clen.get("skutocna_rola") == "zo"):
+        return True  # predseda/podpredseda ZO aj v zobrazení „ako člen“
+    return slug in zo_organov_clena(get_db(), clen["cislo"])
+
+
 @bp.route("/<slug>/prezencna-listina")
-@vyzaduj()
 def prezencna_listina(slug):
     """Prezenčná listina na schôdzu: zoznam členov ZO podľa abecedy so stĺpcom na podpis, na tlač."""
+    if not prezencnu_listinu_moze(slug):
+        if not je_spravca() and g.get("clen") is None:
+            return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+        abort(403)
+    g.moze_menit = pristup(slug) == "menit"
     zo, _, clenovia, _ = _nacitaj_zo(slug)
     a = request.args
     nazov = (a.get("nazov") or "Členská schôdza").strip()[:120]

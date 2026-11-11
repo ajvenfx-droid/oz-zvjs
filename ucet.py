@@ -287,8 +287,16 @@ def moje_konto():
                 flash("Heslo bolo zmenené.")
         return redirect(url_for("ucet.moje_konto"))
     from anketa import dotazniky_clena
-    return render_template("ucet/moje_konto.html", evidencia=moje_udaje(get_db(), g.clen["cislo"]),
-                           dotazniky=dotazniky_clena(get_db(), g.clen["cislo"]))
+    from evidencia import zo_organov_clena
+    db = get_db()
+    slugy = set(zo_organov_clena(db, g.clen["cislo"]))
+    if g.clen.get("zo_slug") and (g.clen.get("skutocna_funkcia") or g.clen.get("funkcia") or g.clen.get("skutocna_rola") == "zo"):
+        slugy.add(g.clen["zo_slug"])
+    listiny = [dict(r) for r in db.execute(
+        f"SELECT slug, mesto FROM zakladna_organizacia WHERE slug IN ({','.join('?' * len(slugy))}) ORDER BY mesto",
+        tuple(slugy))] if slugy else []
+    return render_template("ucet/moje_konto.html", evidencia=moje_udaje(db, g.clen["cislo"]),
+                           dotazniky=dotazniky_clena(db, g.clen["cislo"]), listiny=listiny)
 
 
 def moje_udaje(db, cislo):

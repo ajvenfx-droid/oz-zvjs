@@ -22,6 +22,12 @@
       </form>
     {% endif %}
   </section>
+  {% if listiny %}
+    <section class="panel">
+      <h2>Prezenčná listina na schôdzu</h2>
+      <p>{% for z in listiny %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.prezencna_listina', slug=z.slug) }}">Prezenčná listina – ZO {{ z.mesto }}</a> {% endfor %}</p>
+    </section>
+  {% endif %}
   {% if dotazniky %}
   <section class="panel" id="dotazniky">
     <h2>Dotazníky</h2>

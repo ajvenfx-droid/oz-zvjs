@@ -2,7 +2,8 @@
 {% block title %}Prezenčná listina – ZO {{ zo.mesto }} – {{ nazov_zvazu }}{% endblock %}
 {% block content %}
   <div class="netlacit">
-    <a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+    {% if moze_menit or je_spravca or (prihlaseny_clen and prihlaseny_clen.rola == 'vedenie') %}<a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+    {% else %}<a class="spat" href="{{ url_for('ucet.moje_konto') }}">&larr; Moje konto</a>{% endif %}
     <h1 class="nadpis">Prezenčná listina – ZO {{ zo.mesto }}</h1>
     <form method="get" class="formular prezencna-nastavenie" id="prezencna-form">
       <label class="pole"><span class="pole__nazov">Vzor</span>
