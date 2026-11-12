@@ -368,9 +368,10 @@ def moje_udaje(db, cislo):
                                        if s not in STANDARDNE_STLPCE]
         stlpce = poradie + [s for s in udaje if s not in poradie]
         menitelne = menitelne_clenom(stlpce)
-        if "Titul" in stlpce and "Titul za menom" in stlpce:  # oba tituly v jednom riadku
-            stlpce = [x for x in stlpce if x != "Titul za menom"]
-            stlpce.insert(stlpce.index("Titul") + 1, "Titul za menom")
+        for prvy, druhy in (("Titul", "Titul za menom"), ("Dátum narodenia", "Dátum vstupu do poistenia")):
+            if prvy in stlpce and druhy in stlpce:  # dvojica v jednom riadku
+                stlpce = [x for x in stlpce if x != druhy]
+                stlpce.insert(stlpce.index(prvy) + 1, druhy)
         polia = [(s, udaje.get(s, ""), menitelne.index(s) if s in menitelne else None) for s in stlpce
                  if s.lower() != "číslo" and s not in ("Predchádzajúce mená", "Identifikačné číslo") and (udaje.get(s) or s in menitelne)]
         from evidencia import dlzka_clenstva, obdobia_clenstva
