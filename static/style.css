@@ -691,7 +691,7 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .lista-meno { font-weight: 600; }
 .lista-cislo { font-weight: 400; color: #bbb; margin-left: 4px; }
 .lista-clenom { color: #bbb; }
-.nadpis-clenom { margin-left: auto; font-size: .8em; font-weight: 700; text-transform: none; color: var(--zlata-tmava); align-self: flex-end; padding-bottom: 2px; }
+.nadpis-clenom { margin-left: auto; font-size: 1em; font-weight: 700; text-transform: none; color: var(--zlata-tmava); align-self: flex-end; padding-bottom: 2px; }
 .mu-rozlozenie { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
 .mu-foto { position: relative; flex: 0 0 auto; margin: 0; }
 .mu-foto .foto-clena { margin-bottom: 0; }
