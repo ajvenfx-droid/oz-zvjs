@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Hromadné nahratie fotiek – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  {% if zo %}<a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+  {% else %}<a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>{% endif %}
+  <h1 class="nadpis">Hromadné nahratie fotiek{% if zo %} – ZO {{ zo.mesto }}{% endif %}</h1>
+  <section class="panel">
+    <p>Fotky sa priradia členom {% if zo %}tejto ZO{% else %}všetkých ZO{% endif %} podľa <strong>identifikačného čísla v názve súboru</strong>,
+      napr. <code>100154.jpg</code> alebo <code>100154 Novák.jpg</code>.</p>
+    <p class="info">Vyberte naraz viac fotiek (Ctrl+A v priečinku) alebo jeden ZIP súbor s fotkami. Fotky sa zmenšia na veľkosť pre preukaz.
+      Ak ich je veľa a nahratie zlyhá, nahrajte ich po častiach.</p>
+    <form method="post" enctype="multipart/form-data" class="formular">
+      <input type="file" name="fotky" accept="image/*,.zip" multiple required>
+      <label class="moznost"><input type="checkbox" name="prepisat" value="1"> prepísať fotky, ktoré už člen má</label>
+      <button type="submit" class="tlacidlo">Nahrať fotky</button>
+    </form>
+  </section>
+  {% if vysledok %}
+    <section class="panel">
+      <h2>Výsledok</h2>
+      <p class="ok">Uložených fotiek: <strong>{{ vysledok.ulozene }}</strong></p>
+      {% if vysledok.preskocene %}<p>Preskočené, člen už fotku má ({{ vysledok.preskocene|length }}): <span class="info">{{ vysledok.preskocene|join(', ') }}</span></p>{% endif %}
+      {% if vysledok.nenajdene %}<p class="varovanie">Nenašiel sa člen s týmto číslom ({{ vysledok.nenajdene|length }}): {{ vysledok.nenajdene|join(', ') }}</p>{% endif %}
+      {% if vysledok.chybne %}<p class="varovanie">Súbor sa nedal otvoriť ako fotka ({{ vysledok.chybne|length }}): {{ vysledok.chybne|join(', ') }}</p>{% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

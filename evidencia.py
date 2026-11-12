@@ -1230,3 +1230,99 @@ def foto(slug, clen_id):
 
 
 bp.add_app_template_filter(nazov_stlpca, "stlpec")
+
+
+MAX_HROMADNE = 300 * 1024 * 1024  # spolu za jedno nahratie (ZIP alebo viac fotiek)
+PRIPONY_FOTIEK = (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tif", ".tiff", ".heic")
+
+
+def _subory_fotiek(subory):
+    """[(názov súboru, dáta)] z nahratých fotiek aj ZIP archívov (aj s podpriečinkami)."""
+    import os
+    import zipfile
+    for s in subory:
+        if not s or not s.filename:
+            continue
+        if s.filename.lower().endswith(".zip"):
+            try:
+                with zipfile.ZipFile(s.stream) as z:
+                    for info in z.infolist():
+                        nazov = os.path.basename(info.filename)
+                        if info.is_dir() or nazov.startswith(".") or "__MACOSX" in info.filename:
+                            continue
+                        if nazov.lower().endswith(PRIPONY_FOTIEK):
+                            yield nazov, z.read(info)
+            except zipfile.BadZipFile:
+                yield s.filename, None
+        else:
+            yield os.path.basename(s.filename), s.read()
+
+
+def nahraj_fotky_hromadne(db, slugy, subory, prepisat):
+    """Priradí fotky členom podľa identifikačného čísla v názve súboru (napr. 100154.jpg)."""
+    podla_cisla = {}
+    for r in db.execute("SELECT id, zo_slug, udaje FROM evidencia_clen WHERE zo_slug IN (%s)" % ",".join("?" * len(slugy)), slugy):
+        u = json.loads(r["udaje"])
+        cislo = re.sub(r"\s+", "", u.get("Identifikačné číslo", ""))
+        if cislo:
+            podla_cisla.setdefault(cislo, []).append((r["id"], u))
+    vysledok = {"ulozene": 0, "preskocene": [], "nenajdene": [], "chybne": []}
+    for nazov, data in _subory_fotiek(subory):
+        cisla = re.findall(r"\d+", nazov.rsplit(".", 1)[0])
+        cislo = next((c for c in cisla if c in podla_cisla), None)
+        if data is None:
+            vysledok["chybne"].append(nazov)
+            continue
+        if cislo is None:
+            vysledok["nenajdene"].append(nazov)
+            continue
+        if len(data) > MAX_FOTO * 3:
+            vysledok["chybne"].append(nazov)
+            continue
+        try:
+            data, typ = uprav_fotku(data)
+        except Exception:
+            vysledok["chybne"].append(nazov)
+            continue
+        typ = typ or "image/jpeg"
+        for clen_id, u in podla_cisla[cislo]:
+            kluc = kluc_clena(u)
+            if not prepisat and nacitaj_foto(db, kluc) is not None:
+                vysledok["preskocene"].append(nazov)
+                continue
+            db.execute("INSERT INTO evidencia_foto (kluc, typ, data, verzia) VALUES (?, ?, ?, ?) "
+                       "ON CONFLICT(kluc) DO UPDATE SET typ = excluded.typ, data = excluded.data, verzia = excluded.verzia",
+                       (kluc, typ, data, datetime.now().strftime("%Y%m%d%H%M%S")))
+            if not u.get("Fotka"):
+                u["Fotka"] = "áno"
+                db.execute("UPDATE evidencia_clen SET udaje = ? WHERE id = ?", (json.dumps(u, ensure_ascii=False), clen_id))
+            vysledok["ulozene"] += 1
+        db.commit()
+    return vysledok
+
+
+def _hromadne_fotky(slugy, zo=None):
+    vysledok = None
+    if request.method == "POST":
+        request.max_content_length = MAX_HROMADNE
+        vysledok = nahraj_fotky_hromadne(get_db(), slugy, request.files.getlist("fotky"), bool(request.form.get("prepisat")))
+    return render_template("evidencia/fotky.html", zo=zo, vysledok=vysledok)
+
+
+@bp.route("/fotky", methods=["GET", "POST"])
+def fotky_vsetky():
+    if not je_spravca():
+        if g.get("clen") is None:
+            return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+        abort(403)
+    slugy = [r["slug"] for r in get_db().execute("SELECT slug FROM zakladna_organizacia")]
+    return _hromadne_fotky(slugy)
+
+
+@bp.route("/<slug>/fotky", methods=["GET", "POST"])
+@vyzaduj(menit=True)
+def fotky_zo(slug):
+    zo = get_db().execute("SELECT * FROM zakladna_organizacia WHERE slug = ?", (slug,)).fetchone()
+    if zo is None:
+        abort(404)
+    return _hromadne_fotky([slug], zo)
