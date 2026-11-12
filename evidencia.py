@@ -1304,8 +1304,12 @@ def nahraj_fotky_hromadne(db, slugy, subory, prepisat):
 def _hromadne_fotky(slugy, zo=None):
     vysledok = None
     if request.method == "POST":
-        request.max_content_length = MAX_HROMADNE
-        vysledok = nahraj_fotky_hromadne(get_db(), slugy, request.files.getlist("fotky"), bool(request.form.get("prepisat")))
+        try:
+            vysledok = nahraj_fotky_hromadne(get_db(), slugy, request.files.getlist("fotky"), bool(request.form.get("prepisat")))
+        except Exception as e:
+            import logging
+            logging.exception("Hromadné nahratie fotiek zlyhalo")
+            flash(f"Nahratie zlyhalo ({type(e).__name__}). Skúste nahrať menej fotiek naraz.")
     return render_template("evidencia/fotky.html", zo=zo, vysledok=vysledok)
 
 

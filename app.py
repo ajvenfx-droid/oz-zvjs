@@ -77,7 +77,18 @@ POCIATOCNE_ZO = [
      'predseda: Bc. Martin JURČO\nemail: martin.jurco@zvjs.sk'),
 ]
 
+class _Poziadavka(Flask.request_class):
+    """Pri hromadnom nahrávaní fotiek povolí väčší objem (funguje aj na starších verziách Flasku)."""
+    @property
+    def max_content_length(self):
+        if self.path.startswith("/spravca/evidencia/") and self.path.endswith("/fotky"):
+            return 300 * 1024 * 1024
+        from flask import current_app
+        return current_app.config.get("MAX_CONTENT_LENGTH")
+
+
 app = Flask(__name__)
+app.request_class = _Poziadavka
 # PythonAnywhere beží za proxy; vďaka tomu majú odkazy v e-mailoch správne https://.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
