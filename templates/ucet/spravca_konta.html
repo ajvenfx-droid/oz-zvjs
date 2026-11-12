@@ -61,6 +61,17 @@
     {% endif %}
   </section>
 
+  <section class="panel">
+    <h2>Predseda OZ – odborárske preukazy</h2>
+    <p class="info">Keď si člen bez preukazu nahrá fotku, príde e-mail na túto adresu a predsedovi jeho ZO.</p>
+    <form method="post" action="{{ url_for('ucet.nastav_email') }}" class="formular">
+      <input type="hidden" name="akcia" value="predseda_oz">
+      <label class="pole"><span class="pole__nazov">E-mail predsedu OZ</span>
+        <input type="email" name="email_predseda_oz" value="{{ email_predseda_oz }}"></label>
+      <button type="submit" class="tlacidlo">Uložiť</button>
+    </form>
+  </section>
+
   <section class="panel" id="pristupy">
     <h2>Prístupy k evidencii členov</h2>
     <p class="info">Predseda a podpredseda ZO môžu meniť členov svojej ZO. Predsedníctvo (predseda OZ a podpredsedovia)

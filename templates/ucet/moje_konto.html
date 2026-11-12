@@ -53,6 +53,12 @@
   <section class="panel">
     <h2>Moje údaje v evidencii – ZO {{ z.mesto }}</h2>
     {% if z.foto %}<img class="foto-clena" src="{{ url_for('ucet.moja_foto', zaznam_id=z.id, v=z.foto) }}" alt="Moja fotka">{% endif %}
+    <form method="post" enctype="multipart/form-data" class="nahratie">
+      <input type="hidden" name="akcia" value="foto"><input type="hidden" name="zaznam" value="{{ z.id }}">
+      <span>{{ 'Zmeniť fotku' if z.foto else 'Vložiť fotku (na odborársky preukaz)' }}:</span>
+      <input type="file" name="foto" accept="image/*" required>
+      <button type="submit" class="tlacidlo tlacidlo--sekundarne">Nahrať fotku</button>
+    </form>
     {% if z.dlzka %}<p>Dĺžka členstva spolu: <strong>{{ z.dlzka }}</strong></p>{% endif %}
     <p class="info">Údaje v poliach môžete zmeniť. Ostatné mení len predseda ZO. O každej zmene dostane predseda vašej ZO informáciu.</p>
     <form method="post" class="formular">

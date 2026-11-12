@@ -253,6 +253,9 @@ def moje_konto():
         db = get_db()
         cislo = g.clen["cislo"]
         f = request.form
+        if f.get("akcia") == "foto":
+            uloz_moju_fotku(db, g.clen, f.get("zaznam", ""), request.files.get("foto"))
+            return redirect(url_for("ucet.moje_konto"))
         if f.get("akcia") == "udaje":
             uloz_moje_udaje(db, g.clen, f)
             return redirect(url_for("ucet.moje_konto"))
@@ -340,6 +343,73 @@ def emaily_predsedov(db, zo_slug):
         if najdene:
             emaily = [najdene.group(0)]
     return emaily
+
+
+def email_predsedu_zo(db, zo_slug):
+    """E-mail predsedu ZO; ak nie je určený, e-maily vedenia ZO (predseda/podpredseda)."""
+    emaily = [r["email"] for r in db.execute(
+        "SELECT CASE WHEN COALESCE(u.email, '') != '' THEN u.email ELSE c.email END AS email "
+        "FROM ucet u JOIN clen c ON c.cislo = u.cislo WHERE u.zo_slug = ? "
+        "AND (u.funkcia = 'predseda' OR (u.rola = 'zo' AND u.funkcia = ''))", (zo_slug,)) if r["email"]]
+    return emaily or emaily_predsedov(db, zo_slug)
+
+
+def ma_preukaz(udaje):
+    hodnota = (udaje.get("Preukaz") or "").strip().lower()
+    return hodnota not in ("", "nie", "-", "–", "0", "x")
+
+
+def uloz_moju_fotku(db, clen, zaznam_id, subor):
+    """Člen si nahrá fotku do evidencie; ak nemá preukaz, dostane predseda OZ a ZO e-mail."""
+    import json
+    from evidencia import kluc_clena, uprav_fotku
+    zaznam = next((z for z in moje_udaje(db, clen["cislo"]) if str(z["id"]) == str(zaznam_id)), None)
+    if zaznam is None:
+        abort(404)
+    data = subor.read() if subor else b""
+    if not data:
+        flash("Vyberte fotku.")
+        return
+    if len(data) > 15 * 1024 * 1024:
+        flash("Fotka je príliš veľká (najviac 15 MB).")
+        return
+    typ = subor.mimetype or ""
+    try:
+        data, novy_typ = uprav_fotku(data)
+        typ = novy_typ or typ
+    except Exception:
+        flash("Súbor sa nepodarilo otvoriť ako obrázok. Použite fotku vo formáte JPG alebo PNG.")
+        return
+    if not typ.startswith("image/"):
+        flash("Súbor nie je obrázok.")
+        return
+    udaje = json.loads(db.execute("SELECT udaje FROM evidencia_clen WHERE id = ?", (zaznam["id"],)).fetchone()["udaje"])
+    kluc = kluc_clena(udaje)
+    db.execute("INSERT INTO evidencia_foto (kluc, typ, data, verzia) VALUES (?, ?, ?, ?) "
+               "ON CONFLICT(kluc) DO UPDATE SET typ = excluded.typ, data = excluded.data, verzia = excluded.verzia",
+               (kluc, typ, data, datetime.now().strftime("%Y%m%d%H%M%S")))
+    if not udaje.get("Fotka"):
+        udaje["Fotka"] = "áno"
+        db.execute("UPDATE evidencia_clen SET udaje = ? WHERE id = ?", (json.dumps(udaje, ensure_ascii=False), zaznam["id"]))
+    db.commit()
+    flash("Fotka bola uložená.")
+    if ma_preukaz(udaje):
+        return
+    meno = " ".join(x for x in (udaje.get("Titul", ""), udaje.get("Meno poisteného", ""),
+                                udaje.get("Priezvisko / Názov poisteného", ""), udaje.get("Titul za menom", "")) if x).strip()
+    meno = meno or clen["meno"] or clen["cislo"]
+    emaily = list(dict.fromkeys(([nastavenie(db, "email_predseda_oz")] if nastavenie(db, "email_predseda_oz") else [])
+                                + email_predsedu_zo(db, zaznam["zo_slug"])))
+    if not emaily or not posta.je_nastavena(db):
+        return
+    text = (f"Člen {meno} (odborárske číslo {clen['cislo']}, ZO {zaznam['mesto']}) si na stránke nahral fotku.\n\n"
+            "Podľa evidencie zatiaľ nemá odborársky preukaz, preto je potrebné mu ho vyhotoviť.\n"
+            "Fotka je uložená v evidencii členov pri jeho údajoch.\n")
+    for komu in emaily:
+        try:
+            posta.posli(db, komu, f"Odborársky preukaz – {meno}", text)
+        except Exception:
+            pass
 
 
 def uloz_moje_udaje(db, clen, f):
@@ -506,6 +576,7 @@ def spravca_konta():
         bez_preukazu=sum(1 for k in konta if not k["email"] or (not k["ma_preukaz"] and not k["vlastne_heslo"])),
         s_emailom=sum(1 for k in konta if k["email"]),
         smtp_email=nastavenie(db, "smtp_email") or "",
+        email_predseda_oz=nastavenie(db, "email_predseda_oz") or "",
         email_nastaveny=posta.je_nastavena(db),
         role=VOLBY_PRISTUPU,
         pristupy=db.execute(
@@ -577,6 +648,15 @@ def nastav_email():
             flash(f"Skúšobný e-mail bol odoslaný na {nastavenie(db, 'smtp_email')}.")
         except Exception as e:
             flash(f"Skúšobný e-mail sa nepodarilo odoslať: {e}")
+        return redirect(url_for("ucet.spravca_konta"))
+    if f.get("akcia") == "predseda_oz":
+        email = f.get("email_predseda_oz", "").strip()
+        if email and not EMAIL_VZOR.match(email):
+            flash("Zadajte platnú e-mailovú adresu predsedu OZ.")
+        else:
+            nastav(db, "email_predseda_oz", email)
+            db.commit()
+            flash("E-mail predsedu OZ bol uložený.")
         return redirect(url_for("ucet.spravca_konta"))
     email = f.get("smtp_email", "").strip()
     heslo = f.get("smtp_heslo", "").replace(" ", "")
