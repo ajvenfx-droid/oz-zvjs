@@ -748,6 +748,10 @@ RK_SKUPINY = ("rk_predseda", "rk_clen1", "rk_clen2")
 def je_v_reviznej_komisii(db, zo_slug, cislo):
     if not zo_slug or not cislo:
         return False
+    clen = g.get("clen")
+    if clen is not None and clen.get("cislo") == cislo and clen.get("skutocna_rola") == "spravca" and clen.get("zobrazenie"):
+        organ = clen.get("simulovany_organ")  # správca v zobrazení inej funkcie
+        return bool(organ) and organ[0] == zo_slug and organ[1] in RK_SKUPINY
     return db.execute(
         f"SELECT 1 FROM evidencia_organ WHERE zo_slug = ? AND cislo = ? AND skupina IN ({','.join('?' * len(RK_SKUPINY))})",
         (zo_slug, cislo, *RK_SKUPINY)).fetchone() is not None

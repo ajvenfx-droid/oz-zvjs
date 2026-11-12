@@ -157,6 +157,25 @@ def nacitaj_prihlaseneho():
         if clen["zo_slug"] else None
     clen["zo_mesto"] = zo["mesto"] if zo else ""
     clen["ako_clen"] = False
+    clen["simulovany_organ"] = None
+    clen["zobrazenie"] = "clen" if session.get("ako_clen") else ""
+    zobrazenie = session.get("zobrazenie_spravcu") if clen["skutocna_rola"] == "spravca" else None
+    if zobrazenie in ZOBRAZENIA_SPRAVCU:
+        # Správca si môže pozrieť stránku tak, ako ju vidí predseda, podpredseda, revízna komisia či výbor ZO.
+        slug, mesto = clen["zo_slug"], clen["zo_mesto"]
+        if not slug:
+            z = next(iter(moje_udaje(get_db(), cislo)), None)
+            slug, mesto = (z["zo_slug"], z["mesto"]) if z else ("", "")
+        if slug:
+            clen["zobrazenie"] = zobrazenie
+            clen["zo_slug"], clen["zo_mesto"] = slug, mesto
+            if zobrazenie in ("predseda", "podpredseda"):
+                clen["rola"], clen["funkcia"] = "zo", zobrazenie
+            else:
+                clen["rola"], clen["funkcia"] = "clen", ""
+                clen["simulovany_organ"] = (slug, "rk_clen1" if zobrazenie == "rk" else "vybor")
+            g.clen = clen
+            return
     if clen["rola"] != "clen" and session.get("ako_clen"):
         clen["ako_clen"] = True
         clen["rola"] = "clen"
@@ -164,23 +183,31 @@ def nacitaj_prihlaseneho():
     g.clen = clen
 
 
+ZOBRAZENIA_SPRAVCU = {"predseda": "predseda ZO", "podpredseda": "podpredseda ZO",
+                      "rk": "člen revíznej komisie ZO", "vybor": "člen výboru ZO"}
+
+
 @bp.route("/moje-konto/zobrazenie", methods=["POST"])
 def prepni_zobrazenie():
     if g.get("clen") is None:
         return redirect(url_for("ucet.prihlasenie"))
-    if request.form.get("zobrazenie") == "clen":
+    zobrazenie = request.form.get("zobrazenie")
+    session.pop("zobrazenie_spravcu", None)
+    if zobrazenie == "clen":
         session["ako_clen"] = True
     else:
         session.pop("ako_clen", None)
+        if zobrazenie in ZOBRAZENIA_SPRAVCU and g.clen["skutocna_rola"] == "spravca":
+            session["zobrazenie_spravcu"] = zobrazenie
     dalej = request.form.get("dalej", "")
-    if not dalej.startswith("/") or dalej.startswith("//") or (session.get("ako_clen") and dalej.startswith("/spravca")):
+    if not dalej.startswith("/") or dalej.startswith("//") or (zobrazenie != "spravca" and dalej.startswith("/spravca")):
         dalej = url_for("ucet.moje_konto")  # v zobrazení „ako člen“ nie na stránky správy
     return redirect(dalej)
 
 
 @bp.app_context_processor
 def inject_clen():
-    return {"prihlaseny_clen": g.get("clen")}
+    return {"prihlaseny_clen": g.get("clen"), "zobrazenia_spravcu": ZOBRAZENIA_SPRAVCU}
 
 
 def len_prihlaseny(f):
