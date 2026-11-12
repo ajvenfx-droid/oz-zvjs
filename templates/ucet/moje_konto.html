@@ -104,9 +104,9 @@
             p.hidden = !on; b.setAttribute('aria-expanded', on); b.classList.toggle('zalozka--aktivna', on);
           });
         }
-        var h = location.hash.slice(1); otvor(['udaje', 'dotazniky', 'benefity'].indexOf(h) >= 0 ? 'z-' + h : null);
-        tl.forEach(function (b) { b.addEventListener('click', function () {
-          otvor(b.getAttribute('aria-expanded') === 'true' ? null : b.dataset.panel); }); });
+        var h = location.hash.slice(1);
+        otvor(['udaje', 'dotazniky', 'benefity'].indexOf(h) >= 0 && document.getElementById('z-' + h) ? 'z-' + h : tl[0].dataset.panel);
+        tl.forEach(function (b) { b.addEventListener('click', function () { otvor(b.dataset.panel); }); });
       })();
     </script>
   </section>
