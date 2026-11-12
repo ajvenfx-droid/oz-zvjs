@@ -31,9 +31,9 @@
           <input type="hidden" name="dalej" value="{{ request.full_path }}">
           <select name="zobrazenie" onchange="this.form.submit()" aria-label="Zobrazenie">
             <option value="clen" {% if prihlaseny_clen.zobrazenie == 'clen' or (not prihlaseny_clen.zobrazenie and prihlaseny_clen.rola == 'clen') %}selected{% endif %}>ako člen</option>
-            {% if prihlaseny_clen.skutocna_rola == 'spravca' %}
+            {% if prihlaseny_clen.moze_simulovat %}
               {% for k, n in zobrazenia_spravcu.items() %}<option value="{{ k }}" {% if prihlaseny_clen.zobrazenie == k %}selected{% endif %}>ako {{ n }}</option>{% endfor %}
-              <option value="spravca" {% if not prihlaseny_clen.zobrazenie %}selected{% endif %}>ako {{ nazov_roly }}</option>
+              <option value="spravca" {% if not prihlaseny_clen.zobrazenie %}selected{% endif %}>ako správca stránky</option>
             {% else %}
               <option value="spravca" {% if prihlaseny_clen.rola != 'clen' %}selected{% endif %}>ako {{ nazov_roly }}</option>
             {% endif %}

@@ -835,7 +835,7 @@ def zo_organov_clena(db, cislo):
     if not cislo:
         return []
     clen = g.get("clen")
-    if clen is not None and clen.get("cislo") == cislo and clen.get("skutocna_rola") == "spravca" and clen.get("zobrazenie"):
+    if clen is not None and clen.get("cislo") == cislo and clen.get("moze_simulovat") and clen.get("zobrazenie"):
         return [clen["simulovany_organ"][0]] if clen.get("simulovany_organ") else []
     return [r["zo_slug"] for r in db.execute(
         "SELECT DISTINCT zo_slug FROM evidencia_organ WHERE cislo = ? ORDER BY zo_slug", (cislo,))]

@@ -727,6 +727,8 @@ def dotaznik(anketa_id):
 def je_spravca():
     """Správca: prihlásený heslom správcu alebo člen s prístupom „správca stránky“."""
     clen = g.get("clen")
+    if clen is not None and clen.get("zobrazenie"):
+        return False  # správca si práve prezerá stránku ako člen alebo iná funkcia
     return bool(session.get("spravca")) or (clen is not None and clen["rola"] == "spravca")
 
 
@@ -749,7 +751,7 @@ def je_v_reviznej_komisii(db, zo_slug, cislo):
     if not zo_slug or not cislo:
         return False
     clen = g.get("clen")
-    if clen is not None and clen.get("cislo") == cislo and clen.get("skutocna_rola") == "spravca" and clen.get("zobrazenie"):
+    if clen is not None and clen.get("cislo") == cislo and clen.get("moze_simulovat") and clen.get("zobrazenie"):
         organ = clen.get("simulovany_organ")  # správca v zobrazení inej funkcie
         return bool(organ) and organ[0] == zo_slug and organ[1] in RK_SKUPINY
     return db.execute(
@@ -782,6 +784,10 @@ def len_spravca(f):
 
 @bp.route("/spravca/prihlasenie", methods=["GET", "POST"])
 def prihlasenie():
+    if session.get("spravca") and (session.get("ako_clen") or session.get("zobrazenie_spravcu")):
+        session.pop("ako_clen", None)  # správca bol v zobrazení inej funkcie – návrat do správy
+        session.pop("zobrazenie_spravcu", None)
+        return redirect(url_for("anketa.spravca"))
     if je_spravca():
         return redirect(url_for("anketa.spravca"))
     db = get_db()

@@ -159,7 +159,9 @@ def nacitaj_prihlaseneho():
     clen["ako_clen"] = False
     clen["simulovany_organ"] = None
     clen["zobrazenie"] = "clen" if session.get("ako_clen") else ""
-    zobrazenie = session.get("zobrazenie_spravcu") if clen["skutocna_rola"] == "spravca" else None
+    # Správca (konto so správcom alebo prihlásenie heslom správcu) si môže pozrieť stránku očami inej funkcie.
+    clen["moze_simulovat"] = clen["skutocna_rola"] == "spravca" or bool(session.get("spravca"))
+    zobrazenie = session.get("zobrazenie_spravcu") if clen["moze_simulovat"] else None
     if zobrazenie in ZOBRAZENIA_SPRAVCU:
         # Správca si môže pozrieť stránku tak, ako ju vidí predseda, podpredseda, revízna komisia či výbor ZO.
         slug, mesto = clen["zo_slug"], clen["zo_mesto"]
@@ -197,10 +199,10 @@ def prepni_zobrazenie():
         session["ako_clen"] = True
     else:
         session.pop("ako_clen", None)
-        if zobrazenie in ZOBRAZENIA_SPRAVCU and g.clen["skutocna_rola"] == "spravca":
+        if zobrazenie in ZOBRAZENIA_SPRAVCU and g.clen["moze_simulovat"]:
             session["zobrazenie_spravcu"] = zobrazenie
     dalej = request.form.get("dalej", "")
-    if not dalej.startswith("/") or dalej.startswith("//") or (zobrazenie != "spravca" and dalej.startswith("/spravca")):
+    if not dalej.startswith("/") or dalej.startswith("//") or (zobrazenie != "spravca" and dalej.startswith(("/spravca", "/anketa/spravca"))):
         dalej = url_for("ucet.moje_konto")  # v zobrazení „ako člen“ nie na stránky správy
     return redirect(dalej)
 
