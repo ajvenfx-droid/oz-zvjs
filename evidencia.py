@@ -738,6 +738,13 @@ def _meno_clena(c):
     return f"{u.get('Meno poisteného', '')} {u.get('Priezvisko / Názov poisteného', '')}".strip()
 
 
+def _meno_s_titulmi(c):
+    u = c["udaje"]
+    meno = " ".join(x for x in (u.get("Titul", "").strip(), _meno_clena(c)) if x)
+    za = u.get("Titul za menom", "").strip()
+    return f"{meno}, {za}" if za else meno
+
+
 def organy_zo(db, slug, clenovia):
     """{skupina: [{cislo, meno}]} pre výbor ZO a revíznu komisiu, zoradené podľa priezviska."""
     podla_cisla = {_cislo(c): c for c in clenovia}
@@ -746,6 +753,7 @@ def organy_zo(db, slug, clenovia):
         c = podla_cisla.get(r["cislo"])
         if r["skupina"] in vysledok:
             vysledok[r["skupina"]].append({"cislo": r["cislo"], "meno": _meno_clena(c) if c else r["cislo"],
+                                           "s_titulmi": _meno_s_titulmi(c) if c else r["cislo"],
                                            "kluc": abecedne(c["udaje"].get("Priezvisko / Názov poisteného", "")) if c else ""})
     for zoznam in vysledok.values():
         zoznam.sort(key=lambda x: x["kluc"])
@@ -916,7 +924,7 @@ def prezencna_listina(slug):
     rk_predseda, rk_funkcia = "", "Predseda revíznej komisie"
     for kluc, funkcia in RK_MIESTA:  # chýba predseda RK → ďalší člen revíznej komisie
         if organy.get(kluc):
-            rk_predseda, rk_funkcia = organy[kluc][0]["meno"], funkcia
+            rk_predseda, rk_funkcia = organy[kluc][0]["s_titulmi"], funkcia
             break
     return render_template("evidencia/prezencna_listina.html", zo=zo, zoznam=zoznam, nazov=nazov,
                            datum=a.get("datum", ""), datum_text=datum, s_cislom=s_cislom, vzor=vzor,
