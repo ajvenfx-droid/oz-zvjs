@@ -156,7 +156,9 @@ def nacitaj_prihlaseneho():
     zo = get_db().execute("SELECT mesto FROM zakladna_organizacia WHERE slug = ?", (clen["zo_slug"],)).fetchone() \
         if clen["zo_slug"] else None
     clen["zo_mesto"] = zo["mesto"] if zo else ""
+    clen["ako_clen"] = False
     if clen["rola"] != "clen" and session.get("ako_clen"):
+        clen["ako_clen"] = True
         clen["rola"] = "clen"
         clen["funkcia"] = ""
     g.clen = clen
@@ -292,8 +294,8 @@ def moje_konto():
     from anketa import dotazniky_clena
     from evidencia import zo_organov_clena
     db = get_db()
-    slugy = set(zo_organov_clena(db, g.clen["cislo"]))
-    if g.clen.get("zo_slug") and (g.clen.get("skutocna_funkcia") or g.clen.get("funkcia") or g.clen.get("skutocna_rola") == "zo"):
+    slugy = set() if g.clen.get("ako_clen") else set(zo_organov_clena(db, g.clen["cislo"]))
+    if g.clen.get("zo_slug") and not g.clen.get("ako_clen") and (g.clen.get("funkcia") or g.clen.get("rola") == "zo"):
         slugy.add(g.clen["zo_slug"])
     listiny = [dict(r) for r in db.execute(
         f"SELECT slug, mesto FROM zakladna_organizacia WHERE slug IN ({','.join('?' * len(slugy))}) ORDER BY mesto",

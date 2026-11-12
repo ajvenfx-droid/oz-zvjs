@@ -503,7 +503,7 @@ def pristup(slug=None):
         return "menit"
     if clen["rola"] == "vedenie":
         return "citat"
-    if slug is not None and slug in zo_organov_clena(get_db(), clen["cislo"]):
+    if slug is not None and not clen.get("ako_clen") and slug in zo_organov_clena(get_db(), clen["cislo"]):
         return "citat"  # výbor a revízna komisia ZO: len prezeranie
     return None
 
@@ -843,10 +843,8 @@ def prezencnu_listinu_moze(slug):
     if pristup(slug) is not None:
         return True
     clen = g.get("clen")
-    if clen is None:
-        return False
-    if clen.get("zo_slug") == slug and (clen.get("skutocna_funkcia") or clen.get("skutocna_rola") == "zo"):
-        return True  # predseda/podpredseda ZO aj v zobrazení „ako člen“
+    if clen is None or clen.get("ako_clen"):
+        return False  # zobrazenie „ako člen“: bez prístupu k listinám
     return slug in zo_organov_clena(get_db(), clen["cislo"])
 
 

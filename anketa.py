@@ -756,6 +756,8 @@ def je_v_reviznej_komisii(db, zo_slug, cislo):
 def moze_vidiet_vysledky(db, zo_slug):
     """Výsledky vidí správca, predseda a podpredseda ZO a členovia revíznej komisie ZO."""
     clen = g.get("clen")
+    if clen is not None and clen.get("ako_clen"):
+        return False  # zobrazenie „ako člen“: len to, čo vidí bežný člen
     return moze_spravovat(zo_slug) or (clen is not None and je_v_reviznej_komisii(db, zo_slug, clen["cislo"]))
 
 
