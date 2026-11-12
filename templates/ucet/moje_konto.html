@@ -10,12 +10,59 @@
         <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.volby', slug=z.slug) }}">Voľby – hlasovacie lístky</a></p>{% endfor %}
     </section>
   {% endif %}
-  {% if dotazniky or benefity %}
+  {% if evidencia or dotazniky or benefity %}
   <section class="panel mk-zalozky">
     <div class="mk-zalozky__lista" role="tablist">
+      {% if evidencia %}<button type="button" class="zalozka" data-panel="z-udaje" aria-expanded="false">Údaje</button>{% endif %}
       {% if dotazniky %}<button type="button" class="zalozka" data-panel="z-dotazniky" aria-expanded="false">Dotazníky ({{ dotazniky|length }})</button>{% endif %}
       {% if benefity %}<button type="button" class="zalozka" data-panel="z-benefity" aria-expanded="false">Benefity</button>{% endif %}
     </div>
+    {% if evidencia %}
+    <div class="mk-zalozky__panel" id="z-udaje">
+  {% for z in evidencia %}
+  <div class="mu-zaznam">
+    {% if evidencia|length > 1 %}<h3>ZO {{ z.mesto }}</h3>{% endif %}
+    <div class="mu-rozlozenie">
+    {% if z.foto %}
+    <form method="post" enctype="multipart/form-data" class="mu-foto">
+      <input type="hidden" name="akcia" value="foto"><input type="hidden" name="zaznam" value="{{ z.id }}">
+      <div class="foto-clena foto-clena--pozadie" role="img" aria-label="Moja fotka" style="background-image: url('{{ url_for('ucet.moja_foto', zaznam_id=z.id, v=z.foto) }}')"></div>
+      <label class="foto-zmenit" title="Zmeniť fotku" aria-label="Zmeniť fotku">&#9998;
+        <input type="file" name="foto" accept="image/*" required hidden onchange="this.form.submit()"></label>
+      <button type="submit" class="foto-zmazat" name="akcia" value="zmazat_foto" formnovalidate title="Odstrániť fotku" aria-label="Odstrániť fotku"
+        onclick="return confirm('Odstrániť fotku?');">&#128465;</button>
+    </form>
+    {% endif %}
+    <div class="mu-data">
+    {% if not z.foto %}
+    <form method="post" enctype="multipart/form-data" class="nahratie">
+      <input type="hidden" name="akcia" value="foto"><input type="hidden" name="zaznam" value="{{ z.id }}">
+      <span>Vložiť fotku (na odborársky preukaz):</span>
+      <input type="file" name="foto" accept="image/*" required>
+      <button type="submit" class="tlacidlo tlacidlo--sekundarne">Nahrať fotku</button>
+    </form>
+    {% endif %}
+    <form method="post" class="formular">
+      <input type="hidden" name="akcia" value="udaje">
+      <input type="hidden" name="zaznam" value="{{ z.id }}">
+      <div class="moje-udaje">
+      {% for nazov, hodnota, index in z.polia %}
+        {% if index is not none %}
+          <label class="mu-pole"><span class="mu-pole__nazov">{{ nazov|stlpec }}:</span>
+            <input type="{{ 'email' if nazov == 'E-mail' else 'text' }}" name="st_{{ index }}" value="{{ hodnota }}"></label>
+        {% else %}
+          <div class="mu-pole"><span class="mu-pole__nazov">{{ nazov|stlpec }}:</span> <strong>{{ hodnota }}</strong></div>
+        {% endif %}
+      {% endfor %}
+      </div>
+      <button type="submit" class="tlacidlo">Uložiť zmeny</button>
+    </form>
+    </div>
+    </div>
+  </div>
+  {% endfor %}
+    </div>
+    {% endif %}
     {% if dotazniky %}
     <div class="mk-zalozky__panel" id="z-dotazniky">
     <table class="tabulka">
@@ -57,55 +104,13 @@
             p.hidden = !on; b.setAttribute('aria-expanded', on); b.classList.toggle('zalozka--aktivna', on);
           });
         }
-        otvor(location.hash === '#benefity' ? 'z-benefity' : (location.hash === '#dotazniky' ? 'z-dotazniky' : null));
+        var h = location.hash.slice(1); otvor(['udaje', 'dotazniky', 'benefity'].indexOf(h) >= 0 ? 'z-' + h : null);
         tl.forEach(function (b) { b.addEventListener('click', function () {
           otvor(b.getAttribute('aria-expanded') === 'true' ? null : b.dataset.panel); }); });
       })();
     </script>
   </section>
   {% endif %}
-  {% for z in evidencia %}
-  <section class="panel">
-    <h2>Moje údaje v evidencii – ZO {{ z.mesto }}</h2>
-    <div class="mu-rozlozenie">
-    {% if z.foto %}
-    <form method="post" enctype="multipart/form-data" class="mu-foto">
-      <input type="hidden" name="akcia" value="foto"><input type="hidden" name="zaznam" value="{{ z.id }}">
-      <div class="foto-clena foto-clena--pozadie" role="img" aria-label="Moja fotka" style="background-image: url('{{ url_for('ucet.moja_foto', zaznam_id=z.id, v=z.foto) }}')"></div>
-      <label class="foto-zmenit" title="Zmeniť fotku" aria-label="Zmeniť fotku">&#9998;
-        <input type="file" name="foto" accept="image/*" required hidden onchange="this.form.submit()"></label>
-      <button type="submit" class="foto-zmazat" name="akcia" value="zmazat_foto" formnovalidate title="Odstrániť fotku" aria-label="Odstrániť fotku"
-        onclick="return confirm('Odstrániť fotku?');">&#128465;</button>
-    </form>
-    {% endif %}
-    <div class="mu-data">
-    {% if not z.foto %}
-    <form method="post" enctype="multipart/form-data" class="nahratie">
-      <input type="hidden" name="akcia" value="foto"><input type="hidden" name="zaznam" value="{{ z.id }}">
-      <span>Vložiť fotku (na odborársky preukaz):</span>
-      <input type="file" name="foto" accept="image/*" required>
-      <button type="submit" class="tlacidlo tlacidlo--sekundarne">Nahrať fotku</button>
-    </form>
-    {% endif %}
-    <form method="post" class="formular">
-      <input type="hidden" name="akcia" value="udaje">
-      <input type="hidden" name="zaznam" value="{{ z.id }}">
-      <div class="moje-udaje">
-      {% for nazov, hodnota, index in z.polia %}
-        {% if index is not none %}
-          <label class="mu-pole"><span class="mu-pole__nazov">{{ nazov|stlpec }}:</span>
-            <input type="{{ 'email' if nazov == 'E-mail' else 'text' }}" name="st_{{ index }}" value="{{ hodnota }}"></label>
-        {% else %}
-          <div class="mu-pole"><span class="mu-pole__nazov">{{ nazov|stlpec }}:</span> <strong>{{ hodnota }}</strong></div>
-        {% endif %}
-      {% endfor %}
-      </div>
-      <button type="submit" class="tlacidlo">Uložiť zmeny</button>
-    </form>
-    </div>
-    </div>
-  </section>
-  {% endfor %}
   {% if not evidencia %}
   <section class="panel">
     <h2>E-mail</h2>

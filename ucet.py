@@ -303,13 +303,13 @@ def moje_konto():
         f = request.form
         if "zmazat_foto" in f.getlist("akcia"):
             zmaz_moju_fotku(db, g.clen, f.get("zaznam", ""))
-            return redirect(url_for("ucet.moje_konto"))
+            return redirect(url_for("ucet.moje_konto", _anchor="udaje"))
         if f.get("akcia") == "foto":
             uloz_moju_fotku(db, g.clen, f.get("zaznam", ""), request.files.get("foto"))
-            return redirect(url_for("ucet.moje_konto"))
+            return redirect(url_for("ucet.moje_konto", _anchor="udaje"))
         if f.get("akcia") == "udaje":
             uloz_moje_udaje(db, g.clen, f)
-            return redirect(url_for("ucet.moje_konto"))
+            return redirect(url_for("ucet.moje_konto", _anchor="udaje"))
         if f.get("akcia") == "email":
             email = f.get("email", "").strip()
             if email and not EMAIL_VZOR.match(email):
