@@ -325,6 +325,7 @@ def moje_konto():
         return redirect(url_for("ucet.moje_konto"))
     from anketa import dotazniky_clena
     from evidencia import zo_organov_clena
+    from obsah import benefity_clena
     db = get_db()
     slugy = set() if g.clen.get("ako_clen") else set(zo_organov_clena(db, g.clen["cislo"]))
     if g.clen.get("zo_slug") and not g.clen.get("ako_clen") and (g.clen.get("funkcia") or g.clen.get("rola") == "zo"):
@@ -333,7 +334,8 @@ def moje_konto():
         f"SELECT slug, mesto FROM zakladna_organizacia WHERE slug IN ({','.join('?' * len(slugy))}) ORDER BY mesto",
         tuple(slugy))] if slugy else []
     return render_template("ucet/moje_konto.html", evidencia=moje_udaje(db, g.clen["cislo"]),
-                           dotazniky=dotazniky_clena(db, g.clen["cislo"]), listiny=listiny)
+                           dotazniky=dotazniky_clena(db, g.clen["cislo"]), listiny=listiny,
+                           benefity=benefity_clena())
 
 
 def moje_udaje(db, cislo):
@@ -353,7 +355,7 @@ def moje_udaje(db, cislo):
         stlpce = poradie + [s for s in udaje if s not in poradie]
         menitelne = menitelne_clenom(stlpce)
         polia = [(s, udaje.get(s, ""), menitelne.index(s) if s in menitelne else None) for s in stlpce
-                 if s.lower() != "číslo" and s != "Predchádzajúce mená" and (udaje.get(s) or s in menitelne)]
+                 if s.lower() != "číslo" and s not in ("Predchádzajúce mená", "Identifikačné číslo") and (udaje.get(s) or s in menitelne)]
         from evidencia import dlzka_clenstva, obdobia_clenstva
         obdobia = obdobia_clenstva(db, udaje)
         from evidencia import kluc_clena, nacitaj_foto

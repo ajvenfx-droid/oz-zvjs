@@ -676,5 +676,14 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .mu-pole input { flex: 1; min-width: 0; padding: 2px 6px !important; height: 28px; margin: 0; font: inherit; font-size: .95rem; border: 1px solid #ccc; border-radius: 4px; }
 .mu-pole strong { flex: 1; }
 @media (max-width: 480px) { .moje-udaje { grid-template-columns: 1fr; } }
-.nadpis-cislo { margin-left: 1.5em; }
+.nadpis-cislo { margin-left: 1.5em; font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .nadpis-cislo__popis { font-size: .55em; font-weight: 400; text-transform: none; font-style: italic; }
+.mk-zalozky__lista { display: flex; gap: 8px; flex-wrap: wrap; }
+.zalozka { font: inherit; font-weight: 700; font-size: 1.05rem; padding: 8px 18px; border: 1px solid var(--zlata, #8a6d0b); border-radius: 6px;
+  background: #fff; color: var(--zlata, #8a6d0b); cursor: pointer; }
+.zalozka::after { content: " ▾"; font-weight: 400; }
+.zalozka--aktivna { background: var(--zlata, #8a6d0b); color: #fff; }
+.zalozka--aktivna::after { content: " ▴"; }
+.mk-zalozky__panel { margin-top: 14px; }
+.mk-zalozky__panel .benefit { margin: 6px 0; }
+body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }

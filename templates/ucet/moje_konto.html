@@ -10,9 +10,14 @@
         <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.volby', slug=z.slug) }}">Voľby – hlasovacie lístky</a></p>{% endfor %}
     </section>
   {% endif %}
-  {% if dotazniky %}
-  <section class="panel" id="dotazniky">
-    <h2>Dotazníky</h2>
+  {% if dotazniky or benefity %}
+  <section class="panel mk-zalozky">
+    <div class="mk-zalozky__lista" role="tablist">
+      {% if dotazniky %}<button type="button" class="zalozka" data-panel="z-dotazniky" aria-expanded="false">Dotazníky ({{ dotazniky|length }})</button>{% endif %}
+      {% if benefity %}<button type="button" class="zalozka" data-panel="z-benefity" aria-expanded="false">Benefity</button>{% endif %}
+    </div>
+    {% if dotazniky %}
+    <div class="mk-zalozky__panel" id="z-dotazniky">
     <table class="tabulka">
       <tbody>
         {% for d in dotazniky %}
@@ -27,6 +32,36 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
+    {% endif %}
+    {% if benefity %}
+    <div class="mk-zalozky__panel" id="z-benefity">
+      {% for z in benefity %}
+        {% if benefity|length > 1 %}<h3>ZO {{ z.zo.mesto }}</h3>{% endif %}
+        {% for b in z.benefity %}
+          <details class="benefit">
+            <summary><strong>{{ b.nazov }}</strong></summary>
+            {% if b.popis %}<div>{{ b.popis|text }}</div>{% endif %}
+            {% if b.typ == 'hodinky' %}<p><a class="tlacidlo" href="{{ url_for('hodinky_clen.rezervacia', slug=z.zo.slug) }}">Rezervovať hodinky</a></p>{% endif %}
+          </details>
+        {% endfor %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    <script>
+      (function () {
+        var tl = document.querySelectorAll('.zalozka');
+        function otvor(id) {
+          tl.forEach(function (b) {
+            var p = document.getElementById(b.dataset.panel), on = b.dataset.panel === id;
+            p.hidden = !on; b.setAttribute('aria-expanded', on); b.classList.toggle('zalozka--aktivna', on);
+          });
+        }
+        otvor(location.hash === '#benefity' ? 'z-benefity' : (location.hash === '#dotazniky' ? 'z-dotazniky' : null));
+        tl.forEach(function (b) { b.addEventListener('click', function () {
+          otvor(b.getAttribute('aria-expanded') === 'true' ? null : b.dataset.panel); }); });
+      })();
+    </script>
   </section>
   {% endif %}
   {% for z in evidencia %}
