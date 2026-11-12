@@ -372,6 +372,7 @@ def moje_udaje(db, cislo):
             if prvy in stlpce and druhy in stlpce:  # dvojica v jednom riadku
                 stlpce = [x for x in stlpce if x != druhy]
                 stlpce.insert(stlpce.index(prvy) + 1, druhy)
+        stlpce = [x for x in stlpce if x not in ("Preukaz", "Fotka")] + [x for x in ("Preukaz", "Fotka") if x in stlpce]
         polia = [(s, udaje.get(s, ""), menitelne.index(s) if s in menitelne else None) for s in stlpce
                  if s.lower() != "číslo" and s not in ("Predchádzajúce mená", "Identifikačné číslo") and (udaje.get(s) or s in menitelne)]
         from evidencia import dlzka_clenstva, obdobia_clenstva
