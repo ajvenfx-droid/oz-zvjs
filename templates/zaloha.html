@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Záloha – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu</a>
+  <h1 class="nadpis">Záloha údajov</h1>
+  <section class="panel">
+    <p>Všetky údaje stránky (členovia, evidencia, fotky, dotazníky, dokumenty, nastavenia) sú v jednom súbore databázy.
+      Stránka si každý deň sama uloží jeho kópiu na server a ponechá posledných {{ ponechat }} dní.</p>
+    <p class="varovanie">Záloha obsahuje osobné údaje členov. Uložte ju len na bezpečné miesto a nikomu ju neposielajte.</p>
+    <p><a class="tlacidlo" href="{{ url_for('zaloha.stiahnut') }}">Stiahnuť aktuálnu zálohu</a></p>
+    <p class="info">Odporúčame ju stiahnuť do počítača aspoň raz za mesiac, aby existovala aj kópia mimo servera.</p>
+  </section>
+  <section class="panel">
+    <h2>Uložené zálohy na serveri</h2>
+    {% if zalohy %}
+      <table class="tabulka">
+        {% for z in zalohy %}
+          <tr><td><a href="{{ url_for('zaloha.stiahnut', nazov=z.nazov) }}">{{ z.nazov }}</a></td>
+            <td class="info">{{ z.cas.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td class="info">{{ '%.1f'|format(z.velkost / 1048576) }} MB</td></tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p class="info">Zatiaľ žiadna záloha.</p>
+    {% endif %}
+    <form method="post"><button type="submit" class="tlacidlo tlacidlo--sekundarne">Zálohovať teraz</button></form>
+  </section>
+{% endblock %}

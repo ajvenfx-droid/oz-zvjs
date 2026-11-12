@@ -10,6 +10,7 @@ import hodinky
 import nasadenie
 import obsah
 import ucet
+import zaloha
 from db import connect, close_db, get_db
 
 NAZOV_ZVAZU = "ODBOROVÝ ZVÄZ ZBORU VÄZENSKEJ A JUSTIČNEJ STRÁŽE"
@@ -90,6 +91,7 @@ app.register_blueprint(evidencia.bp)
 app.register_blueprint(hodinky.bp)
 app.register_blueprint(hodinky.bp_clen)
 app.register_blueprint(nasadenie.bp)
+app.register_blueprint(zaloha.bp)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # nahrávané dokumenty
 
 

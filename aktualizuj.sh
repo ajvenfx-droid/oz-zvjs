@@ -3,6 +3,8 @@
 # Spustenie v Bash konzole:  bash ~/oz-zvjs/aktualizuj.sh
 set -e
 cd "$(dirname "$0")"
+# Denná záloha databázy (zalohy/, posledných 14 dní) ešte pred aktualizáciou.
+python3 zaloha.py || echo "Zálohu sa nepodarilo vytvoriť."
 git pull --ff-only
 # Knižnica na čítanie starých súborov Excel (.xls) pre evidenciu členov.
 for py in python3.10 python3.11 python3.12 python3.13; do
