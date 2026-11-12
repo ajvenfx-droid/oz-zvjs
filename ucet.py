@@ -172,7 +172,10 @@ def prepni_zobrazenie():
         session["ako_clen"] = True
     else:
         session.pop("ako_clen", None)
-    return redirect(url_for("ucet.moje_konto"))
+    dalej = request.form.get("dalej", "")
+    if not dalej.startswith("/") or dalej.startswith("//") or (session.get("ako_clen") and dalej.startswith("/spravca")):
+        dalej = url_for("ucet.moje_konto")  # v zobrazení „ako člen“ nie na stránky správy
+    return redirect(dalej)
 
 
 @bp.app_context_processor

@@ -21,6 +21,21 @@
         {% if prihlaseny_clen.rola == 'zo' and prihlaseny_clen.zo_slug %}<a href="{{ url_for('anketa.dotazniky_zo', slug=prihlaseny_clen.zo_slug) }}">Dotazníky</a>{% endif %}
       {% endif %}
       <a href="{{ url_for('ucet.moje_konto') }}">Moje konto</a>
+      {% if prihlaseny_clen.skutocna_rola != 'clen' %}
+        {% if prihlaseny_clen.skutocna_rola == 'zo' %}
+          {% set nazov_roly = (prihlaseny_clen.skutocna_funkcia or 'predseda') ~ ' ZO' ~ ((' ' ~ prihlaseny_clen.zo_mesto) if prihlaseny_clen.zo_mesto else '') %}
+        {% else %}
+          {% set nazov_roly = {'vedenie': 'predsedníctvo', 'spravca': 'správca stránky'}[prihlaseny_clen.skutocna_rola] %}
+        {% endif %}
+        <form method="post" action="{{ url_for('ucet.prepni_zobrazenie') }}" class="lista-zobrazenie">
+          <input type="hidden" name="dalej" value="{{ request.full_path }}">
+          <select name="zobrazenie" onchange="this.form.submit()" aria-label="Zobrazenie">
+            <option value="clen" {% if prihlaseny_clen.rola == 'clen' %}selected{% endif %}>ako člen</option>
+            <option value="spravca" {% if prihlaseny_clen.rola != 'clen' %}selected{% endif %}>ako {{ nazov_roly }}</option>
+          </select>
+          <noscript><button type="submit" class="odkaz-tlacidlo odkaz-tlacidlo--svetle">Prepnúť</button></noscript>
+        </form>
+      {% endif %}
       <form method="post" action="{{ url_for('ucet.odhlasenie') }}">
         <button type="submit" class="odkaz-tlacidlo odkaz-tlacidlo--svetle">Odhlásiť</button>
       </form>

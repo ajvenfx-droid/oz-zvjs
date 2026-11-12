@@ -6,21 +6,6 @@
     <h2>Údaje</h2>
     <p>Odborárske číslo: <strong>{{ prihlaseny_clen.cislo }}</strong></p>
     {% if prihlaseny_clen.meno %}<p>Meno: <strong>{{ prihlaseny_clen.meno }}</strong></p>{% endif %}
-    {% if prihlaseny_clen.skutocna_rola != 'clen' %}
-      {% if prihlaseny_clen.skutocna_rola == 'zo' %}
-        {% set nazov_roly = (prihlaseny_clen.skutocna_funkcia or 'predseda') ~ ' ZO' ~ ((' ' ~ prihlaseny_clen.zo_mesto) if prihlaseny_clen.zo_mesto else '') %}
-      {% else %}
-        {% set nazov_roly = {'vedenie': 'predsedníctvo', 'spravca': 'správca celej stránky'}[prihlaseny_clen.skutocna_rola] %}
-      {% endif %}
-      <form method="post" action="{{ url_for('ucet.prepni_zobrazenie') }}" class="nahratie">
-        <span>Zobrazenie:</span>
-        <label class="moznost"><input type="radio" name="zobrazenie" value="clen" onchange="this.form.submit()"
-          {% if prihlaseny_clen.rola == 'clen' %}checked{% endif %}> ako člen</label>
-        <label class="moznost"><input type="radio" name="zobrazenie" value="spravca" onchange="this.form.submit()"
-          {% if prihlaseny_clen.rola != 'clen' %}checked{% endif %}> ako {{ nazov_roly }}</label>
-        <noscript><button type="submit" class="tlacidlo tlacidlo--sekundarne">Prepnúť</button></noscript>
-      </form>
-    {% endif %}
   </section>
   {% if listiny %}
     <section class="panel">

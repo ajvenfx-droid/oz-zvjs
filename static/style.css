@@ -668,3 +668,4 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .listok-strana--zadna .listok { border-color: transparent !important; }
 .listok__cislo, .listky--male .listok__cislo { top: 6mm; right: 7mm; }
 .listok, .listky--male .listok { padding: 8mm; }
+.lista-zobrazenie select { font: inherit; font-size: .85em; padding: 1px 4px; border-radius: 4px; background: #222; color: var(--zlata); border: 1px solid #555; }
