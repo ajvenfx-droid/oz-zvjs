@@ -74,6 +74,8 @@
       <img class="foto-clena" src="{{ url_for('ucet.moja_foto', zaznam_id=z.id, v=z.foto) }}" alt="Moja fotka">
       <label class="foto-zmenit" title="Zmeniť fotku" aria-label="Zmeniť fotku">&#9998;
         <input type="file" name="foto" accept="image/*" required hidden onchange="this.form.submit()"></label>
+      <button type="submit" class="foto-zmazat" name="akcia" value="zmazat_foto" formnovalidate title="Odstrániť fotku" aria-label="Odstrániť fotku"
+        onclick="return confirm('Odstrániť fotku?');">&#128465;</button>
     </form>
     {% endif %}
     <div class="mu-data">

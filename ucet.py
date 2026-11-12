@@ -301,6 +301,9 @@ def moje_konto():
         db = get_db()
         cislo = g.clen["cislo"]
         f = request.form
+        if "zmazat_foto" in f.getlist("akcia"):
+            zmaz_moju_fotku(db, g.clen, f.get("zaznam", ""))
+            return redirect(url_for("ucet.moje_konto"))
         if f.get("akcia") == "foto":
             uloz_moju_fotku(db, g.clen, f.get("zaznam", ""), request.files.get("foto"))
             return redirect(url_for("ucet.moje_konto"))
@@ -412,6 +415,22 @@ def email_predsedu_zo(db, zo_slug):
 def ma_preukaz(udaje):
     hodnota = (udaje.get("Preukaz") or "").strip().lower()
     return hodnota not in ("", "nie", "-", "–", "0", "x")
+
+
+def zmaz_moju_fotku(db, clen, zaznam_id):
+    """Člen si odstráni svoju fotku z evidencie."""
+    import json
+    from evidencia import kluc_clena
+    zaznam = next((z for z in moje_udaje(db, clen["cislo"]) if str(z["id"]) == str(zaznam_id)), None)
+    if zaznam is None:
+        abort(404)
+    udaje = json.loads(db.execute("SELECT udaje FROM evidencia_clen WHERE id = ?", (zaznam["id"],)).fetchone()["udaje"])
+    db.execute("DELETE FROM evidencia_foto WHERE kluc = ?", (kluc_clena(udaje),))
+    if (udaje.get("Fotka") or "").strip().lower() == "áno":
+        udaje["Fotka"] = ""
+        db.execute("UPDATE evidencia_clen SET udaje = ? WHERE id = ?", (json.dumps(udaje, ensure_ascii=False), zaznam["id"]))
+    db.commit()
+    flash("Fotka bola odstránená.")
 
 
 def uloz_moju_fotku(db, clen, zaznam_id, subor):
