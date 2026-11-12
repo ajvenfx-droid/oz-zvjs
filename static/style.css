@@ -691,3 +691,10 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .lista-meno { font-weight: 600; }
 .lista-cislo { font-weight: 400; color: #bbb; margin-left: 4px; }
 .lista-clenom { color: #bbb; }
+.nadpis-clenom { margin-left: auto; font-size: .6em; font-weight: 500; text-transform: none; color: #555; align-self: flex-end; padding-bottom: 3px; }
+.mu-rozlozenie { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+.mu-foto { position: relative; flex: 0 0 auto; margin: 0; }
+.mu-foto .foto-clena { margin-bottom: 0; }
+.mu-data { flex: 1 1 420px; min-width: 0; }
+.foto-zmenit { position: absolute; top: 6px; right: 6px; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.92); border: 1px solid #c9b77a; color: #7a5c00; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.foto-zmenit:hover { background: #fff; color: #000; }

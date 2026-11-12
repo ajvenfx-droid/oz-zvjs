@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Moje konto – {{ nazov_zvazu }}{% endblock %}
 {% block content %}
-  <h1 class="nadpis">{{ prihlaseny_clen.meno or prihlaseny_clen.cislo }}{% if prihlaseny_clen.meno %}<span class="nadpis-cislo">{{ prihlaseny_clen.cislo }} <small class="nadpis-cislo__popis">(identifikačné číslo)</small></span>{% endif %}</h1>
+  <h1 class="nadpis">{{ prihlaseny_clen.meno or prihlaseny_clen.cislo }}{% if prihlaseny_clen.meno %}<span class="nadpis-cislo">{{ prihlaseny_clen.cislo }} <small class="nadpis-cislo__popis">(identifikačné číslo)</small></span>{% endif %}{% set dlzka_clenstva = clenom() %}{% if dlzka_clenstva %}<span class="nadpis-clenom">Členom: {{ dlzka_clenstva }}</span>{% endif %}</h1>
   {% if listiny %}
     <section class="panel">
       <h2>Členovia ZO</h2>
@@ -67,18 +67,24 @@
   {% for z in evidencia %}
   <section class="panel">
     <h2>Moje údaje v evidencii – ZO {{ z.mesto }}</h2>
-    {% if z.foto %}<img class="foto-clena" src="{{ url_for('ucet.moja_foto', zaznam_id=z.id, v=z.foto) }}" alt="Moja fotka">{% endif %}
+    <div class="mu-rozlozenie">
+    {% if z.foto %}
+    <form method="post" enctype="multipart/form-data" class="mu-foto">
+      <input type="hidden" name="akcia" value="foto"><input type="hidden" name="zaznam" value="{{ z.id }}">
+      <img class="foto-clena" src="{{ url_for('ucet.moja_foto', zaznam_id=z.id, v=z.foto) }}" alt="Moja fotka">
+      <label class="foto-zmenit" title="Zmeniť fotku" aria-label="Zmeniť fotku">&#9998;
+        <input type="file" name="foto" accept="image/*" required hidden onchange="this.form.submit()"></label>
+    </form>
+    {% endif %}
+    <div class="mu-data">
+    {% if not z.foto %}
     <form method="post" enctype="multipart/form-data" class="nahratie">
       <input type="hidden" name="akcia" value="foto"><input type="hidden" name="zaznam" value="{{ z.id }}">
-      {% if z.foto %}
-        <label class="tlacidlo tlacidlo--sekundarne">Zmeniť fotku
-          <input type="file" name="foto" accept="image/*" required hidden onchange="this.form.submit()"></label>
-      {% else %}
-        <span>Vložiť fotku (na odborársky preukaz):</span>
-        <input type="file" name="foto" accept="image/*" required>
-        <button type="submit" class="tlacidlo tlacidlo--sekundarne">Nahrať fotku</button>
-      {% endif %}
+      <span>Vložiť fotku (na odborársky preukaz):</span>
+      <input type="file" name="foto" accept="image/*" required>
+      <button type="submit" class="tlacidlo tlacidlo--sekundarne">Nahrať fotku</button>
     </form>
+    {% endif %}
     <p class="info">Údaje v poliach môžete zmeniť. Ostatné mení len predseda ZO. O každej zmene dostane predseda vašej ZO informáciu.</p>
     <form method="post" class="formular">
       <input type="hidden" name="akcia" value="udaje">
@@ -95,6 +101,8 @@
       </div>
       <button type="submit" class="tlacidlo">Uložiť zmeny</button>
     </form>
+    </div>
+    </div>
   </section>
   {% endfor %}
   {% if not evidencia %}
