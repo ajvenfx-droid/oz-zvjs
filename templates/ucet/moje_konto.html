@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Moje konto – {{ nazov_zvazu }}{% endblock %}
 {% block content %}
-  <h1 class="nadpis">Moje konto – {% if prihlaseny_clen.meno %}{{ prihlaseny_clen.meno }}, {% endif %}č. {{ prihlaseny_clen.cislo }}</h1>
+  <h1 class="nadpis">{{ prihlaseny_clen.meno or prihlaseny_clen.cislo }}{% if prihlaseny_clen.meno %}<span class="nadpis-cislo">č. {{ prihlaseny_clen.cislo }}</span>{% endif %}</h1>
   {% if listiny %}
     <section class="panel">
       <h2>Členovia ZO</h2>
