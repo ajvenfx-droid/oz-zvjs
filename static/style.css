@@ -688,3 +688,5 @@ fieldset.otazka.doplnit { border: 3px solid #d97706 !important; background: #fff
 .mk-zalozky__panel .benefit { margin: 6px 0; }
 body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .clenom { margin: -6px 0 10px; font-size: 1.05rem; }
+.lista-meno { font-weight: 600; }
+.lista-cislo { font-weight: 400; color: #bbb; margin-left: 4px; }

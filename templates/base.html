@@ -13,7 +13,6 @@
 <body>
   <div class="lista-uctu">
     {% if prihlaseny_clen %}
-      <span>{{ prihlaseny_clen.meno or prihlaseny_clen.cislo }}</span>
       {% if prihlaseny_clen.rola == 'spravca' %}
         <a href="{{ url_for('anketa.spravca') }}">Správa stránky</a>
       {% elif prihlaseny_clen.rola in ('zo', 'vedenie') %}
@@ -44,6 +43,7 @@
       <form method="post" action="{{ url_for('ucet.odhlasenie') }}">
         <button type="submit" class="odkaz-tlacidlo odkaz-tlacidlo--svetle">Odhlásiť</button>
       </form>
+      <span class="lista-meno">{% if prihlaseny_clen.meno %}{{ prihlaseny_clen.meno }} <span class="lista-cislo">{{ prihlaseny_clen.cislo }}</span>{% else %}{{ prihlaseny_clen.cislo }}{% endif %}</span>
     {% else %}
       <a href="{{ url_for('ucet.prihlasenie') }}">Prihlásiť sa</a>
     {% endif %}
