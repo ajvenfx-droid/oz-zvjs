@@ -44,6 +44,7 @@
         <button type="submit" class="odkaz-tlacidlo odkaz-tlacidlo--svetle">Odhlásiť</button>
       </form>
       <span class="lista-meno">{% if prihlaseny_clen.meno %}{{ prihlaseny_clen.meno }} <span class="lista-cislo">{{ prihlaseny_clen.cislo }}</span>{% else %}{{ prihlaseny_clen.cislo }}{% endif %}</span>
+      {% set dlzka_clenstva = clenom() %}{% if dlzka_clenstva %}<span class="lista-clenom">Členom: {{ dlzka_clenstva }}</span>{% endif %}
     {% else %}
       <a href="{{ url_for('ucet.prihlasenie') }}">Prihlásiť sa</a>
     {% endif %}

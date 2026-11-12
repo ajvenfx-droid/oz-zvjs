@@ -690,3 +690,4 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .clenom { margin: -6px 0 10px; font-size: 1.05rem; }
 .lista-meno { font-weight: 600; }
 .lista-cislo { font-weight: 400; color: #bbb; margin-left: 4px; }
+.lista-clenom { color: #bbb; }

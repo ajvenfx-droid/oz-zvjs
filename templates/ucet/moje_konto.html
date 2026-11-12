@@ -2,8 +2,6 @@
 {% block title %}Moje konto – {{ nazov_zvazu }}{% endblock %}
 {% block content %}
   <h1 class="nadpis">{{ prihlaseny_clen.meno or prihlaseny_clen.cislo }}{% if prihlaseny_clen.meno %}<span class="nadpis-cislo">{{ prihlaseny_clen.cislo }} <small class="nadpis-cislo__popis">(identifikačné číslo)</small></span>{% endif %}</h1>
-  {% set dlzka = (evidencia|selectattr('dlzka')|map(attribute='dlzka')|first) if evidencia else '' %}
-  {% if dlzka %}<p class="clenom">Členom: <strong>{{ dlzka }}</strong></p>{% endif %}
   {% if listiny %}
     <section class="panel">
       <h2>Členovia ZO</h2>

@@ -209,7 +209,21 @@ def prepni_zobrazenie():
 
 @bp.app_context_processor
 def inject_clen():
-    return {"prihlaseny_clen": g.get("clen"), "zobrazenia_spravcu": ZOBRAZENIA_SPRAVCU}
+    return {"prihlaseny_clen": g.get("clen"), "zobrazenia_spravcu": ZOBRAZENIA_SPRAVCU, "clenom": clenom}
+
+
+def clenom():
+    """Dĺžka členstva prihláseného člena pre hornú lištu (v relácii, obnovuje sa raz za 10 minút)."""
+    clen = g.get("clen")
+    if clen is None:
+        return ""
+    import time
+    ulozene = session.get("clenom")
+    if ulozene and ulozene.get("cislo") == clen["cislo"] and time.time() - ulozene.get("cas", 0) < 600:
+        return ulozene.get("dlzka", "")
+    dlzka = next((z["dlzka"] for z in moje_udaje(get_db(), clen["cislo"]) if z["dlzka"]), "")
+    session["clenom"] = {"cislo": clen["cislo"], "cas": time.time(), "dlzka": dlzka}
+    return dlzka
 
 
 def len_prihlaseny(f):
