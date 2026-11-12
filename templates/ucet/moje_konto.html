@@ -22,6 +22,14 @@
   {% for z in evidencia %}
   <div class="mu-zaznam">
     {% if evidencia|length > 1 %}<h3>ZO {{ z.mesto }}</h3>{% endif %}
+    {% if session.ponuka_preukazu == z.id %}
+      <form method="post" class="oznam mu-preukaz">
+        <input type="hidden" name="zaznam" value="{{ z.id }}">
+        <span>Fotka je zmenená. Chcete požiadať o nový odborársky preukaz s aktuálnou fotkou?</span>
+        <button type="submit" name="akcia" value="novy_preukaz" class="tlacidlo">Požiadať o nový preukaz</button>
+        <button type="submit" name="akcia" value="bez_preukazu" class="tlacidlo tlacidlo--sekundarne">Nie, ďakujem</button>
+      </form>
+    {% endif %}
     <div class="mu-rozlozenie">
     {% if z.foto %}
     <form method="post" enctype="multipart/form-data" class="mu-foto">

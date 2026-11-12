@@ -700,3 +700,4 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .foto-zmazat:hover { background: #fff; }
 .foto-clena--pozadie { width: 220px; aspect-ratio: 3 / 4; max-height: none; background: #f4f0e6 center / cover no-repeat; }
 .mu-zaznam + .mu-zaznam { margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; }
+.mu-preukaz { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }

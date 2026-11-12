@@ -301,6 +301,11 @@ def moje_konto():
         db = get_db()
         cislo = g.clen["cislo"]
         f = request.form
+        if f.get("akcia") in ("novy_preukaz", "bez_preukazu"):
+            if f.get("akcia") == "novy_preukaz":
+                poziadaj_o_novy_preukaz(db, g.clen, f.get("zaznam", ""))
+            session.pop("ponuka_preukazu", None)
+            return redirect(url_for("ucet.moje_konto", _anchor="udaje"))
         if "zmazat_foto" in f.getlist("akcia"):
             zmaz_moju_fotku(db, g.clen, f.get("zaznam", ""))
             return redirect(url_for("ucet.moje_konto", _anchor="udaje"))
@@ -468,22 +473,51 @@ def uloz_moju_fotku(db, clen, zaznam_id, subor):
     db.commit()
     flash("Fotka bola uložená.")
     if ma_preukaz(udaje):
+        session["ponuka_preukazu"] = zaznam["id"]  # ponúkneme žiadosť o nový preukaz s novou fotkou
         return
+    posli_ziadost_o_preukaz(db, clen, zaznam, udaje, novy=False)
+
+
+def posli_ziadost_o_preukaz(db, clen, zaznam, udaje, novy):
+    """E-mail predsedovi OZ a predsedovi ZO: vyhotoviť (nový) odborársky preukaz. Vráti True, ak sa odoslal."""
     meno = " ".join(x for x in (udaje.get("Titul", ""), udaje.get("Meno poisteného", ""),
                                 udaje.get("Priezvisko / Názov poisteného", ""), udaje.get("Titul za menom", "")) if x).strip()
     meno = meno or clen["meno"] or clen["cislo"]
     emaily = list(dict.fromkeys(([nastavenie(db, "email_predseda_oz")] if nastavenie(db, "email_predseda_oz") else [])
                                 + email_predsedu_zo(db, zaznam["zo_slug"])))
     if not emaily or not posta.je_nastavena(db):
-        return
-    text = (f"Člen {meno} (odborárske číslo {clen['cislo']}, ZO {zaznam['mesto']}) si na stránke nahral fotku.\n\n"
-            "Podľa evidencie zatiaľ nemá odborársky preukaz, preto je potrebné mu ho vyhotoviť.\n"
-            "Fotka je uložená v evidencii členov pri jeho údajoch.\n")
+        return False
+    if novy:
+        text = (f"Člen {meno} (odborárske číslo {clen['cislo']}, ZO {zaznam['mesto']}) si na stránke zmenil fotku "
+                "a žiada o vyhotovenie nového odborárskeho preukazu s aktuálnou fotkou.\n"
+                "Fotka je uložená v evidencii členov pri jeho údajoch.\n")
+        predmet = f"Žiadosť o nový odborársky preukaz – {meno}"
+    else:
+        text = (f"Člen {meno} (odborárske číslo {clen['cislo']}, ZO {zaznam['mesto']}) si na stránke nahral fotku.\n\n"
+                "Podľa evidencie zatiaľ nemá odborársky preukaz, preto je potrebné mu ho vyhotoviť.\n"
+                "Fotka je uložená v evidencii členov pri jeho údajoch.\n")
+        predmet = f"Odborársky preukaz – {meno}"
+    odoslane = False
     for komu in emaily:
         try:
-            posta.posli(db, komu, f"Odborársky preukaz – {meno}", text)
+            posta.posli(db, komu, predmet, text)
+            odoslane = True
         except Exception:
             pass
+    return odoslane
+
+
+def poziadaj_o_novy_preukaz(db, clen, zaznam_id):
+    import json
+    zaznam = next((z for z in moje_udaje(db, clen["cislo"]) if str(z["id"]) == str(zaznam_id)), None)
+    if zaznam is None:
+        abort(404)
+    session.pop("ponuka_preukazu", None)
+    udaje = json.loads(db.execute("SELECT udaje FROM evidencia_clen WHERE id = ?", (zaznam["id"],)).fetchone()["udaje"])
+    if posli_ziadost_o_preukaz(db, clen, zaznam, udaje, novy=True):
+        flash("Žiadosť o nový preukaz bola odoslaná predsedovi OZ a predsedovi vašej ZO.")
+    else:
+        flash("Žiadosť sa nepodarilo odoslať. Obráťte sa, prosím, priamo na predsedu svojej ZO.")
 
 
 def uloz_moje_udaje(db, clen, f):
