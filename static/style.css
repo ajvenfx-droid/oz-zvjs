@@ -700,3 +700,4 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .foto-zmenit:hover { background: #fff; color: #000; }
 .foto-zmazat { position: absolute; top: 46px; right: 6px; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.92); border: 1px solid #d8a0a0; color: #a00; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; padding: 0; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
 .foto-zmazat:hover { background: #fff; }
+.foto-clena--pozadie { width: 220px; aspect-ratio: 3 / 4; max-height: none; background: #f4f0e6 center / cover no-repeat; }
