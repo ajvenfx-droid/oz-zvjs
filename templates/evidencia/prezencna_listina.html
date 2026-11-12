@@ -5,6 +5,20 @@
     {% if moze_menit or je_spravca or (prihlaseny_clen and prihlaseny_clen.rola == 'vedenie') %}<a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
     {% else %}<a class="spat" href="{{ url_for('ucet.moje_konto') }}">&larr; Moje konto</a>{% endif %}
     <h1 class="nadpis">Prezenčná listina – ZO {{ zo.mesto }}</h1>
+    {% if ulozene %}
+      <details class="panel volby-ulozene" open>
+        <summary><strong>Uložené prezenčné listiny</strong> ({{ ulozene|length }})</summary>
+        <table class="tabulka">
+          {% for u in ulozene %}
+            <tr><td><a href="{{ url_for('evidencia.prezencna_listina', slug=zo.slug) }}?{{ u.parametre }}">{{ u.nazov }}</a></td>
+              <td class="info">uložené {{ u.vytvorene[:10]|datum }} {{ u.vytvorene[11:] }}</td>
+              <td><form method="post" onsubmit="return confirm('Odstrániť uloženú listinu {{ u.nazov }}?');">
+                <input type="hidden" name="akcia" value="zmazat_listinu"><input type="hidden" name="listina_id" value="{{ u.id }}">
+                <button type="submit" class="odkaz-tlacidlo">Odstrániť</button></form></td></tr>
+          {% endfor %}
+        </table>
+      </details>
+    {% endif %}
     <form method="get" class="formular prezencna-nastavenie" id="prezencna-form">
       <label class="pole"><span class="pole__nazov">Vzor</span>
         <select name="vzor" onchange="this.form.submit()">
@@ -30,6 +44,7 @@
       <div class="akcie">
         <button type="submit" class="tlacidlo tlacidlo--sekundarne">Obnoviť náhľad</button>
         <button type="button" class="tlacidlo" onclick="window.print()">Vytlačiť</button>
+        <button type="submit" class="tlacidlo tlacidlo--sekundarne" formmethod="post" name="akcia" value="ulozit_listinu">Uložiť listinu</button>
       </div>
     </form>
     <p class="info">{% if vzor == 'mena' %}{{ zoznam|length }} členov podľa abecedy. {% endif %}Pri tlači sa vytlačí len listina, hlavička tabuľky sa opakuje na každej strane. Hlavičku a adresu si stránka v tomto prehliadači zapamätá.</p>

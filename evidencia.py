@@ -147,6 +147,17 @@ def init_db(db):
     )
     db.execute(
         """
+        CREATE TABLE IF NOT EXISTS prezencna_ulozena (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            zo_slug TEXT NOT NULL,
+            nazov TEXT NOT NULL,
+            parametre TEXT NOT NULL,
+            vytvorene TEXT NOT NULL
+        )
+        """
+    )
+    db.execute(
+        """
         CREATE TABLE IF NOT EXISTS volby_listok (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             zo_slug TEXT NOT NULL,
@@ -851,7 +862,10 @@ def prezencnu_listinu_moze(slug):
     return slug in zo_organov_clena(get_db(), clen["cislo"])
 
 
-@bp.route("/<slug>/prezencna-listina")
+PREZENCNA_PARAMETRE = ("vzor", "nazov", "datum", "hlavicka", "adresa", "riadkov", "cislo", "hostia")
+
+
+@bp.route("/<slug>/prezencna-listina", methods=["GET", "POST"])
 def prezencna_listina(slug):
     """Prezenčná listina na schôdzu: zoznam členov ZO podľa abecedy so stĺpcom na podpis, na tlač."""
     if not prezencnu_listinu_moze(slug):
@@ -859,6 +873,24 @@ def prezencna_listina(slug):
             return redirect(url_for("ucet.prihlasenie", dalej=request.path))
         abort(403)
     g.moze_menit = pristup(slug) == "menit"
+    db = get_db()
+    if request.method == "POST":
+        from urllib.parse import urlencode
+        f = request.form
+        if f.get("akcia") == "zmazat_listinu":
+            db.execute("DELETE FROM prezencna_ulozena WHERE id = ? AND zo_slug = ?", (f.get("listina_id", ""), slug))
+            db.commit()
+            flash("Uložená prezenčná listina bola odstránená.")
+            return redirect(url_for("evidencia.prezencna_listina", slug=slug))
+        param = {k: f.get(k, "") for k in PREZENCNA_PARAMETRE if f.get(k)}
+        m = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", f.get("datum") or "")
+        nazov_ul = ((f.get("nazov") or "Členská schôdza").strip()
+                    + (f" {m.group(3)}.{m.group(2)}.{m.group(1)}" if m else ""))[:150]
+        db.execute("INSERT INTO prezencna_ulozena (zo_slug, nazov, parametre, vytvorene) VALUES (?, ?, ?, ?)",
+                   (slug, nazov_ul, urlencode(param), datetime.now().strftime("%Y-%m-%d %H:%M")))
+        db.commit()
+        flash(f"Prezenčná listina „{nazov_ul}“ bola uložená.")
+        return redirect(url_for("evidencia.prezencna_listina", slug=slug) + "?" + urlencode(param))
     zo, _, clenovia, _ = _nacitaj_zo(slug)
     a = request.args
     nazov = (a.get("nazov") or "Členská schôdza").strip()[:120]
@@ -890,6 +922,8 @@ def prezencna_listina(slug):
                            datum=a.get("datum", ""), datum_text=datum, s_cislom=s_cislom, vzor=vzor,
                            riadkov=riadkov, hostia=min(hostia, 20), hlavicka=(a.get("hlavicka") or "").strip()[:200],
                            adresa=(a.get("adresa") or "").strip()[:200], uz_zadane=bool(a),
+                           ulozene=db.execute("SELECT * FROM prezencna_ulozena WHERE zo_slug = ? ORDER BY id DESC",
+                                              (slug,)).fetchall(),
                            rk_predseda=rk_predseda, rk_funkcia=rk_funkcia)
 
 
