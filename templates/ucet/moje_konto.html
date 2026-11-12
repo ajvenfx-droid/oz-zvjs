@@ -49,16 +49,16 @@
     <form method="post" class="formular">
       <input type="hidden" name="akcia" value="udaje">
       <input type="hidden" name="zaznam" value="{{ z.id }}">
+      <div class="moje-udaje">
       {% for nazov, hodnota, index in z.polia %}
         {% if index is not none %}
-          <label class="pole">
-            <span class="pole__nazov">{{ nazov|stlpec }}</span>
-            <input type="{{ 'email' if nazov == 'E-mail' else 'text' }}" name="st_{{ index }}" value="{{ hodnota }}">
-          </label>
+          <label class="mu-pole"><span class="mu-pole__nazov">{{ nazov|stlpec }}:</span>
+            <input type="{{ 'email' if nazov == 'E-mail' else 'text' }}" name="st_{{ index }}" value="{{ hodnota }}"></label>
         {% else %}
-          <p class="pole"><span class="pole__nazov">{{ nazov|stlpec }}</span><br><strong>{{ hodnota }}</strong></p>
+          <div class="mu-pole"><span class="mu-pole__nazov">{{ nazov|stlpec }}:</span> <strong>{{ hodnota }}</strong></div>
         {% endif %}
       {% endfor %}
+      </div>
       <button type="submit" class="tlacidlo">Uložiť zmeny</button>
     </form>
   </section>
