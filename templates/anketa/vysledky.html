@@ -4,7 +4,8 @@
   <a class="spat" href="{{ spat }}">&larr; Späť na dotazníky</a>
   <div class="riadok-nadpis">
     <h1 class="nadpis">Výsledky: {{ anketa.nazov }}</h1>
-    <a class="tlacidlo" href="{{ url_for('anketa.export', anketa_id=anketa.id) }}">Stiahnuť do Excelu (CSV)</a>
+    <span><a class="tlacidlo" href="{{ url_for('anketa.sumar', anketa_id=anketa.id) }}">Sumár na tlač</a>
+    <a class="tlacidlo" href="{{ url_for('anketa.export', anketa_id=anketa.id) }}">Stiahnuť do Excelu (CSV)</a></span>
   </div>
   <p>Odoslaných dotazníkov: <strong>{{ hlasov }}</strong>
     {% if opravnenych %}z {{ opravnenych }} {{ 'členov ZO ' ~ zo_mesto if zo_mesto else 'členov' }}

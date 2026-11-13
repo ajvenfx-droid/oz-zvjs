@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Sumár: {{ anketa.nazov }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <div class="netlacit">
+    <a class="spat" href="{{ url_for('anketa.vysledky', anketa_id=anketa.id) }}">&larr; Späť na výsledky</a>
+    <p><button type="button" class="tlacidlo" onclick="window.print()">Vytlačiť / uložiť ako PDF</button>
+      <span class="info">Sumár neobsahuje mená, je vhodný ako podklad na schôdzu.</span></p>
+  </div>
+  <div class="sumar">
+    <h1 class="sumar__nadpis">Sumár výsledkov dotazníka: {{ anketa.nazov }}</h1>
+    <p class="sumar__info">{% if zo_mesto %}ZO {{ zo_mesto }} · {% endif %}stav k {{ dnes }}{% if not ukoncena %} (vypĺňanie ešte prebieha){% endif %}<br>
+      Odoslaných dotazníkov: <strong>{{ hlasov }}</strong>{% if opravnenych %} z {{ opravnenych }} členov, účasť
+      <strong>{{ (100 * hlasov / opravnenych)|round(1)|string|replace('.', ',') }} %</strong>{% endif %}</p>
+
+    {% for o in otazky %}
+      <div class="sumar__otazka{% if o.typ == 'skupina' %} sumar__skupina{% endif %}">
+        <h2>{{ o.cislo }}. {{ o.text }}</h2>
+        {% if o.rodic and o.rodic.moznost %}<p class="info">Len tí, čo v otázke {{ o.rodic.cislo }} zvolili „{{ o.rodic.moznost.text }}“ (odpovedalo {{ o.odpovedalo }}).</p>{% endif %}
+        {% if o.typ == 'skupina' %}
+        {% elif o.typ == 'text' %}
+          {% if o.texty %}
+            <p class="sumar__vysledok">Písomných odpovedí: {{ o.texty|length }}</p>
+            <ul class="sumar__texty">{% for t in o.texty %}<li>{{ t }}</li>{% endfor %}</ul>
+          {% else %}<p class="info">Bez odpovedí.</p>{% endif %}
+        {% elif o.spolu %}
+          {% set prva = o.poradie[0] %}
+          {% set naj = o.poradie|selectattr('pocet', 'equalto', prva.pocet)|list %}
+          <p class="sumar__vysledok">{{ 'Najviac' if naj|length == 1 else 'Rovnako najviac' }}: <strong>{{ naj|map(attribute='text')|join(', ') }}</strong> – {{ prva.pocet }} ({{ prva.percent|string|replace('.', ',') }} %{{ ' každá' if naj|length > 1 }})</p>
+          <table class="sumar__tabulka">
+            {% for m in o.poradie %}
+              <tr{% if m.pocet == prva.pocet %} class="sumar__prva"{% endif %}><td>{{ m.text }}</td>
+                <td class="graf"><span class="graf__pruh" style="width: {{ m.percent }}%"></span></td>
+                <td class="cislo">{{ m.pocet }}</td><td class="cislo">{{ m.percent|string|replace('.', ',') }} %</td></tr>
+              {% if m.vpisy %}<tr><td colspan="4"><ul class="sumar__texty">{% for v in m.vpisy %}<li>{{ v.text }}</li>{% endfor %}</ul></td></tr>{% endif %}
+            {% endfor %}
+          </table>
+        {% else %}<p class="info">Bez odpovedí.</p>{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

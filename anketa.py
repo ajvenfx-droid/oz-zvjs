@@ -1087,6 +1087,22 @@ def vysledky(anketa_id):
                            else url_for("ucet.moje_konto") + "#dotazniky")
 
 
+@bp.route("/spravca/<int:anketa_id>/sumar")
+def sumar(anketa_id):
+    """Prehľadný sumár výsledkov na tlač (bez mien) ako podklad pre schôdzu a hlasovanie."""
+    db = get_db()
+    anketa = _anketa_na_citanie(db, anketa_id)
+    otazky, hlasov, _ = vysledky_ankety(db, anketa_id)
+    opravnenych, _ = ucast(db, anketa)
+    for o in otazky:
+        if o["typ"] not in (TYP_SKUPINA, TYP_TEXT):
+            o["poradie"] = sorted(o["moznosti"], key=lambda m: -m["pocet"])
+            o["spolu"] = sum(m["pocet"] for m in o["moznosti"])
+    return render_template("anketa/sumar.html", anketa=anketa, otazky=otazky, hlasov=hlasov,
+                           opravnenych=opravnenych, zo_mesto=mesto_zo(db, anketa["zo_slug"]),
+                           ukoncena=je_ukoncena(anketa), dnes=datetime.now().strftime("%d.%m.%Y"))
+
+
 @bp.route("/spravca/<int:anketa_id>/export.csv")
 def export(anketa_id):
     db = get_db()

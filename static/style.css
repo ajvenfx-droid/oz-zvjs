@@ -701,3 +701,20 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .foto-clena--pozadie { width: 220px; aspect-ratio: 3 / 4; max-height: none; background: #f4f0e6 center / cover no-repeat; }
 .mu-zaznam + .mu-zaznam { margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; }
 .mu-preukaz { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+.sumar__nadpis { font-size: 1.4rem; margin: 0 0 6px; color: var(--zlata-tmava); }
+.sumar__info { margin: 0 0 18px; }
+.sumar__otazka { border-top: 1px solid #ddd; padding: 10px 0 6px; break-inside: avoid; }
+.sumar__otazka h2 { font-size: 1.05rem; margin: 0 0 6px; }
+.sumar__skupina h2 { font-size: 1.15rem; color: var(--zlata-tmava); }
+.sumar__vysledok { margin: 0 0 6px; }
+.sumar__tabulka { width: 100%; border-collapse: collapse; font-size: .95rem; }
+.sumar__tabulka td { padding: 3px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+.sumar__tabulka td.graf { width: 30%; }
+.sumar__tabulka td.cislo { width: 60px; text-align: right; white-space: nowrap; }
+.sumar__prva td { font-weight: 700; }
+.sumar__texty { margin: 4px 0 4px 18px; padding: 0; font-size: .92rem; }
+@media print {
+  body:has(.sumar) > *:not(main), main:has(.sumar) > *:not(.sumar), .netlacit { display: none !important; }
+  main:has(.sumar) { padding: 0 !important; max-width: none !important; }
+  .sumar .graf__pruh { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
