@@ -8,8 +8,8 @@
     {% else %}<a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>{% endif %}
     <h1 class="nadpis">Odmeny podľa dĺžky členstva{% if zo %} – ZO {{ zo.mesto }}{% endif %}</h1>
     <form method="get" class="formular prezencna-nastavenie" id="odmeny-form">
-      <label class="pole"><span class="pole__nazov">Suma (100 %) v €</span>
-        <input type="text" name="suma" value="{{ ('%g'|format(suma)).replace('.', ',') if suma else '' }}" inputmode="decimal" required placeholder="napr. 100"></label>
+      <label class="pole"><span class="pole__nazov">Celková suma na rozdelenie v €</span>
+        <input type="text" name="suma" value="{{ ('%g'|format(suma)).replace('.', ',') if suma else '' }}" inputmode="decimal" required placeholder="napr. 14 800"></label>
       <label class="pole"><span class="pole__nazov">Dĺžka členstva k dátumu</span>
         <input type="date" name="datum" value="{{ datum }}"></label>
       <label class="pole prezencna-siroke"><span class="pole__nazov">Percentá podľa rokov členstva – každý riadok: od koľkých rokov, koľko %</span>
@@ -20,21 +20,22 @@
         {% if vypocitane %}<button type="button" class="tlacidlo tlacidlo--sekundarne" onclick="window.print()">Vytlačiť / PDF</button>{% endif %}
       </div>
     </form>
-    <p class="info">Príklad: riadky „0 100“, „3 120“, „5 150“ znamenajú do 3 rokov 100 %, od 3 do 5 rokov 120 %, od 5 rokov 150 % zo sumy.
+    <p class="info">Celá suma sa rozdelí medzi členov pomerne podľa percent: kto má 150 %, dostane 1,5-násobok toho, kto má 100 %. Riadky „0 100“, „3 120“, „5 150“ znamenajú do 3 rokov 100 %, od 3 do 5 rokov 120 %, od 5 rokov 150 %.
       Dĺžka členstva sa počíta od dátumu vstupu do odborov, vrátane predošlého členstva z archívu (bez prestávok).</p>
   </div>
 
   {% if vypocitane %}
   <div class="sumar">
     <h1 class="sumar__nadpis">Odmeny podľa dĺžky členstva{% if zo %} – ZO {{ zo.mesto }}{% endif %}</h1>
-    <p class="sumar__info">Suma 100 %: <strong>{{ eur(suma) }}</strong> · dĺžka členstva k {{ datum_text }}</p>
+    <p class="sumar__info">Celková suma na rozdelenie: <strong>{{ eur(suma) }}</strong> · 100 % = <strong>{{ eur(zaklad) }}</strong> · dĺžka členstva k {{ datum_text }}</p>
     <table class="sumar__tabulka sumar__suhrn">
       <tr><th>Dĺžka členstva</th><th class="cislo">%</th><th class="cislo">Suma na člena</th><th class="cislo">Členov</th><th class="cislo">Spolu</th></tr>
       {% for p in suhrn %}
         <tr><td>{{ roky_text(p.od, p.do) }}</td><td class="cislo">{{ ('%g'|format(p.percento)).replace('.', ',') }} %</td>
-          <td class="cislo">{{ eur(suma * p.percento / 100) }}</td><td class="cislo">{{ p.pocet }}</td><td class="cislo">{{ eur(p.suma) }}</td></tr>
+          <td class="cislo">{{ eur(zaklad * p.percento / 100) }}</td><td class="cislo">{{ p.pocet }}</td><td class="cislo">{{ eur(p.suma) }}</td></tr>
       {% endfor %}
       <tr class="sumar__prva"><td colspan="3">Spolu</td><td class="cislo">{{ suhrn|sum(attribute='pocet') }}</td><td class="cislo">{{ eur(spolu) }}</td></tr>
+      {% if zostatok %}<tr><td colspan="4">Zostatok po zaokrúhlení na centy</td><td class="cislo">{{ eur(zostatok) }}</td></tr>{% endif %}
     </table>
     {% if bez_vstupu %}<p class="varovanie">Bez dátumu vstupu, nedá sa vypočítať ({{ bez_vstupu|length }}): {% for c in bez_vstupu %}{{ c.meno }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
 

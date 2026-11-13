@@ -1503,13 +1503,20 @@ def _odmeny(slugy, zo=None):
         except ValueError:
             pass
     k_datumu = k_datumu or date.today()
-    zoznam = vypocet_odmien(db, slugy, suma, pasma, k_datumu)
+    zoznam = vypocet_odmien(db, slugy, 0, pasma, k_datumu)
+    # Celá suma sa rozdelí pomerne podľa percent: 100 % = suma / súčet percent všetkých členov.
+    vahy = sum((c["percento"] or 0) / 100 for c in zoznam)
+    zaklad = suma / vahy if vahy else 0.0
+    for c in zoznam:  # rovnaké percento = rovnaká suma; zaokrúhľuje sa nadol na centy
+        if c["percento"] is not None:
+            c["suma"] = int(round(zaklad * c["percento"], 6)) / 100
+    zostatok = round(suma - sum(c["suma"] or 0 for c in zoznam), 2) if vahy else suma
     suhrn = []
     for i, (od_r, p) in enumerate(pasma):
         do_r = pasma[i + 1][0] if i + 1 < len(pasma) else None
         clenovia = [c for c in zoznam if c["roky"] is not None and c["roky"] >= od_r and (do_r is None or c["roky"] < do_r)]
         suhrn.append({"od": od_r, "do": do_r, "percento": p, "pocet": len(clenovia), "suma": sum(c["suma"] for c in clenovia)})
-    return render_template("evidencia/odmeny.html", zo=zo, zoznam=zoznam, suma=suma, pasma=pasma, pasma_text=pasma_text,
+    return render_template("evidencia/odmeny.html", zo=zo, zoznam=zoznam, suma=suma, zaklad=zaklad, zostatok=zostatok, pasma=pasma, pasma_text=pasma_text,
                            datum=k_datumu.isoformat(), datum_text=k_datumu.strftime("%d.%m.%Y"), suhrn=suhrn,
                            spolu=sum(c["suma"] or 0 for c in zoznam), bez_vstupu=[c for c in zoznam if c["roky"] is None],
                            vypocitane=bool(a.get("suma")))
