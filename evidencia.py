@@ -1436,7 +1436,7 @@ def vyrocia_zo(slug):
     return _vyrocia([slug], zo)
 
 
-ODMENY_VZOR = "0 50\n5 75\n10 100"
+ODMENY_VZOR = "0 100\n3 120\n5 150\n10 200\n15 300"
 
 
 def _pasma_odmien(text):

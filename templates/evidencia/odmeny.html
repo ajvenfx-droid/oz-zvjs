@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Odmeny podľa dĺžky členstva – {{ nazov_zvazu }}{% endblock %}
 {% macro eur(x) %}{{ '{:,.2f}'.format(x).replace(',', ' ').replace('.', ',') }} €{% endmacro %}
-{% macro roky_text(od, do) %}{% if do is none %}{{ od|round(0)|int }} a viac rokov{% else %}{{ od|round(0)|int }} – menej ako {{ do|round(0)|int }} rokov{% endif %}{% endmacro %}
+{% macro roky_text(od, do) %}{% if do is none %}{{ '%g'|format(od) }} a viac rokov{% else %}{{ '%g'|format(od) }} až {{ '%g'|format(do) }} rokov{% endif %}{% endmacro %}
 {% block content %}
   <div class="netlacit">
     {% if zo %}<a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
@@ -20,7 +20,7 @@
         {% if vypocitane %}<button type="button" class="tlacidlo tlacidlo--sekundarne" onclick="window.print()">Vytlačiť / PDF</button>{% endif %}
       </div>
     </form>
-    <p class="info">Príklad: riadky „0 50“, „5 75“, „10 100“ znamenajú do 5 rokov 50 %, od 5 do 10 rokov 75 %, od 10 rokov 100 % zo sumy.
+    <p class="info">Príklad: riadky „0 100“, „3 120“, „5 150“ znamenajú do 3 rokov 100 %, od 3 do 5 rokov 120 %, od 5 rokov 150 % zo sumy.
       Dĺžka členstva sa počíta od dátumu vstupu do odborov, vrátane predošlého členstva z archívu (bez prestávok).</p>
   </div>
 
