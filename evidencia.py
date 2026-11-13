@@ -1349,17 +1349,22 @@ def _dni_clenstva(obdobia, k_datumu):
     return dni
 
 
-def vyrocia_clenstva(db, slugy, rok, kazdych=5):
-    """Členovia, ktorým v danom roku uplynie 5, 10, 15 … rokov členstva v odboroch (vrátane predošlých období)."""
-    from datetime import date, timedelta
+def _archiv_obdobi(db):
+    """[(osoby, od, do)] predošlých členstiev z archívu (načíta sa raz pre celý zoznam)."""
     archiv = []
-    for r in db.execute("SELECT a.udaje, a.archivovane, z.mesto FROM evidencia_archiv a "
-                        "JOIN zakladna_organizacia z ON z.slug = a.zo_slug"):
+    for r in db.execute("SELECT udaje, archivovane FROM evidencia_archiv"):
         u = json.loads(r["udaje"])
         od = _den(vstup_do_odborov(u))
         do = _den(u.get("Dátum výstupu z poistenia")) or _den(r["archivovane"])
         if od and do:
             archiv.append((osoby(u), od, do))
+    return archiv
+
+
+def vyrocia_clenstva(db, slugy, rok, kazdych=5):
+    """Členovia, ktorým v danom roku uplynie 5, 10, 15 … rokov členstva v odboroch (vrátane predošlých období)."""
+    from datetime import date, timedelta
+    archiv = _archiv_obdobi(db)
     mesta = {r["slug"]: r["mesto"] for r in db.execute("SELECT slug, mesto FROM zakladna_organizacia")}
     zaciatok, koniec = date(rok, 1, 1), date(rok + 1, 1, 1)
     vysledok = []
@@ -1429,3 +1434,103 @@ def vyrocia_zo(slug):
     if zo is None:
         abort(404)
     return _vyrocia([slug], zo)
+
+
+ODMENY_VZOR = "0 50\n5 75\n10 100"
+
+
+def _pasma_odmien(text):
+    """Riadky „od_rokov percento“ → [(od_rokov, percento)] zoradené; chybné riadky preskočí."""
+    pasma = []
+    for riadok in (text or "").splitlines():
+        cisla = re.findall(r"\d+(?:[.,]\d+)?", riadok)
+        if len(cisla) >= 2:
+            pasma.append((float(cisla[0].replace(",", ".")), float(cisla[1].replace(",", "."))))
+    return sorted(pasma)
+
+
+def vypocet_odmien(db, slugy, suma, pasma, k_datumu):
+    """Pre každého člena: roky členstva k dátumu (aj s predošlým členstvom) a jeho podiel zo sumy podľa pásiem."""
+    archiv = _archiv_obdobi(db)
+    mesta = {r["slug"]: r["mesto"] for r in db.execute("SELECT slug, mesto FROM zakladna_organizacia")}
+    vysledok = []
+    for r in db.execute("SELECT zo_slug, udaje FROM evidencia_clen WHERE zo_slug IN (%s)" % ",".join("?" * len(slugy)), slugy):
+        u = json.loads(r["udaje"])
+        vystup = _den(u.get("Dátum výstupu z poistenia"))
+        if vystup and vystup <= k_datumu:
+            continue
+        od = _den(vstup_do_odborov(u))
+        roky = None
+        if od and od <= k_datumu:
+            ja = osoby(u)
+            obdobia = [(a_od, a_do, "") for o, a_od, a_do in archiv if ja and (o & ja)] + [(od, None, "")]
+            roky = _dni_clenstva(obdobia, k_datumu) / 365.25
+        percento = None
+        if roky is not None:
+            percento = next((p for od_r, p in reversed(pasma) if roky >= od_r), 0.0)
+        vysledok.append({"titul": u.get("Titul", ""), "meno": cele_meno(u), "titul_za": u.get("Titul za menom", ""),
+                         "priezvisko": u.get("Priezvisko / Názov poisteného", ""),
+                         "cislo": re.sub(r"\s+", "", u.get("Identifikačné číslo", "")), "mesto": mesta.get(r["zo_slug"], ""),
+                         "vstup": od, "roky": roky, "percento": percento,
+                         "suma": round(suma * percento / 100, 2) if percento is not None else None})
+    vysledok.sort(key=lambda v: (abecedne(v["priezvisko"]), abecedne(v["meno"])))
+    return vysledok
+
+
+def _odmeny(slugy, zo=None):
+    from datetime import date
+    from anketa import nastav, nastavenie
+    db = get_db()
+    kluc = "odmeny:" + (zo["slug"] if zo else "*")
+    if request.method == "POST":
+        if not g.get("moze_menit", je_spravca()):
+            abort(403)
+        nastav(db, kluc, request.form.get("pasma", "").strip())
+        db.commit()
+        flash("Percentá podľa rokov členstva boli uložené.")
+        return redirect(request.full_path)
+    a = request.args
+    pasma_text = a.get("pasma") if a.get("pasma") is not None else (nastavenie(db, kluc) or ODMENY_VZOR)
+    pasma = _pasma_odmien(pasma_text)
+    try:
+        suma = float((a.get("suma") or "0").replace(",", ".").replace(" ", ""))
+    except ValueError:
+        suma = 0.0
+    k_datumu = None
+    if a.get("datum"):
+        try:
+            k_datumu = date.fromisoformat(a["datum"])
+        except ValueError:
+            pass
+    k_datumu = k_datumu or date.today()
+    zoznam = vypocet_odmien(db, slugy, suma, pasma, k_datumu)
+    suhrn = []
+    for i, (od_r, p) in enumerate(pasma):
+        do_r = pasma[i + 1][0] if i + 1 < len(pasma) else None
+        clenovia = [c for c in zoznam if c["roky"] is not None and c["roky"] >= od_r and (do_r is None or c["roky"] < do_r)]
+        suhrn.append({"od": od_r, "do": do_r, "percento": p, "pocet": len(clenovia), "suma": sum(c["suma"] for c in clenovia)})
+    return render_template("evidencia/odmeny.html", zo=zo, zoznam=zoznam, suma=suma, pasma=pasma, pasma_text=pasma_text,
+                           datum=k_datumu.isoformat(), datum_text=k_datumu.strftime("%d.%m.%Y"), suhrn=suhrn,
+                           spolu=sum(c["suma"] or 0 for c in zoznam), bez_vstupu=[c for c in zoznam if c["roky"] is None],
+                           vypocitane=bool(a.get("suma")))
+
+
+@bp.route("/odmeny", methods=["GET", "POST"])
+def odmeny_vsetky():
+    if not je_spravca():
+        clen = g.get("clen")
+        if clen is None:
+            return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+        if clen["rola"] == "zo" and clen["zo_slug"]:
+            return redirect(url_for("evidencia.odmeny_zo", slug=clen["zo_slug"]))
+        abort(403)
+    return _odmeny([r["slug"] for r in get_db().execute("SELECT slug FROM zakladna_organizacia")])
+
+
+@bp.route("/<slug>/odmeny", methods=["GET", "POST"])
+@vyzaduj(menit=True)
+def odmeny_zo(slug):
+    zo = get_db().execute("SELECT * FROM zakladna_organizacia WHERE slug = ?", (slug,)).fetchone()
+    if zo is None:
+        abort(404)
+    return _odmeny([slug], zo)

@@ -719,3 +719,5 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
   .sumar .graf__pruh { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
 .sumar__tabulka th { text-align: left; font-size: .85rem; color: #555; padding: 3px 6px; border-bottom: 1px solid #ccc; }
+.sumar__podnadpis { font-size: 1.1rem; margin: 18px 0 6px; color: var(--zlata-tmava); }
+.sumar__suhrn { margin-bottom: 10px; }

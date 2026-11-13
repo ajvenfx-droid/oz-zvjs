@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Odmeny podľa dĺžky členstva – {{ nazov_zvazu }}{% endblock %}
+{% macro eur(x) %}{{ '{:,.2f}'.format(x).replace(',', ' ').replace('.', ',') }} €{% endmacro %}
+{% macro roky_text(od, do) %}{% if do is none %}{{ od|round(0)|int }} a viac rokov{% else %}{{ od|round(0)|int }} – menej ako {{ do|round(0)|int }} rokov{% endif %}{% endmacro %}
+{% block content %}
+  <div class="netlacit">
+    {% if zo %}<a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+    {% else %}<a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>{% endif %}
+    <h1 class="nadpis">Odmeny podľa dĺžky členstva{% if zo %} – ZO {{ zo.mesto }}{% endif %}</h1>
+    <form method="get" class="formular prezencna-nastavenie" id="odmeny-form">
+      <label class="pole"><span class="pole__nazov">Suma (100 %) v €</span>
+        <input type="text" name="suma" value="{{ ('%g'|format(suma)).replace('.', ',') if suma else '' }}" inputmode="decimal" required placeholder="napr. 100"></label>
+      <label class="pole"><span class="pole__nazov">Dĺžka členstva k dátumu</span>
+        <input type="date" name="datum" value="{{ datum }}"></label>
+      <label class="pole prezencna-siroke"><span class="pole__nazov">Percentá podľa rokov členstva – každý riadok: od koľkých rokov, koľko %</span>
+        <textarea name="pasma" rows="4">{{ pasma_text }}</textarea></label>
+      <div class="akcie">
+        <button type="submit" class="tlacidlo">Prepočítať</button>
+        <button type="submit" class="tlacidlo tlacidlo--sekundarne" formmethod="post" formaction="{{ request.full_path }}" formnovalidate>Uložiť percentá</button>
+        {% if vypocitane %}<button type="button" class="tlacidlo tlacidlo--sekundarne" onclick="window.print()">Vytlačiť / PDF</button>{% endif %}
+      </div>
+    </form>
+    <p class="info">Príklad: riadky „0 50“, „5 75“, „10 100“ znamenajú do 5 rokov 50 %, od 5 do 10 rokov 75 %, od 10 rokov 100 % zo sumy.
+      Dĺžka členstva sa počíta od dátumu vstupu do odborov, vrátane predošlého členstva z archívu (bez prestávok).</p>
+  </div>
+
+  {% if vypocitane %}
+  <div class="sumar">
+    <h1 class="sumar__nadpis">Odmeny podľa dĺžky členstva{% if zo %} – ZO {{ zo.mesto }}{% endif %}</h1>
+    <p class="sumar__info">Suma 100 %: <strong>{{ eur(suma) }}</strong> · dĺžka členstva k {{ datum_text }}</p>
+    <table class="sumar__tabulka sumar__suhrn">
+      <tr><th>Dĺžka členstva</th><th class="cislo">%</th><th class="cislo">Suma na člena</th><th class="cislo">Členov</th><th class="cislo">Spolu</th></tr>
+      {% for p in suhrn %}
+        <tr><td>{{ roky_text(p.od, p.do) }}</td><td class="cislo">{{ ('%g'|format(p.percento)).replace('.', ',') }} %</td>
+          <td class="cislo">{{ eur(suma * p.percento / 100) }}</td><td class="cislo">{{ p.pocet }}</td><td class="cislo">{{ eur(p.suma) }}</td></tr>
+      {% endfor %}
+      <tr class="sumar__prva"><td colspan="3">Spolu</td><td class="cislo">{{ suhrn|sum(attribute='pocet') }}</td><td class="cislo">{{ eur(spolu) }}</td></tr>
+    </table>
+    {% if bez_vstupu %}<p class="varovanie">Bez dátumu vstupu, nedá sa vypočítať ({{ bez_vstupu|length }}): {% for c in bez_vstupu %}{{ c.meno }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+
+    <h2 class="sumar__podnadpis">Členovia</h2>
+    <table class="sumar__tabulka">
+      <tr><th>#</th><th>Meno</th><th>Ident. číslo</th>{% if not zo %}<th>ZO</th>{% endif %}<th>Vstup</th><th class="cislo">Rokov</th><th class="cislo">%</th><th class="cislo">Suma</th></tr>
+      {% for c in zoznam if c.roky is not none %}
+        <tr><td>{{ loop.index }}</td><td>{{ (c.titul ~ ' ') if c.titul }}{{ c.meno }}{{ (', ' ~ c.titul_za) if c.titul_za }}</td><td>{{ c.cislo }}</td>
+          {% if not zo %}<td>{{ c.mesto }}</td>{% endif %}<td>{{ c.vstup.strftime('%d.%m.%Y') }}</td>
+          <td class="cislo">{{ ('%.1f'|format(c.roky)).replace('.', ',') }}</td><td class="cislo">{{ ('%g'|format(c.percento)).replace('.', ',') }} %</td>
+          <td class="cislo">{{ eur(c.suma) }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+{% endblock %}
