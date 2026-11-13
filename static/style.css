@@ -718,3 +718,4 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
   main:has(.sumar) { padding: 0 !important; max-width: none !important; }
   .sumar .graf__pruh { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+.sumar__tabulka th { text-align: left; font-size: .85rem; color: #555; padding: 3px 6px; border-bottom: 1px solid #ccc; }

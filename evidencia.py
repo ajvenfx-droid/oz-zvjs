@@ -1330,3 +1330,102 @@ def fotky_zo(slug):
     if zo is None:
         abort(404)
     return _hromadne_fotky([slug], zo)
+
+
+def _dni_clenstva(obdobia, k_datumu):
+    """Počet dní členstva do daného dátumu (bez prekrývania); obdobie s do=None ešte trvá."""
+    dni, koniec = 0, None
+    for od, do, _ in sorted(obdobia, key=lambda o: o[0]):
+        do = min(do or k_datumu, k_datumu)
+        if od >= k_datumu:
+            break
+        if koniec and od <= koniec:
+            if do > koniec:
+                dni += (do - koniec).days
+                koniec = do
+        else:
+            dni += max((do - od).days, 0)
+            koniec = do
+    return dni
+
+
+def vyrocia_clenstva(db, slugy, rok, kazdych=5):
+    """Členovia, ktorým v danom roku uplynie 5, 10, 15 … rokov členstva v odboroch (vrátane predošlých období)."""
+    from datetime import date, timedelta
+    archiv = []
+    for r in db.execute("SELECT a.udaje, a.archivovane, z.mesto FROM evidencia_archiv a "
+                        "JOIN zakladna_organizacia z ON z.slug = a.zo_slug"):
+        u = json.loads(r["udaje"])
+        od = _den(vstup_do_odborov(u))
+        do = _den(u.get("Dátum výstupu z poistenia")) or _den(r["archivovane"])
+        if od and do:
+            archiv.append((osoby(u), od, do))
+    mesta = {r["slug"]: r["mesto"] for r in db.execute("SELECT slug, mesto FROM zakladna_organizacia")}
+    zaciatok, koniec = date(rok, 1, 1), date(rok + 1, 1, 1)
+    vysledok = []
+    for r in db.execute("SELECT id, zo_slug, udaje FROM evidencia_clen WHERE zo_slug IN (%s)" % ",".join("?" * len(slugy)), slugy):
+        u = json.loads(r["udaje"])
+        od = _den(vstup_do_odborov(u))
+        if not od or _den(u.get("Dátum výstupu z poistenia")):
+            continue
+        ja = osoby(u)
+        obdobia = [(a_od, a_do, "") for o, a_od, a_do in archiv if ja and (o & ja)] + [(od, None, "")]
+        jedno = len(obdobia) == 1
+        for roky in range(kazdych, 80, kazdych):
+            if jedno:
+                try:
+                    den = od.replace(year=od.year + roky)
+                except ValueError:  # 29. február
+                    den = date(od.year + roky, 3, 1)
+                if not zaciatok <= den < koniec:
+                    continue
+            else:
+                ciel = round(roky * 365.25)
+                if not (_dni_clenstva(obdobia, zaciatok) < ciel <= _dni_clenstva(obdobia, koniec)):
+                    continue
+                lo, hi = zaciatok, koniec  # prvý deň, keď počet dní dosiahne cieľ
+                while lo < hi:
+                    stred = lo + timedelta(days=(hi - lo).days // 2)
+                    if _dni_clenstva(obdobia, stred) >= ciel:
+                        hi = stred
+                    else:
+                        lo = stred + timedelta(days=1)
+                den = lo
+            vysledok.append({"roky": roky, "den": den, "id": r["id"], "zo_slug": r["zo_slug"], "mesto": mesta.get(r["zo_slug"], ""),
+                             "titul": u.get("Titul", ""), "meno": cele_meno(u), "titul_za": u.get("Titul za menom", ""),
+                             "cislo": re.sub(r"\s+", "", u.get("Identifikačné číslo", "")),
+                             "vstup": od, "predosle": not jedno})
+    vysledok.sort(key=lambda v: (v["roky"], v["den"], abecedne(v["meno"])))
+    return vysledok
+
+
+def _vyrocia(slugy, zo=None):
+    from datetime import date
+    rok = request.args.get("rok", "")
+    rok = int(rok) if rok.isdigit() and 2000 <= int(rok) <= 2100 else date.today().year + 1
+    zoznam = vyrocia_clenstva(get_db(), slugy, rok)
+    skupiny = {}
+    for v in zoznam:
+        skupiny.setdefault(v["roky"], []).append(v)
+    return render_template("evidencia/vyrocia.html", zo=zo, rok=rok, skupiny=skupiny, spolu=len(zoznam))
+
+
+@bp.route("/vyrocia")
+def vyrocia_vsetky():
+    if pristup() is None:
+        if g.get("clen") is None:
+            return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+        abort(403)
+    clen = g.get("clen")
+    if not je_spravca() and clen is not None and clen["rola"] == "zo" and clen["zo_slug"]:
+        return redirect(url_for("evidencia.vyrocia_zo", slug=clen["zo_slug"], **request.args))
+    return _vyrocia([r["slug"] for r in get_db().execute("SELECT slug FROM zakladna_organizacia")])
+
+
+@bp.route("/<slug>/vyrocia")
+@vyzaduj()
+def vyrocia_zo(slug):
+    zo = get_db().execute("SELECT * FROM zakladna_organizacia WHERE slug = ?", (slug,)).fetchone()
+    if zo is None:
+        abort(404)
+    return _vyrocia([slug], zo)

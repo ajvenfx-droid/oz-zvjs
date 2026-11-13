@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Výročia členstva {{ rok }} – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <div class="netlacit">
+    {% if zo %}<a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+    {% else %}<a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>{% endif %}
+    <form method="get" class="formular prezencna-nastavenie">
+      <label class="pole"><span class="pole__nazov">Rok</span>
+        <input type="number" name="rok" value="{{ rok }}" min="2000" max="2100" onchange="this.form.submit()"></label>
+      <button type="submit" class="tlacidlo tlacidlo--sekundarne">Zobraziť</button>
+      <button type="button" class="tlacidlo" onclick="window.print()">Vytlačiť / uložiť ako PDF</button>
+    </form>
+    <p class="info">Počíta sa celková dĺžka členstva v odboroch od dátumu vstupu, vrátane predošlých období člena z archívu
+      (ak bol medzitým mimo odborov, prestávka sa nezapočíta). Členovia bez dátumu vstupu tu nie sú.</p>
+  </div>
+  <div class="sumar">
+    <h1 class="sumar__nadpis">Výročia členstva v odboroch v roku {{ rok }}{% if zo %} – ZO {{ zo.mesto }}{% endif %}</h1>
+    <p class="sumar__info">Spolu členov s výročím: <strong>{{ spolu }}</strong>
+      {% for roky, clenovia in skupiny.items() %} · {{ roky }} rokov: <strong>{{ clenovia|length }}</strong>{% endfor %}</p>
+    {% for roky, clenovia in skupiny.items() %}
+      <div class="sumar__otazka">
+        <h2>{{ roky }} rokov členstva ({{ clenovia|length }})</h2>
+        <table class="sumar__tabulka">
+          <tr><th>Dátum výročia</th><th>Meno</th><th>Ident. číslo</th>{% if not zo %}<th>ZO</th>{% endif %}<th>Vstup</th></tr>
+          {% for c in clenovia %}
+            <tr><td>{{ c.den.strftime('%d.%m.%Y') }}</td>
+              <td>{{ (c.titul ~ ' ') if c.titul }}{{ c.meno }}{{ (', ' ~ c.titul_za) if c.titul_za }}</td>
+              <td>{{ c.cislo }}</td>{% if not zo %}<td>{{ c.mesto }}</td>{% endif %}
+              <td>{{ c.vstup.strftime('%d.%m.%Y') }}{% if c.predosle %} <span class="info">(s predošlým členstvom)</span>{% endif %}</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    {% else %}
+      <p class="info">V roku {{ rok }} nemá nikto okrúhle výročie členstva.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

@@ -20,6 +20,7 @@
       {% if moze_menit %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.fotky_zo', slug=zo.slug) }}">Nahrať fotky hromadne</a>{% endif %}
       <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.export_xlsx', slug=zo.slug, hladat=hladat or None, zoradit=zoradit) }}">Stiahnuť Excel (.xlsx)</a>
       <a href="{{ url_for('evidencia.export', slug=zo.slug, hladat=hladat or None, zoradit=zoradit) }}">CSV</a>
+      <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.vyrocia_zo', slug=zo.slug) }}">Výročia členstva</a>
       <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Archív</a>
       {% if moze_menit %}<a href="{{ url_for('anketa.dotazniky_zo', slug=zo.slug) }}">Dotazníky</a>{% endif %}
       <a href="{{ url_for('evidencia.prezencna_listina', slug=zo.slug) }}">Prezenčná listina</a>
