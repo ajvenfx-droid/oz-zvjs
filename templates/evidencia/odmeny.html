@@ -32,7 +32,7 @@
       <tr><th>Dĺžka členstva</th><th class="cislo">%</th><th class="cislo">Suma na člena</th><th class="cislo">Členov</th><th class="cislo">Spolu</th></tr>
       {% for p in suhrn %}
         <tr><td>{{ roky_text(p.od, p.do) }}</td><td class="cislo">{{ ('%g'|format(p.percento)).replace('.', ',') }} %</td>
-          <td class="cislo">{{ eur(zaklad * p.percento / 100) }}</td><td class="cislo">{{ p.pocet }}</td><td class="cislo">{{ eur(p.suma) }}</td></tr>
+          <td class="cislo">{{ eur(p.na_clena) }}</td><td class="cislo">{{ p.pocet }}</td><td class="cislo">{{ eur(p.suma) }}</td></tr>
       {% endfor %}
       <tr class="sumar__prva"><td colspan="3">Spolu</td><td class="cislo">{{ suhrn|sum(attribute='pocet') }}</td><td class="cislo">{{ eur(spolu) }}</td></tr>
       {% if zostatok %}<tr><td colspan="4">Zostatok po zaokrúhlení na centy</td><td class="cislo">{{ eur(zostatok) }}</td></tr>{% endif %}
