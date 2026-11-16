@@ -169,7 +169,6 @@ def zostav_menu():
         ]),
         ("Tlačové správy", url_for("obsah.clanky", typ="tlacove-spravy"), []),
         ("Kontakty", url_for("obsah.stranka", slug="kontakty"), [
-            ("Kontakty", url_for("obsah.stranka", slug="kontakty")),
             ("Predsedníctvo", url_for("obsah.stranka", slug="predsednictvo")),
             ("Rada predsedov", url_for("obsah.stranka", slug="rada-predsedov")),
             ("Revízna komisia", url_for("obsah.stranka", slug="revizna-komisia")),

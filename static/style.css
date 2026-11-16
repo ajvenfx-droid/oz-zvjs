@@ -721,3 +721,22 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .sumar__tabulka th { text-align: left; font-size: .85rem; color: #555; padding: 3px 6px; border-bottom: 1px solid #ccc; }
 .sumar__podnadpis { font-size: 1.1rem; margin: 18px 0 6px; color: var(--zlata-tmava); }
 .sumar__suhrn { margin-bottom: 10px; }
+
+/* --- Vzhľad hlavičky, menu a úvodu ako na ozzvjs.sk (počítač) --- */
+@media (min-width: 901px) {
+  .hlavicka__vnutro { padding: 12px 16px; gap: 36px; max-width: 1400px; }
+  .hlavicka__logo img { height: 128px; }
+  .menu > ul { column-gap: 34px; row-gap: 10px; }
+  .menu > ul > li > a { font-size: 1.45rem; font-weight: 500; padding: 8px 0; }
+  .menu .sipka { font-size: 0.7em; }
+  .menu .podmenu { top: calc(100% + 14px); left: 0; min-width: 300px; padding: 30px 50px; border-top: 3px solid var(--zlata-tmava); }
+  .ma-podmenu::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 16px; }
+  .podmenu a { padding: 2px 0; color: var(--zlata-tmava); text-transform: uppercase; font-weight: 600; font-size: 1.45rem; line-height: 1.45; }
+  .podmenu a:hover { background: none; color: var(--zlata); }
+  .hero__vnutro { max-width: 1440px; }
+  .hero__nadpis { font-size: clamp(2.2rem, 3.4vw, 3.9rem); color: #f0c43c; line-height: 1.15; margin-bottom: 36px; }
+  .hero__text { font-size: clamp(1.15rem, 1.35vw, 1.55rem); line-height: 1.7; }
+  .hero__tlacidlo { margin-top: 40px; padding: 14px 26px; border-radius: 10px; font-size: 1.75rem; font-weight: 500;
+    letter-spacing: 0.16em; color: #f0c43c; border-color: #f0c43c; }
+  .hero__tlacidlo:hover { background: #f0c43c; }
+}
