@@ -713,7 +713,7 @@ def zo(slug):
     vsetci = _nacitaj_zo(slug)[2]
     mena = sorted({f"{c['udaje'].get('Priezvisko / Názov poisteného', '')} {c['udaje'].get('Meno poisteného', '')}".strip()
                    for c in vsetci} - {""}, key=abecedne)
-    return render_template("evidencia/zo.html", mena=mena, organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY,
+    return render_template("evidencia/zo.html", mena=mena, dlzky=dlzky_clenstva(get_db(), clenovia), vstup_stlpec=VSTUP, organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY,
                            rk_miesta=RK_MIESTA, zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
                            hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny,
                            vedenie=vedenie_zo(get_db(), slug), nastavuje=funkcie_na_nastavenie(slug), na_vyber=sorted(
@@ -1545,3 +1545,20 @@ def odmeny_zo(slug):
     if zo is None:
         abort(404)
     return _odmeny([slug], zo)
+
+
+def dlzky_clenstva(db, clenovia):
+    """{id člena: „X rokov Y mesiacov“} pre zoznam členov (archív sa načíta raz)."""
+    from datetime import date
+    archiv = _archiv_obdobi(db)
+    vysledok = {}
+    for c in clenovia:
+        u = c["udaje"]
+        od = _den(vstup_do_odborov(u))
+        if not od:
+            continue
+        ja = osoby(u)
+        obdobia = [(a_od, a_do, "") for o, a_od, a_do in archiv if ja and (o & ja)]
+        obdobia.append((od, _den(u.get("Dátum výstupu z poistenia")) or date.today(), ""))
+        vysledok[c["id"]] = dlzka_clenstva(sorted(obdobia))
+    return vysledok

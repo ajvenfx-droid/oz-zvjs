@@ -122,12 +122,12 @@
   {% if clenovia %}
     <div class="tabulka-obal">
       <table class="tabulka tabulka--evidencia">
-        <thead><tr><th>#</th>{% for s in stlpce %}<th>{{ s|stlpec }}</th>{% endfor %}</tr></thead>
+        <thead><tr><th>#</th>{% for s in stlpce %}<th>{{ s|stlpec }}</th>{% if s == vstup_stlpec %}<th>Dĺžka členstva</th>{% endif %}{% endfor %}</tr></thead>
         <tbody>
           {% for c in clenovia %}
             <tr>
               <td>{% if moze_menit %}<a href="{{ url_for('evidencia.uprav_clena', slug=zo.slug, clen_id=c.id) }}" title="Upraviť">{{ loop.index }}.</a>{% else %}{{ loop.index }}.{% endif %}</td>
-              {% for s in stlpce %}<td>{{ c.udaje.get(s, '') }}</td>{% endfor %}
+              {% for s in stlpce %}<td>{{ c.udaje.get(s, '') }}</td>{% if s == vstup_stlpec %}<td class="nezalomit">{{ dlzky.get(c.id, '') }}</td>{% endif %}{% endfor %}
             </tr>
           {% endfor %}
         </tbody>

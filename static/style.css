@@ -740,3 +740,4 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
     letter-spacing: 0.16em; color: #f0c43c; border-color: #f0c43c; }
   .hero__tlacidlo:hover { background: #f0c43c; }
 }
+.nezalomit { white-space: nowrap; }
