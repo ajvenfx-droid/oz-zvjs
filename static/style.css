@@ -758,3 +758,20 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .karta-clena__zavriet { position: absolute; top: 10px; right: 12px; width: 32px; height: 32px; line-height: 32px; text-align: center;
   border-radius: 50%; color: #6b5a00; text-decoration: none; font-size: 1.15rem; }
 .karta-clena__zavriet:hover { background: #f3eee3; }
+/* Moje konto – záložky pod sebou v ľavom stĺpci */
+.mk-bok { margin-bottom: 16px; }
+.mk-bok__odkazy { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; }
+.mk-bok__nadpis { font-weight: 700; color: var(--zlata-tmava, #6b5a00); width: 100%; }
+.mk-zalozky__panel h2 { margin-top: 0; }
+@media (min-width: 1000px) {
+  .obsah--siroke { max-width: 1440px; }
+  .mk-rozlozenie { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .mk-bok { position: sticky; top: 16px; margin: 0; }
+  .mk-bok .mk-zalozky__lista { flex-direction: column; flex-wrap: nowrap; }
+  .mk-bok .zalozka { width: 100%; text-align: left; }
+  .mk-bok__odkazy { flex-direction: column; flex-wrap: nowrap; gap: 0; margin-top: 22px; border-top: 1px solid #e5dcc3; padding-top: 12px; }
+  .mk-bok__odkazy a { padding: 7px 4px; border-bottom: 1px solid #f0eadb; text-decoration: none; }
+  .mk-bok__odkazy a:hover { text-decoration: underline; }
+  .mk-bok__nadpis { margin-bottom: 4px; }
+  .mk-zalozky .mk-zalozky__panel { margin-top: 0; }
+}

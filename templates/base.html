@@ -77,7 +77,7 @@
   {% block uvod %}{% endblock %}
   {% if obrazky.pas %}<style>.banner { background-image: linear-gradient(rgba(60,45,5,.35), rgba(60,45,5,.35)), url('{{ obrazky.pas }}'); }</style>{% endif %}
 
-  <main class="obsah">
+  <main class="obsah{% block obsah_trieda %}{% endblock %}">
     {% with spravy = get_flashed_messages() %}
       {% for s in spravy %}<p class="oznam">{{ s }}</p>{% endfor %}
     {% endwith %}

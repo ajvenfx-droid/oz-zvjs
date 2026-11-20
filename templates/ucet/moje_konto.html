@@ -1,22 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Moje konto – {{ nazov_zvazu }}{% endblock %}
+{% block obsah_trieda %} obsah--siroke{% endblock %}
 {% block content %}
   <h1 class="nadpis">{{ prihlaseny_clen.meno or prihlaseny_clen.cislo }}{% if prihlaseny_clen.meno %}<span class="nadpis-cislo">{{ prihlaseny_clen.cislo }} <small class="nadpis-cislo__popis">(identifikačné číslo)</small></span>{% endif %}{% set dlzka_clenstva = clenom() %}{% if dlzka_clenstva %}<span class="nadpis-clenom"><small class="nadpis-cislo__popis">Členom:</small> {{ dlzka_clenstva }}</span>{% endif %}</h1>
-  {% if listiny %}
-    <section class="panel">
-      <h2>Členovia ZO</h2>
-      {% for z in listiny %}<p><a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.zo', slug=z.slug) }}">Zoznam členov ZO {{ z.mesto }}</a>
-        <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.prezencna_listina', slug=z.slug) }}">Prezenčná listina – ZO {{ z.mesto }}</a>
-        <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.volby', slug=z.slug) }}">Voľby – hlasovacie lístky</a></p>{% endfor %}
-    </section>
-  {% endif %}
-  {% if evidencia or dotazniky or benefity %}
-  <section class="panel mk-zalozky">
+  <div class="mk-rozlozenie">
+  <nav class="mk-bok" aria-label="Moje konto">
     <div class="mk-zalozky__lista" role="tablist">
       {% if evidencia %}<button type="button" class="zalozka" data-panel="z-udaje" aria-expanded="false">Údaje</button>{% endif %}
+      {% if not evidencia %}<button type="button" class="zalozka" data-panel="z-email" aria-expanded="false">E-mail</button>{% endif %}
       {% if dotazniky %}<button type="button" class="zalozka" data-panel="z-dotazniky" aria-expanded="false">Dotazníky ({{ dotazniky|length }})</button>{% endif %}
       {% if benefity %}<button type="button" class="zalozka" data-panel="z-benefity" aria-expanded="false">Benefity</button>{% endif %}
+      <button type="button" class="zalozka" data-panel="z-heslo" aria-expanded="false">Zmena hesla</button>
     </div>
+    {% for z in listiny %}
+    <div class="mk-bok__odkazy">
+      <span class="mk-bok__nadpis">Členovia ZO {{ z.mesto }}</span>
+      <a href="{{ url_for('evidencia.zo', slug=z.slug) }}">Zoznam členov</a>
+      <a href="{{ url_for('evidencia.prezencna_listina', slug=z.slug) }}">Prezenčná listina</a>
+      <a href="{{ url_for('evidencia.volby', slug=z.slug) }}">Voľby – hlasovacie lístky</a>
+    </div>
+    {% endfor %}
+  </nav>
+  <section class="panel mk-zalozky">
     {% if evidencia %}
     <div class="mk-zalozky__panel" id="z-udaje">
   {% for z in evidencia %}
@@ -103,24 +108,8 @@
       {% endfor %}
     </div>
     {% endif %}
-    <script>
-      (function () {
-        var tl = document.querySelectorAll('.zalozka');
-        function otvor(id) {
-          tl.forEach(function (b) {
-            var p = document.getElementById(b.dataset.panel), on = b.dataset.panel === id;
-            p.hidden = !on; b.setAttribute('aria-expanded', on); b.classList.toggle('zalozka--aktivna', on);
-          });
-        }
-        var h = location.hash.slice(1);
-        otvor(['udaje', 'dotazniky', 'benefity'].indexOf(h) >= 0 && document.getElementById('z-' + h) ? 'z-' + h : tl[0].dataset.panel);
-        tl.forEach(function (b) { b.addEventListener('click', function () { otvor(b.dataset.panel); }); });
-      })();
-    </script>
-  </section>
-  {% endif %}
-  {% if not evidencia %}
-  <section class="panel">
+    {% if not evidencia %}
+    <div class="mk-zalozky__panel" id="z-email">
     <h2>E-mail</h2>
     {% if not prihlaseny_clen.email %}
       <p class="varovanie">Zadajte svoj e-mail. Bez neho si nebudete môcť sami obnoviť zabudnuté heslo.</p>
@@ -135,10 +124,10 @@
       </label>
       <button type="submit" class="tlacidlo">Uložiť e-mail</button>
     </form>
-  </section>
-  {% endif %}
-  <details class="panel">
-    <summary class="rozbalit"><strong>Zmena hesla</strong></summary>
+    </div>
+    {% endif %}
+    <div class="mk-zalozky__panel" id="z-heslo">
+    <h2>Zmena hesla</h2>
     {% if not prihlaseny_clen.vlastne_heslo %}
       <p class="varovanie">Prihlasujete sa prvotným heslom. Odporúčame nastaviť si vlastné heslo.</p>
     {% endif %}
@@ -158,5 +147,21 @@
       </label>
       <button type="submit" class="tlacidlo">Zmeniť heslo</button>
     </form>
-  </details>
+    </div>
+    <script>
+      (function () {
+        var tl = document.querySelectorAll('.zalozka');
+        function otvor(id) {
+          tl.forEach(function (b) {
+            var p = document.getElementById(b.dataset.panel), on = b.dataset.panel === id;
+            p.hidden = !on; b.setAttribute('aria-expanded', on); b.classList.toggle('zalozka--aktivna', on);
+          });
+        }
+        var h = location.hash.slice(1);
+        otvor(['udaje', 'email', 'dotazniky', 'benefity', 'heslo'].indexOf(h) >= 0 && document.getElementById('z-' + h) ? 'z-' + h : tl[0].dataset.panel);
+        tl.forEach(function (b) { b.addEventListener('click', function () { otvor(b.dataset.panel); }); });
+      })();
+    </script>
+  </section>
+  </div>
 {% endblock %}

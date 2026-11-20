@@ -327,7 +327,7 @@ def moje_konto():
                 )
                 db.commit()
                 flash("E-mail bol uložený." if email else "E-mail bol odstránený.")
-            return redirect(url_for("ucet.moje_konto"))
+            return redirect(url_for("ucet.moje_konto", _anchor="email"))
         clen = db.execute("SELECT * FROM clen WHERE cislo = ?", (cislo,)).fetchone()
         ucet = db.execute("SELECT * FROM ucet WHERE cislo = ?", (cislo,)).fetchone()
         if not over_heslo(db, clen, ucet, f.get("stare", "")):
@@ -344,7 +344,7 @@ def moje_konto():
                 )
                 db.commit()
                 flash("Heslo bolo zmenené.")
-        return redirect(url_for("ucet.moje_konto"))
+        return redirect(url_for("ucet.moje_konto", _anchor="heslo"))
     from anketa import dotazniky_clena
     from evidencia import zo_organov_clena
     from obsah import benefity_clena
