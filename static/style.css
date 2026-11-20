@@ -781,3 +781,5 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
   border-radius: 50%; font-size: 1.5rem; line-height: 1; text-decoration: none; color: var(--zlata-tmava); padding-bottom: 3px; }
 .karta-clena__sipka:hover { background: var(--zlata-tmava); color: #fff; }
 .karta-clena__sipka--ziadna { opacity: .25; }
+.karta-clena__text { min-width: 16em; text-align: center; }
+@media (max-width: 600px) { .karta-clena__text { min-width: 0; } }
