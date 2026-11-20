@@ -8,7 +8,7 @@
     <div class="mk-zalozky__lista" role="tablist">
       {% if evidencia %}<button type="button" class="zalozka" data-panel="z-udaje" aria-expanded="false">Údaje</button>{% endif %}
       {% if not evidencia %}<button type="button" class="zalozka" data-panel="z-email" aria-expanded="false">E-mail</button>{% endif %}
-      {% if dotazniky %}<button type="button" class="zalozka" data-panel="z-dotazniky" aria-expanded="false">Dotazníky ({{ dotazniky|length }})</button>{% endif %}
+      {% if dotazniky %}{% set treba_vyplnit = dotazniky|selectattr('stav')|rejectattr('stav', 'equalto', 'odoslany')|rejectattr('ukoncena')|list %}<button type="button" class="zalozka{% if treba_vyplnit %} zalozka--upozornenie{% endif %}" data-panel="z-dotazniky" aria-expanded="false"{% if treba_vyplnit %} title="Máte nevyplnený dotazník"{% endif %}>Dotazníky</button>{% endif %}
       {% if benefity %}<button type="button" class="zalozka" data-panel="z-benefity" aria-expanded="false">Benefity</button>{% endif %}
       <button type="button" class="zalozka" data-panel="z-heslo" aria-expanded="false">Zmena hesla</button>
     </div>

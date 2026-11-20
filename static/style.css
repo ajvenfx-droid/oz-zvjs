@@ -783,3 +783,8 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .karta-clena__sipka--ziadna { opacity: .25; }
 .karta-clena__text { min-width: 16em; text-align: center; }
 @media (max-width: 600px) { .karta-clena__text { min-width: 0; } }
+.zalozka--upozornenie { position: relative; border-color: #c0392b; color: #c0392b; animation: zalozka-svieti 1.6s ease-in-out infinite; }
+.zalozka--upozornenie::after { content: ""; position: absolute; top: 8px; right: 10px; width: 10px; height: 10px; border-radius: 50%; background: #e03b2c; }
+.zalozka--upozornenie.zalozka--aktivna { background: #c0392b; color: #fff; animation: none; }
+.zalozka--upozornenie.zalozka--aktivna::after { background: #fff; }
+@keyframes zalozka-svieti { 0%, 100% { box-shadow: 0 0 0 0 rgba(224,59,44,.45); } 50% { box-shadow: 0 0 0 6px rgba(224,59,44,0); } }
