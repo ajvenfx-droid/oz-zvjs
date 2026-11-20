@@ -746,7 +746,10 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .karta-clena__clenom { margin-left: auto; font-size: .95em; }
 .karta-clena__bez-foto { display: flex; align-items: center; justify-content: center; color: #999; font-style: italic; }
 .mu-pole strong { min-width: 0; overflow-wrap: anywhere; }
-.karta-clena .mu-pole__nazov { flex-basis: 38%; }
+.karta-clena .moje-udaje { column-gap: 24px; }
+.karta-clena .mu-pole__nazov { flex: 0 0 10.2em; }
+.karta-clena .mu-pole strong { overflow-wrap: normal; word-break: normal; font-size: .95em; }
+.karta-clena .mu-rozlozenie { gap: 22px; }
 .akcie--zalomit { white-space: normal; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .akcie--zalomit a, .akcie--zalomit form { margin-right: 0; }
 .zo-odkazy { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 10px; width: 100%; }
