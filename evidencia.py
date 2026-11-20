@@ -713,7 +713,22 @@ def zo(slug):
     vsetci = _nacitaj_zo(slug)[2]
     mena = sorted({f"{c['udaje'].get('Priezvisko / Názov poisteného', '')} {c['udaje'].get('Meno poisteného', '')}".strip()
                    for c in vsetci} - {""}, key=abecedne)
-    return render_template("evidencia/zo.html", mena=mena, dlzky=dlzky_clenstva(get_db(), clenovia), vstup_stlpec=VSTUP, organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY,
+    karta = None
+    if hladat and len(clenovia) == 1:  # vyhľadaný jeden člen → karta s fotkou a údajmi ako v Moje konto
+        c = clenovia[0]
+        u = c["udaje"]
+        poradie = [x for x in stlpce if x not in (PREDCHADZAJUCE, "Identifikačné číslo")]
+        for prvy, druhy in (("Titul", "Titul za menom"), ("Dátum narodenia", VSTUP)):
+            if prvy in poradie and druhy in poradie:
+                poradie.remove(druhy)
+                poradie.insert(poradie.index(prvy) + 1, druhy)
+        poradie = [x for x in poradie if x not in ("Preukaz", "Fotka")] + [x for x in ("Preukaz", "Fotka") if x in poradie]
+        karta = {"id": c["id"], "meno": " ".join(x for x in (u.get("Titul", ""), cele_meno(u)) if x)
+                 + (", " + u["Titul za menom"] if u.get("Titul za menom") else ""),
+                 "cislo": u.get("Identifikačné číslo", ""),
+                 "foto": bool(nacitaj_foto(get_db(), kluc_clena(u))),
+                 "polia": [(x, u.get(x, "")) for x in poradie if u.get(x)]}
+    return render_template("evidencia/zo.html", mena=mena, dlzky=dlzky_clenstva(get_db(), clenovia), vstup_stlpec=VSTUP, karta=karta, organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY,
                            rk_miesta=RK_MIESTA, zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
                            hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny,
                            vedenie=vedenie_zo(get_db(), slug), nastavuje=funkcie_na_nastavenie(slug), na_vyber=sorted(

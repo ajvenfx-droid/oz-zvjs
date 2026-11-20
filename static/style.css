@@ -741,3 +741,7 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
   .hero__tlacidlo:hover { background: #f0c43c; }
 }
 .nezalomit { white-space: nowrap; }
+.karta-clena__meno { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.karta-clena__meno .nadpis-cislo__popis { font-size: .75em; color: #555; }
+.karta-clena__clenom { margin-left: auto; font-size: .95em; }
+.karta-clena__bez-foto { display: flex; align-items: center; justify-content: center; color: #999; font-style: italic; }

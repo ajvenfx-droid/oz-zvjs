@@ -29,6 +29,24 @@
       <a href="{{ url_for('hodinky.benefity', slug=zo.slug) }}">Benefity</a>
     </div>
   </div>
+  {% if karta %}
+  <section class="panel karta-clena">
+    <h2 class="karta-clena__meno">{{ karta.meno }} <span class="nadpis-cislo__popis">{{ karta.cislo }}</span>
+      {% if dlzky.get(karta.id) %}<span class="karta-clena__clenom"><small class="nadpis-cislo__popis">Členom:</small> {{ dlzky.get(karta.id) }}</span>{% endif %}</h2>
+    <div class="mu-rozlozenie">
+      <div class="mu-foto">
+        {% if karta.foto %}<div class="foto-clena foto-clena--pozadie" role="img" aria-label="Fotka člena" style="background-image: url('{{ url_for('evidencia.foto', slug=zo.slug, clen_id=karta.id) }}')"></div>
+        {% else %}<div class="foto-clena foto-clena--pozadie karta-clena__bez-foto">bez fotky</div>{% endif %}
+      </div>
+      <div class="mu-data">
+        <div class="moje-udaje">
+          {% for nazov, hodnota in karta.polia %}<div class="mu-pole"><span class="mu-pole__nazov">{{ nazov|stlpec }}:</span> <strong>{{ hodnota }}</strong></div>{% endfor %}
+        </div>
+        {% if moze_menit %}<a class="tlacidlo" href="{{ url_for('evidencia.uprav_clena', slug=zo.slug, clen_id=karta.id) }}">Upraviť údaje a fotku</a>{% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
   {% macro vyber_clena(meno_pola, vybrane, prazdne='– nikto –') %}
     <select name="{{ meno_pola }}">
       <option value="">{{ prazdne }}</option>
