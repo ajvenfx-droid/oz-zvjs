@@ -14,6 +14,7 @@
         {% for k, n in zoradenia.items() %}<option value="{{ k }}" {% if zoradit == k %}selected{% endif %}>Zoradiť {{ n }}</option>{% endfor %}
       </select>
       <button type="submit" class="tlacidlo tlacidlo--sekundarne">Hľadať</button>
+      {% if hladat %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.zo', slug=zo.slug, zoradit=zoradit) }}">✕ Zrušiť hľadanie</a>{% endif %}
     </form>
     <div class="akcie akcie--zalomit">
       {% if moze_menit %}<a class="tlacidlo" href="{{ url_for('evidencia.uprav_clena', slug=zo.slug) }}">+ Pridať člena</a>{% endif %}
@@ -32,6 +33,7 @@
   </div>
   {% if karta %}
   <section class="panel karta-clena">
+    <a class="karta-clena__zavriet" href="{{ url_for('evidencia.zo', slug=zo.slug, zoradit=zoradit) }}" title="Zavrieť kartu" aria-label="Zavrieť kartu">✕</a>
     <h2 class="karta-clena__meno">{{ karta.meno }} <span class="nadpis-cislo__popis">{{ karta.cislo }}</span>
       {% if dlzky.get(karta.id) %}<span class="karta-clena__clenom"><small class="nadpis-cislo__popis">Členom:</small> {{ dlzky.get(karta.id) }}</span>{% endif %}</h2>
     <div class="mu-rozlozenie">
