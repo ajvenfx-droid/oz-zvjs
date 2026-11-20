@@ -745,3 +745,5 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .karta-clena__meno .nadpis-cislo__popis { font-size: .75em; color: #555; }
 .karta-clena__clenom { margin-left: auto; font-size: .95em; }
 .karta-clena__bez-foto { display: flex; align-items: center; justify-content: center; color: #999; font-style: italic; }
+.mu-pole strong { min-width: 0; overflow-wrap: anywhere; }
+.karta-clena .mu-pole__nazov { flex-basis: 38%; }
