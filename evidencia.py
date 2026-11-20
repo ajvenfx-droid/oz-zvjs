@@ -713,6 +713,14 @@ def zo(slug):
     mena = sorted({f"{c['udaje'].get('Priezvisko / Názov poisteného', '')} {c['udaje'].get('Meno poisteného', '')}".strip()
                    for c in vsetci} - {""}, key=abecedne)
     karta = None
+    abc = sorted(vsetci, key=lambda c: (abecedne(c["udaje"].get("Priezvisko / Názov poisteného", "")),
+                                        abecedne(c["udaje"].get("Meno poisteného", ""))))
+    vybrany = request.args.get("clen", "")
+    if vybrany:  # listovanie šípkami na karte člena
+        clenovia = [c for c in vsetci if str(c["id"]) == vybrany]
+        if clenovia:
+            u = clenovia[0]["udaje"]
+            hladat = f"{u.get('Priezvisko / Názov poisteného', '')} {u.get('Meno poisteného', '')}".strip()
     if hladat and len(clenovia) == 1:  # vyhľadaný jeden člen → karta s fotkou a údajmi ako v Moje konto
         c = clenovia[0]
         u = c["udaje"]
@@ -727,6 +735,10 @@ def zo(slug):
                  "cislo": u.get("Identifikačné číslo", ""),
                  "foto": bool(nacitaj_foto(get_db(), kluc_clena(u))),
                  "polia": [(x, u.get(x, "")) for x in poradie if u.get(x)]}
+        i = next((n for n, x in enumerate(abc) if x["id"] == c["id"]), None)
+        if i is not None:
+            karta["predosly"] = abc[i - 1]["id"] if i > 0 else None
+            karta["dalsi"] = abc[i + 1]["id"] if i + 1 < len(abc) else None
     return render_template("evidencia/zo.html", mena=mena, dlzky=dlzky_clenstva(get_db(), clenovia), vstup_stlpec=VSTUP, karta=karta, organy=organy_zo(get_db(), slug, vsetci), skupiny=SKUPINY,
                            rk_miesta=RK_MIESTA, zo=zo, stlpce=stlpce, clenovia=clenovia, nahrate=nahrate,
                            hladat=hladat, zoradit=zoradit, zoradenia=ZORADENIA, farby=FARBY, zmeny=zmeny,

@@ -775,3 +775,9 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
   .mk-bok__nadpis { margin-bottom: 4px; }
   .mk-zalozky .mk-zalozky__panel { margin-top: 0; }
 }
+.karta-clena__meno { align-items: center; }
+.karta-clena__cislo { font-size: .9em; font-weight: 700; color: var(--zlata-tmava); background: #f3eee3; padding: 1px 10px; border-radius: 6px; }
+.karta-clena__sipka { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid var(--zlata-tmava);
+  border-radius: 50%; font-size: 1.5rem; line-height: 1; text-decoration: none; color: var(--zlata-tmava); padding-bottom: 3px; }
+.karta-clena__sipka:hover { background: var(--zlata-tmava); color: #fff; }
+.karta-clena__sipka--ziadna { opacity: .25; }

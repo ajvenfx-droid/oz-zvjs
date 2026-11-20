@@ -34,7 +34,11 @@
   {% if karta %}
   <section class="panel karta-clena">
     <a class="karta-clena__zavriet" href="{{ url_for('evidencia.zo', slug=zo.slug, zoradit=zoradit) }}" title="Zavrieť kartu" aria-label="Zavrieť kartu">✕</a>
-    <h2 class="karta-clena__meno">{{ karta.meno }} <span class="nadpis-cislo__popis">{{ karta.cislo }}</span>
+    <h2 class="karta-clena__meno">
+      {% if karta.predosly %}<a class="karta-clena__sipka" href="{{ url_for('evidencia.zo', slug=zo.slug, clen=karta.predosly, zoradit=zoradit) }}" title="Predošlý člen podľa abecedy" aria-label="Predošlý člen">&#8249;</a>{% else %}<span class="karta-clena__sipka karta-clena__sipka--ziadna">&#8249;</span>{% endif %}
+      <span>{{ karta.meno }}</span>
+      {% if karta.dalsi %}<a class="karta-clena__sipka" href="{{ url_for('evidencia.zo', slug=zo.slug, clen=karta.dalsi, zoradit=zoradit) }}" title="Ďalší člen podľa abecedy" aria-label="Ďalší člen">&#8250;</a>{% else %}<span class="karta-clena__sipka karta-clena__sipka--ziadna">&#8250;</span>{% endif %}
+      <span class="karta-clena__cislo">{{ karta.cislo }}</span>
       {% if dlzky.get(karta.id) %}<span class="karta-clena__clenom"><small class="nadpis-cislo__popis">Členom:</small> {{ dlzky.get(karta.id) }}</span>{% endif %}</h2>
     <div class="mu-rozlozenie">
       <div class="mu-foto">
