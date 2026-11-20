@@ -7,7 +7,6 @@ predsedníctvo (rola „vedenie“) prezerá všetky ZO, ale nič nemení.
 každá ZO má vlastný hárok, ktorého názov začína číslom zoznamu (napr. „10.BBVV“).
 Ukladajú sa všetky stĺpce tak, ako sú v súbore, aj s farbou riadku.
 """
-import csv
 import io
 import json
 import re
@@ -847,23 +846,6 @@ def nastav_vedenie(slug):
     return redirect(url_for("evidencia.zo", slug=slug))
 
 
-@bp.route("/<slug>/export.csv")
-@vyzaduj()
-def export(slug):
-    zo, stlpce, clenovia, _ = _nacitaj_zo(slug)
-    clenovia, _, _ = _vyber(clenovia)
-    vystup = io.StringIO()
-    w = csv.writer(vystup, delimiter=";")
-    w.writerow(["Farba"] + stlpce)
-    for c in clenovia:
-        w.writerow([FARBY.get(c["farba"], "")] + [c["udaje"].get(s, "") for s in stlpce])
-    return Response(
-        "\ufeff" + vystup.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="clenovia-{slug}.csv"'},
-    )
-
-
 def zo_organov_clena(db, cislo):
     """Slugy ZO, v ktorých je člen vo výbore alebo revíznej komisii."""
     if not cislo:
@@ -1025,7 +1007,7 @@ def export_xlsx(slug):
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill
     except ImportError:
-        flash("Na serveri chýba knižnica pre Excel, stiahnite zoznam ako CSV.")
+        flash("Na serveri chýba knižnica pre Excel.")
         return redirect(url_for("evidencia.zo", slug=slug))
     zo, stlpce, clenovia, _ = _nacitaj_zo(slug)
     clenovia, _, _ = _vyber(clenovia)
