@@ -1073,6 +1073,9 @@ def uprav_clena(slug, clen_id=None):
             return redirect(url_for("evidencia.zo", slug=slug))
         udaje = {st: request.form.get(f"st_{i}", "").strip() for i, st in enumerate(stlpce)}
         udaje = {k: v for k, v in udaje.items() if v}
+        for st in ("Titul", "Titul za menom"):
+            if udaje.get(st):
+                udaje[st] = standard_titul(udaje[st]) or udaje[st]
         farba = request.form.get("farba", "") if request.form.get("farba") in FARBY else ""
         if clen_id is None:
             poradie = db.execute("SELECT COALESCE(MAX(poradie), 0) + 1 FROM evidencia_clen WHERE zo_slug = ?",
@@ -1095,12 +1098,68 @@ def uprav_clena(slug, clen_id=None):
     obdobia = obdobia_clenstva(db, clen["udaje"]) if clen_id else []
     foto = nacitaj_foto(db, kluc_clena(clen["udaje"])) if clen_id else None
     tituly = {}
-    for st in ("Titul", "Titul za menom"):
-        if st in stlpce:
-            hodnoty = {(json.loads(r[0]).get(st) or "").strip() for r in db.execute("SELECT udaje FROM evidencia_clen")}
-            tituly[st] = sorted(hodnoty - {""}, key=abecedne)
+    if "Titul" in stlpce or "Titul za menom" in stlpce:
+        pred, za = set(), set()
+        for r in db.execute("SELECT udaje FROM evidencia_clen"):
+            u = json.loads(r[0])
+            for st in ("Titul", "Titul za menom"):
+                casti = casti_titulu(u.get(st))
+                if not casti:
+                    continue
+                # tituly za menom (PhD., MBA, LL.M. …) patria do druhého poľa, aj keď boli zapísané pred menom
+                p = " ".join(c for c in casti if c not in TITULY_ZA)
+                z = " ".join(c for c in casti if c in TITULY_ZA)
+                if p:
+                    pred.add(p)
+                if z:
+                    za.add(z)
+        for st, hodnoty in (("Titul", pred), ("Titul za menom", za)):
+            if st in stlpce:
+                tituly[st] = sorted(hodnoty, key=abecedne)
     return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly,
                            obdobia=obdobia, dlzka=dlzka_clenstva(obdobia), foto=foto)
+
+
+TITULY = {
+    # pred menom
+    ("bc",): "Bc.", ("mgr",): "Mgr.", ("mg",): "Mgr.", ("mgr", "art"): "Mgr. art.", ("ing",): "Ing.", ("ing", "arch"): "Ing. arch.",
+    ("mudr",): "MUDr.", ("mddr",): "MDDr.", ("mvdr",): "MVDr.", ("judr",): "JUDr.", ("phdr",): "PhDr.",
+    ("paeddr",): "PaedDr.", ("paedr",): "PaedDr.", ("peadr",): "PaedDr.", ("peddr",): "PaedDr.", ("rndr",): "RNDr.",
+    ("pharmdr",): "PharmDr.", ("thdr",): "ThDr.", ("thlic",): "ThLic.", ("thmgr",): "ThMgr.", ("doc",): "doc.", ("prof",): "prof.",
+    ("et",): "et",
+    # za menom
+    ("phd",): "PhD.", ("csc",): "CSc.", ("drsc",): "DrSc.", ("mba",): "MBA", ("ll", "m"): "LL.M.", ("llm",): "LL.M.",
+    ("mph",): "MPH", ("dis",): "DiS.", ("dis", "art"): "DiS. art.", ("artd",): "ArtD.", ("msc",): "MSc.", ("bsc",): "BSc.",
+}
+
+
+TITULY_ZA = {"PhD.", "CSc.", "DrSc.", "MBA", "LL.M.", "MPH", "DiS.", "DiS. art.", "ArtD.", "MSc.", "BSc."}
+
+
+def standard_titul(text):
+    """Titul v štandardnom zápise (napr. „mgr.et mgr“ → „Mgr. et Mgr.“); None, ak obsahuje neznámu časť."""
+    casti = casti_titulu(text)
+    return " ".join(casti) if casti else None
+
+
+def casti_titulu(text):
+    """Jednotlivé tituly v štandardnom zápise („Mgr. et Mgr.“ ostane spolu); None, ak obsahuje neznámu časť."""
+    casti = [c.lower() for c in re.findall(r"[A-Za-z]+", text or "")]
+    vysledok, i = [], 0
+    while i < len(casti):
+        if tuple(casti[i:i + 2]) in TITULY and i + 1 < len(casti):
+            vysledok.append(TITULY[tuple(casti[i:i + 2])]); i += 2
+        elif (casti[i],) in TITULY:
+            vysledok.append(TITULY[(casti[i],)]); i += 1
+        else:
+            return None
+    spojene = []
+    for c in vysledok:
+        if spojene and (c == "et" or spojene[-1].endswith(" et")):
+            spojene[-1] += " " + c
+        else:
+            spojene.append(c)
+    return spojene or None
 
 
 def dalsie_cislo(db, slug):
