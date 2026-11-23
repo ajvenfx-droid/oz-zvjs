@@ -1116,7 +1116,15 @@ def uprav_clena(slug, clen_id=None):
         for st, hodnoty in (("Titul", pred), ("Titul za menom", za)):
             if st in stlpce:
                 tituly[st] = sorted(hodnoty, key=abecedne)
-    return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly,
+    # poradie polí vo formulári (dvojice vedľa seba), názvy polí st_<index> ostávajú podľa stĺpcov
+    poradie = []
+    for dvojica in (("Identifikačné číslo", "Služobné/ zam. číslo"), ("Titul", "Titul za menom"),
+                    ("Meno poisteného", "Priezvisko / Názov poisteného"), ("Dátum narodenia", VSTUP)):
+        if all(x in stlpce for x in dvojica):
+            poradie += dvojica
+    poradie += [x for x in stlpce if x not in poradie]
+    polia = [(stlpce.index(x), x) for x in poradie]
+    return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, polia=polia, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly,
                            obdobia=obdobia, dlzka=dlzka_clenstva(obdobia), foto=foto)
 
 

@@ -788,3 +788,10 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .zalozka--upozornenie.zalozka--aktivna { background: #c0392b; color: #fff; animation: none; }
 .zalozka--upozornenie.zalozka--aktivna::after { background: #fff; }
 @keyframes zalozka-svieti { 0%, 100% { box-shadow: 0 0 0 0 rgba(224,59,44,.45); } 50% { box-shadow: 0 0 0 6px rgba(224,59,44,0); } }
+/* Formulár člena – kompaktne, popis vľavo, dva stĺpce */
+.formular--clen { max-width: none; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 0 32px; }
+.formular--clen .pole { grid-template-columns: 11em minmax(0, 1fr); align-items: center; gap: 10px; padding: 4px 0; border-bottom: 1px solid #eee; }
+.formular--clen .pole__nazov { font-weight: 400; font-size: .92rem; color: #555; }
+.formular--clen .pole input, .formular--clen .pole select { padding: 5px 9px; margin: 0; height: 34px; }
+.formular--clen__akcie { grid-column: 1 / -1; margin-top: 14px; }
+@media (max-width: 480px) { .formular--clen { grid-template-columns: 1fr; } .formular--clen .pole { grid-template-columns: 1fr; gap: 2px; } }

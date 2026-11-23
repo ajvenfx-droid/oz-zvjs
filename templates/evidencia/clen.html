@@ -27,16 +27,16 @@
       {% endif %}
     </section>
   {% endif %}
-  <form method="post" class="formular">
-    {% for s in stlpce %}
+  <form method="post" class="formular formular--clen">
+    {% for i, s in polia %}
       <label class="pole">
         <span class="pole__nazov">{{ s|stlpec }}</span>
         {% if s in tituly %}
-        <input type="text" name="st_{{ loop.index0 }}" value="{{ clen.udaje.get(s, '') }}" list="tituly-{{ loop.index0 }}" autocomplete="off"
+        <input type="text" name="st_{{ i }}" value="{{ clen.udaje.get(s, '') }}" list="tituly-{{ i }}" autocomplete="off"
                onclick="if (this.showPicker) try { this.showPicker(); } catch (e) {}">
-        <datalist id="tituly-{{ loop.index0 }}">{% for t in tituly[s] %}<option value="{{ t }}">{% endfor %}</datalist>
+        <datalist id="tituly-{{ i }}">{% for t in tituly[s] %}<option value="{{ t }}">{% endfor %}</datalist>
         {% else %}
-        <input type="text" name="st_{{ loop.index0 }}" value="{{ clen.udaje.get(s, '') }}"{% if 'Dátum' in s %} placeholder="napr. 25.03.1985" inputmode="numeric" autocomplete="off"{% endif %}>
+        <input type="text" name="st_{{ i }}" value="{{ clen.udaje.get(s, '') }}"{% if 'Dátum' in s %} placeholder="napr. 25.03.1985" inputmode="numeric" autocomplete="off"{% endif %}>
         {% endif %}
       </label>
     {% endfor %}
@@ -47,7 +47,7 @@
         {% for k, n in farby.items() %}<option value="{{ k }}" {% if clen.farba == k %}selected{% endif %}>{{ n }}</option>{% endfor %}
       </select>
     </label>
-    <button type="submit" class="tlacidlo">Uložiť</button>
+    <div class="formular--clen__akcie"><button type="submit" class="tlacidlo">Uložiť</button></div>
   </form>
   {% if clen_id %}
     <form method="post" onsubmit="return confirm('Naozaj vymazať tohto člena z evidencie?');">
