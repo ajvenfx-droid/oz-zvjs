@@ -1591,6 +1591,79 @@ def vyrocia_zo(slug):
     return _vyrocia([slug], zo)
 
 
+def pohyb_clenov(db, slugy, od, do):
+    """Prijatí (vstup do poistenia v období) a odídení (výstup z poistenia, inak dátum presunu do archívu) v ZO."""
+    mesta = {r["slug"]: r["mesto"] for r in db.execute("SELECT slug, mesto FROM zakladna_organizacia")}
+    znaky = ",".join("?" * len(slugy))
+
+    def osoba(u, slug, den):
+        return {"meno": cele_meno(u), "priezvisko": u.get("Priezvisko / Názov poisteného", ""),
+                "titul": u.get("Titul", ""), "titul_za": u.get("Titul za menom", ""),
+                "cislo": u.get("Identifikačné číslo", ""), "zo": mesta.get(slug, slug), "slug": slug, "den": den}
+
+    prijati, odidi = [], []
+    zdroje = [(r["zo_slug"], json.loads(r["udaje"]), None, "") for r in db.execute(
+        f"SELECT zo_slug, udaje FROM evidencia_clen WHERE zo_slug IN ({znaky})", slugy)]
+    zdroje += [(r["zo_slug"], json.loads(r["udaje"]), r["archivovane"], r["dovod"]) for r in db.execute(
+        f"SELECT zo_slug, udaje, archivovane, dovod FROM evidencia_archiv WHERE zo_slug IN ({znaky})", slugy)]
+    for slug, u, archivovane, dovod in zdroje:
+        vstup = _den(u.get(VSTUP))
+        if vstup and od <= vstup <= do:
+            prijati.append(osoba(u, slug, vstup))
+        if archivovane is not None:
+            vystup = _den(u.get("Dátum výstupu z poistenia")) or _den(archivovane)
+            if vystup and od <= vystup <= do:
+                odidi.append(osoba(u, slug, vystup) | {"dovod": dovod})
+    kluc = lambda o: (o["den"], abecedne(o["priezvisko"]))
+    return sorted(prijati, key=kluc), sorted(odidi, key=kluc)
+
+
+def _kvartal(slugy, zo=None):
+    from datetime import date
+    dnes = date.today()
+    rok = request.args.get("rok", "")
+    rok = int(rok) if rok.isdigit() and 2000 <= int(rok) <= 2100 else dnes.year
+    q = request.args.get("q", "")
+    q = int(q) if q in ("1", "2", "3", "4") else (dnes.month - 1) // 3 + 1
+    od = date(rok, 3 * q - 2, 1)
+    do = date.fromordinal(date(rok + (q == 4), 1 if q == 4 else 3 * q + 1, 1).toordinal() - 1)
+    prijati, odidi = pohyb_clenov(get_db(), slugy, od, do)
+    suhrn = {}
+    if zo is None:
+        for o in prijati:
+            suhrn.setdefault(o["zo"], [0, 0])[0] += 1
+        for o in odidi:
+            suhrn.setdefault(o["zo"], [0, 0])[1] += 1
+        suhrn = dict(sorted(suhrn.items(), key=lambda x: abecedne(x[0])))
+    return render_template("evidencia/kvartal.html", zo=zo, rok=rok, q=q, od=od, do=do,
+                           prijati=prijati, odidi=odidi, suhrn=suhrn)
+
+
+@bp.route("/kvartal")
+def kvartal_vsetky():
+    clen = g.get("clen")
+    if not je_spravca() and clen is not None and clen["rola"] != "vedenie" and clen["zo_slug"] \
+            and pristup(clen["zo_slug"]) == "menit":
+        return redirect(url_for("evidencia.kvartal_zo", slug=clen["zo_slug"], **request.args))
+    if not je_spravca() and (clen is None or clen["rola"] != "vedenie"):
+        if clen is None:
+            return redirect(url_for("ucet.prihlasenie", dalej=request.path))
+        abort(403)
+    return _kvartal([r["slug"] for r in get_db().execute("SELECT slug FROM zakladna_organizacia")])
+
+
+@bp.route("/<slug>/kvartal")
+@vyzaduj()
+def kvartal_zo(slug):
+    clen = g.get("clen")
+    if not g.moze_menit and not (clen and clen["rola"] == "vedenie"):
+        abort(403)  # len predseda a podpredseda ZO (a vedenie OZ), nie výbor či revízna komisia
+    zo = get_db().execute("SELECT * FROM zakladna_organizacia WHERE slug = ?", (slug,)).fetchone()
+    if zo is None:
+        abort(404)
+    return _kvartal([slug], zo)
+
+
 ODMENY_VZOR = "0 100\n3 120\n5 150\n10 200\n15 300"
 
 

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Prijatí a odídení {{ q }}. kvartál {{ rok }} – {{ nazov_zvazu }}{% endblock %}
+{% macro meno(c) %}{{ (c.titul ~ ' ') if c.titul }}{{ c.meno }}{{ (', ' ~ c.titul_za) if c.titul_za }}{% endmacro %}
+{% block content %}
+  <div class="netlacit">
+    {% if zo %}<a class="spat" href="{{ url_for('evidencia.zo', slug=zo.slug) }}">&larr; Členovia ZO {{ zo.mesto }}</a>
+    {% else %}<a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>{% endif %}
+    <form method="get" class="formular prezencna-nastavenie">
+      <label class="pole"><span class="pole__nazov">Rok</span>
+        <input type="number" name="rok" value="{{ rok }}" min="2000" max="2100" onchange="this.form.submit()"></label>
+      <label class="pole"><span class="pole__nazov">Kvartál</span>
+        <select name="q" onchange="this.form.submit()">
+          {% for k in range(1, 5) %}<option value="{{ k }}" {% if k == q %}selected{% endif %}>{{ k }}. kvartál</option>{% endfor %}
+        </select></label>
+      <button type="submit" class="tlacidlo tlacidlo--sekundarne">Zobraziť</button>
+      <button type="button" class="tlacidlo" onclick="window.print()">Vytlačiť / uložiť ako PDF</button>
+    </form>
+    <p class="info">Prijatí podľa dátumu vstupu do poistenia. Odídení podľa dátumu výstupu z poistenia, a ak nie je vyplnený, podľa dňa presunu do archívu odídených.</p>
+  </div>
+  <div class="sumar">
+    <h1 class="sumar__nadpis">Prijatí a odídení členovia – {{ q }}. kvartál {{ rok }}{% if zo %} – ZO {{ zo.mesto }}{% endif %}</h1>
+    <p class="sumar__info">Obdobie {{ od.strftime('%d.%m.%Y') }} – {{ do.strftime('%d.%m.%Y') }} ·
+      prijatých: <strong>{{ prijati|length }}</strong> · odídených: <strong>{{ odidi|length }}</strong> ·
+      rozdiel: <strong>{{ '%+d'|format(prijati|length - odidi|length) }}</strong></p>
+    {% if suhrn %}
+      <table class="sumar__tabulka sumar__suhrn">
+        <tr><th>ZO</th><th class="cislo">Prijatí</th><th class="cislo">Odídení</th><th class="cislo">Rozdiel</th></tr>
+        {% for mesto, (p, o) in suhrn.items() %}
+          <tr><td>{{ mesto }}</td><td class="cislo">{{ p }}</td><td class="cislo">{{ o }}</td><td class="cislo">{{ '%+d'|format(p - o) }}</td></tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+    <h2 class="sumar__podnadpis">Prijatí ({{ prijati|length }})</h2>
+    {% if prijati %}
+    <table class="sumar__tabulka">
+      <tr><th>#</th><th>Vstup</th><th>Meno</th><th>Ident. číslo</th>{% if not zo %}<th>ZO</th>{% endif %}</tr>
+      {% for c in prijati %}
+        <tr><td>{{ loop.index }}</td><td>{{ c.den.strftime('%d.%m.%Y') }}</td><td>{{ meno(c) }}</td><td>{{ c.cislo }}</td>{% if not zo %}<td>{{ c.zo }}</td>{% endif %}</tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="info">Nikto.</p>{% endif %}
+    <h2 class="sumar__podnadpis">Odídení ({{ odidi|length }})</h2>
+    {% if odidi %}
+    <table class="sumar__tabulka">
+      <tr><th>#</th><th>Odchod</th><th>Meno</th><th>Ident. číslo</th>{% if not zo %}<th>ZO</th>{% endif %}<th>Dôvod</th></tr>
+      {% for c in odidi %}
+        <tr><td>{{ loop.index }}</td><td>{{ c.den.strftime('%d.%m.%Y') }}</td><td>{{ meno(c) }}</td><td>{{ c.cislo }}</td>{% if not zo %}<td>{{ c.zo }}</td>{% endif %}<td>{{ c.dovod }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="info">Nikto.</p>{% endif %}
+  </div>
+{% endblock %}
