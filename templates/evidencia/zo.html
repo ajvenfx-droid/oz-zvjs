@@ -3,7 +3,7 @@
 {% block content %}
   {% if je_spravca or prihlaseny_clen.rola == 'vedenie' %}<a class="spat" href="{{ url_for('evidencia.prehlad') }}">&larr; Evidencia členov</a>{% endif %}
   <h1 class="nadpis">Členovia ZO {{ zo.mesto }}</h1>
-  <p class="info">{{ zo.nazov }}{% if nahrate %} · nahraté {{ nahrate }}{% endif %}{% if not moze_menit %} · len prezeranie{% endif %}</p>
+  <p class="info">{{ zo.nazov }}{% if not moze_menit %} · len prezeranie{% endif %}</p>
   <div class="riadok-nadpis">
     <form method="get" class="nahratie">
       <input type="text" name="hladat" value="{{ hladat }}" placeholder="Hľadať priezvisko, meno, číslo, e-mail…"
