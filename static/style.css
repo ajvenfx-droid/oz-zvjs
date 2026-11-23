@@ -795,3 +795,4 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .formular--clen .pole input, .formular--clen .pole select { padding: 5px 9px; margin: 0; height: 34px; }
 .formular--clen__akcie { grid-column: 1 / -1; margin-top: 14px; }
 @media (max-width: 480px) { .formular--clen { grid-template-columns: 1fr; } .formular--clen .pole { grid-template-columns: 1fr; gap: 2px; } }
+.titul-vstup::-webkit-calendar-picker-indicator { display: none !important; }

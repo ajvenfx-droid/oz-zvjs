@@ -32,8 +32,8 @@
       <label class="pole">
         <span class="pole__nazov">{{ s|stlpec }}</span>
         {% if s in tituly %}
-        <input type="text" name="st_{{ i }}" value="{{ clen.udaje.get(s, '') }}" list="tituly-{{ i }}" autocomplete="off"
-               onclick="if (this.showPicker) try { this.showPicker(); } catch (e) {}">
+        <input type="text" name="st_{{ i }}" value="{{ clen.udaje.get(s, '') }}" data-list="tituly-{{ i }}" autocomplete="off" class="titul-vstup"
+               oninput="if (this.value) this.setAttribute('list', this.dataset.list); else this.removeAttribute('list');">
         <datalist id="tituly-{{ i }}">{% for t in tituly[s] %}<option value="{{ t }}">{% endfor %}</datalist>
         {% else %}
         <input type="text" name="st_{{ i }}" value="{{ clen.udaje.get(s, '') }}"{% if 'Dátum' in s %} placeholder="napr. 25.03.1985" inputmode="numeric" autocomplete="off"{% endif %}>
