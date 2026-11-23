@@ -1072,6 +1072,8 @@ def uprav_clena(slug, clen_id=None):
             flash("Člen bol vymazaný z evidencie a presunutý do archívu odídených.")
             return redirect(url_for("evidencia.zo", slug=slug))
         udaje = {st: request.form.get(f"st_{i}", "").strip() for i, st in enumerate(stlpce)}
+        if re.fullmatch(r"\+?421", udaje.get("Kontakt", "").replace(" ", "")):
+            udaje["Kontakt"] = ""  # len predvyplnená predvoľba, číslo nezadané
         udaje = {k: v for k, v in udaje.items() if v}
         chyba = [st for st in povinne_stlpce(stlpce) if not udaje.get(st)]
         if chyba:
@@ -1100,6 +1102,8 @@ def uprav_clena(slug, clen_id=None):
         dalsie = dalsie_cislo(db, slug)
         if dalsie:
             clen["udaje"]["Identifikačné číslo"] = dalsie
+    if clen_id is None and "Kontakt" in stlpce:
+        clen["udaje"].setdefault("Kontakt", "+421 ")
     if clen_id is None and VSTUP in stlpce:
         from datetime import date
         clen["udaje"].setdefault(VSTUP, date.today().strftime("%d.%m.%Y"))
@@ -1140,7 +1144,8 @@ def _formular_clena(db, zo, stlpce, clen, clen_id):
     poradie += [x for x in (me, ul, ps) if x and x not in poradie]  # najprv mesto, potom ulica a PSČ
     poradie += [x for x in stlpce if x not in poradie]
     if clen_id is None:  # výstup sa zapisuje až pri ukončení členstva
-        poradie = [x for x in poradie if x not in ("Dátum výstupu z poistenia", "Fotka", "Podporný fond")]
+        poradie = [x for x in poradie if x not in ("Dátum výstupu z poistenia", "Fotka", "Podporný fond", "Preukaz",
+                                                   "MEDAILA, PLAKETA")]
     polia = [(stlpce.index(x), x) for x in poradie]
     adresa = psc_podla_adries(db, stlpce)
     return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, polia=polia, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly, adresa=adresa,
@@ -1192,7 +1197,8 @@ def casti_titulu(text):
 
 def povinne_stlpce(stlpce):
     """Stĺpce, ktoré musia byť pri členovi vyplnené: meno, priezvisko, dátum narodenia, služobné číslo, adresa."""
-    pevne = ("Meno poisteného", "Priezvisko / Názov poisteného", "Dátum narodenia", "Služobné/ zam. číslo")
+    pevne = ("Meno poisteného", "Priezvisko / Názov poisteného", "Dátum narodenia", "Služobné/ zam. číslo",
+             "E-mail", "Kontakt")
     return [st for st in stlpce if st in pevne or any(x in st.lower() for x in ("ulica", "mesto", "psč"))]
 
 

@@ -36,7 +36,7 @@
                oninput="if (this.value) this.setAttribute('list', this.dataset.list); else this.removeAttribute('list');">
         <datalist id="tituly-{{ i }}">{% for t in tituly[s] %}<option value="{{ t }}">{% endfor %}</datalist>
         {% else %}
-        <input type="text" name="st_{{ i }}" value="{{ clen.udaje.get(s, '') }}"{% if 'Dátum' in s %} placeholder="napr. 25.03.1985" inputmode="numeric" autocomplete="off"{% endif %}{% if i in povinne %} required{% endif %}>
+        <input type="{{ 'email' if s == 'E-mail' else 'text' }}" name="st_{{ i }}" value="{{ clen.udaje.get(s, '') }}"{% if 'Dátum' in s %} placeholder="napr. 25.03.1985" inputmode="numeric" autocomplete="off"{% endif %}{% if i in povinne %} required{% endif %}{% if s == 'Kontakt' %} inputmode="tel" pattern=".*\d{3}\D*\d{3}.*" title="Zadajte telefónne číslo"{% endif %}>
         {% endif %}
       </label>
     {% endfor %}
