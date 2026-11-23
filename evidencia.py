@@ -1074,14 +1074,14 @@ def uprav_clena(slug, clen_id=None):
         udaje = {st: request.form.get(f"st_{i}", "").strip() for i, st in enumerate(stlpce)}
         udaje = {k: v for k, v in udaje.items() if v}
         chyba = [st for st in povinne_stlpce(stlpce) if not udaje.get(st)]
-        if chyba and request.form.get("farba") != "cervena":
+        if chyba:
             flash("Vyplňte povinné údaje: " + ", ".join(nazov_stlpca(st) for st in chyba) + ".")
-            clen = {"farba": request.form.get("farba", ""), "udaje": udaje}
+            clen = {"farba": clen["farba"], "udaje": udaje}
             return _formular_clena(db, zo, stlpce, clen, clen_id)
         for st in ("Titul", "Titul za menom"):
             if udaje.get(st):
                 udaje[st] = standard_titul(udaje[st]) or udaje[st]
-        farba = request.form.get("farba", "") if request.form.get("farba") in FARBY else ""
+        farba = clen["farba"]  # farba riadku sa vo formulári nenastavuje, ostáva z nahratého zoznamu
         if clen_id is None:
             poradie = db.execute("SELECT COALESCE(MAX(poradie), 0) + 1 FROM evidencia_clen WHERE zo_slug = ?",
                                  (slug,)).fetchone()[0]

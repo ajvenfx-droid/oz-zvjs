@@ -40,13 +40,6 @@
         {% endif %}
       </label>
     {% endfor %}
-    <label class="pole">
-      <span class="pole__nazov">Farba riadku</span>
-      <select name="farba" onchange="var o = this.value === 'cervena'; this.form.querySelectorAll('.pole--povinne input').forEach(function (i) { i.required = !o; });">
-        <option value="">bez farby</option>
-        {% for k, n in farby.items() %}<option value="{{ k }}" {% if clen.farba == k %}selected{% endif %}>{{ n }}</option>{% endfor %}
-      </select>
-    </label>
     <div class="formular--clen__akcie"><button type="submit" class="tlacidlo">Uložiť</button>
       <span class="info">Polia označené <span class="povinne-hviezda">*</span> sú povinné.</span></div>
   </form>
