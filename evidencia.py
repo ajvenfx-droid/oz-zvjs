@@ -1088,10 +1088,32 @@ def uprav_clena(slug, clen_id=None):
         flash("Člen je označený ako odídený (červený) a bol presunutý do archívu odídených."
               if farba == "cervena" else "Údaje člena boli uložené.")
         return redirect(url_for("evidencia.zo", slug=slug))
+    if clen_id is None and "Identifikačné číslo" in stlpce:
+        dalsie = dalsie_cislo(db, slug)
+        if dalsie:
+            clen["udaje"]["Identifikačné číslo"] = dalsie
     obdobia = obdobia_clenstva(db, clen["udaje"]) if clen_id else []
     foto = nacitaj_foto(db, kluc_clena(clen["udaje"])) if clen_id else None
     return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, clen=clen, clen_id=clen_id, farby=FARBY,
                            obdobia=obdobia, dlzka=dlzka_clenstva(obdobia), foto=foto)
+
+
+def dalsie_cislo(db, slug):
+    """Nasledujúce identifikačné číslo v ZO (najvyššie v ZO vrátane archívu + 1), ktoré ešte nikto nemá."""
+    def cisla(sql, *args):
+        return [str(json.loads(r[0]).get("Identifikačné číslo", "")).strip() for r in db.execute(sql, args)]
+    v_zo = [c for c in cisla("SELECT udaje FROM evidencia_clen WHERE zo_slug = ?", slug)
+            + cisla("SELECT udaje FROM evidencia_archiv WHERE zo_slug = ?", slug) if c.isdigit()]
+    if not v_zo:
+        return ""
+    najvyssie = max(v_zo, key=int)
+    pouzite = {c.lstrip("0") for c in cisla("SELECT udaje FROM evidencia_clen")
+               + cisla("SELECT udaje FROM evidencia_archiv") if c}
+    pouzite |= {str(r[0]).lstrip("0") for r in db.execute("SELECT cislo FROM clen")}
+    n = int(najvyssie) + 1
+    while str(n) in pouzite:
+        n += 1
+    return str(n).zfill(len(najvyssie))
 
 
 @bp.route("/<slug>/zmazat", methods=["POST"])
