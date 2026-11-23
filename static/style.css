@@ -799,3 +799,6 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .formular--clen .pole--povinne input { background: #fbf5e2; border-color: #d9c690; }
 .povinne-hviezda { color: #b3261e; font-weight: 700; }
 .formular--clen__akcie { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.zoznam-clenov > summary { cursor: pointer; font-size: 1.1rem; color: var(--zlata-tmava); }
+.zoznam-clenov__zoradenie { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; margin: 14px 0; }
+.zoznam-clenov__zoradenie select { margin-left: 8px; }

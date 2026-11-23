@@ -672,6 +672,8 @@ ZORADENIA = {
     "abeceda": "podľa abecedy (priezvisko)",
     "cislo": "podľa identifikačného čísla",
     "vstup": "podľa dátumu vstupu",
+    "narodenie": "podľa veku (najstarší prvý)",
+    "mesto": "podľa mesta bydliska",
 }
 
 
@@ -697,6 +699,13 @@ def _vyber(clenovia):
                                                    c["udaje"].get("Identifikačné číslo", "")))
     elif zoradit == "vstup":
         clenovia = sorted(clenovia, key=lambda c: _datum(vstup_do_odborov(c["udaje"])))
+    elif zoradit == "narodenie":
+        clenovia = sorted(clenovia, key=lambda c: _datum(c["udaje"].get("Dátum narodenia", "")))
+    elif zoradit == "mesto":
+        def mesto(c):
+            return next((v for k, v in c["udaje"].items() if "mesto" in k.lower() and v), "")
+        clenovia = sorted(clenovia, key=lambda c: (not mesto(c), abecedne(mesto(c)),
+                                                   abecedne(c["udaje"].get("Priezvisko / Názov poisteného", ""))))
     else:
         zoradit = "subor"
     return clenovia, hladat, zoradit

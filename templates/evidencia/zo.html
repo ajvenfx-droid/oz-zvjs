@@ -10,9 +10,7 @@
              list="mena-clenov" autocomplete="off"
              oninput="if ([].some.call(document.getElementById('mena-clenov').options, function (o) { return o.value === this.value; }, this)) this.form.submit();">
       <datalist id="mena-clenov">{% for m in mena %}<option value="{{ m }}">{% endfor %}</datalist>
-      <select name="zoradit" onchange="this.form.submit()">
-        {% for k, n in zoradenia.items() %}<option value="{{ k }}" {% if zoradit == k %}selected{% endif %}>Zoradiť {{ n }}</option>{% endfor %}
-      </select>
+      <input type="hidden" name="zoradit" value="{{ zoradit }}">
       <button type="submit" class="tlacidlo tlacidlo--sekundarne">Hľadať</button>
       {% if hladat %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.zo', slug=zo.slug, zoradit=zoradit) }}">✕ Zrušiť hľadanie</a>{% endif %}
     </form>
@@ -25,6 +23,7 @@
       {% if moze_menit %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.odmeny_zo', slug=zo.slug) }}">Odmeny podľa členstva</a>{% endif %}
     </div>
     <div class="zo-odkazy">
+      <a href="#zoznam" onclick="var z = document.getElementById('zoznam'); z.open = true; z.scrollIntoView({behavior: 'smooth'}); return false;"><strong>Zoznam</strong></a>
       <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Archív</a>
       {% if moze_menit %}<a href="{{ url_for('anketa.dotazniky_zo', slug=zo.slug) }}">Dotazníky</a>{% endif %}
       <a href="{{ url_for('evidencia.prezencna_listina', slug=zo.slug) }}">Prezenčná listina</a>
@@ -174,8 +173,16 @@
       </table>
     </details>
   {% endif %}
-  <p>Počet: <strong>{{ clenovia|length }}</strong>
-    · <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Zobraziť archív odídených</a></p>
+  <details class="panel zoznam-clenov" id="zoznam"{% if not karta and ((hladat and clenovia|length != 1) or request.args.get('zoradit')) %} open{% endif %}>
+    <summary><strong>Zoznam členov</strong> ({{ clenovia|length }}{% if hladat %}, hľadanie „{{ hladat }}“{% endif %})</summary>
+    <form method="get" action="{{ url_for('evidencia.zo', slug=zo.slug) }}#zoznam" class="zoznam-clenov__zoradenie">
+      {% if hladat %}<input type="hidden" name="hladat" value="{{ hladat }}">{% endif %}
+      <label>Zoradiť
+        <select name="zoradit" onchange="this.form.submit()">
+          {% for k, n in zoradenia.items() %}<option value="{{ k }}" {% if zoradit == k %}selected{% endif %}>{{ n }}</option>{% endfor %}
+        </select></label>
+      <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Zobraziť archív odídených</a>
+    </form>
   {% if clenovia %}
     <div class="tabulka-obal">
       <table class="tabulka tabulka--evidencia">
@@ -199,4 +206,6 @@
       <button type="submit" class="odkaz-tlacidlo">Zmazať celú evidenciu tejto ZO</button>
     </form>
   {% endif %}
+  </details>
+  <script>if (location.hash === '#zoznam') document.getElementById('zoznam').open = true;</script>
 {% endblock %}
