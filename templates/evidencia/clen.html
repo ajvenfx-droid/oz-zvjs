@@ -36,7 +36,7 @@
                onclick="if (this.showPicker) try { this.showPicker(); } catch (e) {}">
         <datalist id="tituly-{{ loop.index0 }}">{% for t in tituly[s] %}<option value="{{ t }}">{% endfor %}</datalist>
         {% else %}
-        <input type="text" name="st_{{ loop.index0 }}" value="{{ clen.udaje.get(s, '') }}">
+        <input type="text" name="st_{{ loop.index0 }}" value="{{ clen.udaje.get(s, '') }}"{% if 'Dátum' in s %} placeholder="napr. 25.03.1985" inputmode="numeric" autocomplete="off"{% endif %}>
         {% endif %}
       </label>
     {% endfor %}
