@@ -802,3 +802,4 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .zoznam-clenov > summary { cursor: pointer; font-size: 1.1rem; color: var(--zlata-tmava); }
 .zoznam-clenov__zoradenie { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; margin: 14px 0; }
 .zoznam-clenov__zoradenie select { margin-left: 8px; }
+.zoznam-clenov__hladat { flex: 1 1 320px; max-width: 520px; }
