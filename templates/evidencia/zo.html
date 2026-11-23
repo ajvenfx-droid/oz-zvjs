@@ -6,7 +6,7 @@
   <p class="info">{{ zo.nazov }}{% if not moze_menit %} · len prezeranie{% endif %}</p>
   <div class="riadok-nadpis">
     <div class="akcie akcie--zalomit">
-      {% if moze_menit %}<a class="tlacidlo" href="{{ url_for('evidencia.uprav_clena', slug=zo.slug) }}">+ Pridať člena</a>{% endif %}
+      <a class="tlacidlo" href="#zoznam" onclick="var z = document.getElementById('zoznam'); z.open = !z.open; if (z.open) z.scrollIntoView({behavior: 'smooth'}); return false;">Zoznam členov</a>
       {% if moze_menit %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.fotky_zo', slug=zo.slug) }}">Nahrať fotky hromadne</a>{% endif %}
       <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.export_xlsx', slug=zo.slug, hladat=hladat or None, zoradit=zoradit) }}">Stiahnuť Excel (.xlsx)</a>
       <a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.vyrocia_zo', slug=zo.slug) }}">Výročia členstva</a>
@@ -14,7 +14,6 @@
       {% if moze_menit %}<a class="tlacidlo tlacidlo--sekundarne" href="{{ url_for('evidencia.odmeny_zo', slug=zo.slug) }}">Odmeny podľa členstva</a>{% endif %}
     </div>
     <div class="zo-odkazy">
-      <a href="#zoznam" onclick="var z = document.getElementById('zoznam'); z.open = true; z.scrollIntoView({behavior: 'smooth'}); return false;"><strong>Zoznam</strong></a>
       <a href="{{ url_for('evidencia.archiv_zo', slug=zo.slug) }}">Archív</a>
       {% if moze_menit %}<a href="{{ url_for('anketa.dotazniky_zo', slug=zo.slug) }}">Dotazníky</a>{% endif %}
       <a href="{{ url_for('evidencia.prezencna_listina', slug=zo.slug) }}">Prezenčná listina</a>
@@ -174,6 +173,7 @@
       <datalist id="mena-clenov">{% for m in mena %}<option value="{{ m }}">{% endfor %}</datalist>
       <button type="submit" class="tlacidlo tlacidlo--sekundarne">Hľadať</button>
       {% if hladat %}<a href="{{ url_for('evidencia.zo', slug=zo.slug, zoradit=zoradit) }}#zoznam">✕ Zrušiť hľadanie</a>{% endif %}
+      {% if moze_menit %}<a class="tlacidlo" href="{{ url_for('evidencia.uprav_clena', slug=zo.slug) }}">+ Pridať člena</a>{% endif %}
       <label>Zoradiť
         <select name="zoradit" onchange="this.form.submit()">
           {% for k, n in zoradenia.items() %}<option value="{{ k }}" {% if zoradit == k %}selected{% endif %}>{{ n }}</option>{% endfor %}
