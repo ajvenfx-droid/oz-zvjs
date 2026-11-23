@@ -1136,7 +1136,7 @@ def _formular_clena(db, zo, stlpce, clen, clen_id):
             poradie += dvojica
     poradie += [x for x in stlpce if x not in poradie]
     if clen_id is None:  # výstup sa zapisuje až pri ukončení členstva
-        poradie = [x for x in poradie if x not in ("Dátum výstupu z poistenia", "Fotka")]
+        poradie = [x for x in poradie if x not in ("Dátum výstupu z poistenia", "Fotka", "Podporný fond")]
     polia = [(stlpce.index(x), x) for x in poradie]
     adresa = psc_podla_adries(db, stlpce)
     return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, polia=polia, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly, adresa=adresa,
