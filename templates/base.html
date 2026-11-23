@@ -17,7 +17,8 @@
         <a href="{{ url_for('anketa.spravca') }}">Správa stránky</a>
       {% elif prihlaseny_clen.rola in ('zo', 'vedenie') %}
         <a href="{{ url_for('evidencia.prehlad') if prihlaseny_clen.rola == 'vedenie' else url_for('evidencia.zo', slug=prihlaseny_clen.zo_slug) }}">Evidencia členov</a>
-        {% if prihlaseny_clen.rola == 'zo' and prihlaseny_clen.zo_slug %}<a href="{{ url_for('anketa.dotazniky_zo', slug=prihlaseny_clen.zo_slug) }}">Dotazníky</a>{% endif %}
+        {% if prihlaseny_clen.rola == 'zo' and prihlaseny_clen.zo_slug %}<a href="{{ url_for('evidencia.zo', slug=prihlaseny_clen.zo_slug, zoradit='abeceda') }}#zoznam">Zoznam</a>
+        <a href="{{ url_for('anketa.dotazniky_zo', slug=prihlaseny_clen.zo_slug) }}">Dotazníky</a>{% endif %}
       {% endif %}
       <a href="{{ url_for('ucet.moje_konto') }}">Moje konto</a>
       {% if prihlaseny_clen.skutocna_rola != 'clen' %}
