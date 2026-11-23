@@ -1100,6 +1100,9 @@ def uprav_clena(slug, clen_id=None):
         dalsie = dalsie_cislo(db, slug)
         if dalsie:
             clen["udaje"]["Identifikačné číslo"] = dalsie
+    if clen_id is None and VSTUP in stlpce:
+        from datetime import date
+        clen["udaje"].setdefault(VSTUP, date.today().strftime("%d.%m.%Y"))
     return _formular_clena(db, zo, stlpce, clen, clen_id)
 
 
@@ -1133,7 +1136,7 @@ def _formular_clena(db, zo, stlpce, clen, clen_id):
             poradie += dvojica
     poradie += [x for x in stlpce if x not in poradie]
     if clen_id is None:  # výstup sa zapisuje až pri ukončení členstva
-        poradie = [x for x in poradie if x != "Dátum výstupu z poistenia"]
+        poradie = [x for x in poradie if x not in ("Dátum výstupu z poistenia", "Fotka")]
     polia = [(stlpce.index(x), x) for x in poradie]
     adresa = psc_podla_adries(db, stlpce)
     return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, polia=polia, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly, adresa=adresa,

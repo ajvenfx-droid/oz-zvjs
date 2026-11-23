@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Zoznam PSČ – {{ nazov_zvazu }}{% endblock %}
+{% block content %}
+  <a class="spat" href="{{ url_for('anketa.spravca') }}">&larr; Späť na správu</a>
+  <h1 class="nadpis">Zoznam PSČ</h1>
+  <section class="panel">
+    <p>Pri zadávaní člena sa podľa ulice a mesta samo doplní PSČ (a podľa PSČ mesto) zo zoznamu Slovenskej pošty.</p>
+    <p>Aktuálny zoznam: <strong>{{ nazov or 'zoznam pošty' }}</strong> · {{ obci }} obcí · {{ ulic }} ulíc{% if not nahrate %} <span class="info">(pôvodný)</span>{% endif %}</p>
+  </section>
+  <section class="panel">
+    <h2>Nahrať novší zoznam</h2>
+    <p class="info">Na <strong>posta.sk/psc</strong> stiahnite ZIP so zoznamom PSČ (obsahuje OBCE.xlsx a ULICE.xlsx) a nahrajte ho sem bez rozbaľovania.</p>
+    <form method="post" enctype="multipart/form-data" class="nahratie">
+      <input type="file" name="subor" accept=".zip" required>
+      <button type="submit" class="tlacidlo">Nahrať</button>
+    </form>
+  </section>
+{% endblock %}

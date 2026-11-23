@@ -57,18 +57,32 @@
       var pole = function (i) { return i === null ? null : document.querySelector('[name="st_' + i + '"]'); };
       var ul = pole(A.ulica), me = pole(A.mesto), ps = pole(A.psc);
       var bez = function (t) { return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); };
-      var auto = '';
+      var auto = '', casovac = null, poradie = 0;
+      function zClenov() {
+        var m = bez(me.value), u = ul ? bez(ul.value).replace(/[\s,]*\d.*$/, '').trim() : '';
+        return (u && A.ulice[m + '|' + u]) || A.mesta[m] || '';
+      }
       function dopln() {
         if (ps.value && ps.value !== auto) return;  // ručne zadané PSČ neprepisujeme
-        var m = bez(me.value), u = ul ? bez(ul.value).replace(/[\s,]*\d.*$/, '').trim() : '';
-        var n = (u && A.ulice[m + '|' + u]) || A.mesta[m] || '';
-        if (n) { ps.value = auto = n; }
+        clearTimeout(casovac);
+        casovac = setTimeout(function () {
+          var c = ++poradie;
+          fetch('{{ url_for('psc.hladat') }}?mesto=' + encodeURIComponent(me.value) + '&ulica=' + encodeURIComponent(ul ? ul.value : ''))
+            .then(function (r) { return r.json(); }).catch(function () { return {}; })
+            .then(function (d) {
+              if (c !== poradie || (ps.value && ps.value !== auto)) return;
+              var n = (d && d.psc) || zClenov();
+              ps.value = auto = n;
+            });
+        }, 300);
       }
       me.addEventListener('input', dopln);
       if (ul) ul.addEventListener('input', dopln);
       ps.addEventListener('input', function () {
         var p = ps.value.replace(/\s/g, '');
-        if (p.length === 5 && !me.value && A.z_psc[p]) me.value = A.z_psc[p];
+        if (p.length !== 5 || me.value) return;
+        fetch('{{ url_for('psc.mesto') }}?psc=' + p).then(function (r) { return r.json(); }).catch(function () { return {}; })
+          .then(function (d) { if (!me.value) me.value = (d && d.mesto) || A.z_psc[p] || ''; });
       });
     })();
   </script>

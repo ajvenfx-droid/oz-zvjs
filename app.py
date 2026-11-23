@@ -9,6 +9,7 @@ import evidencia
 import hodinky
 import nasadenie
 import obsah
+import psc
 import ucet
 import zaloha
 from db import connect, close_db, get_db
@@ -103,6 +104,7 @@ app.register_blueprint(hodinky.bp)
 app.register_blueprint(hodinky.bp_clen)
 app.register_blueprint(nasadenie.bp)
 app.register_blueprint(zaloha.bp)
+app.register_blueprint(psc.bp)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # nahrávané dokumenty
 
 
