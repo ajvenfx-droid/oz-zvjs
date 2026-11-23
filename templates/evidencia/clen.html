@@ -31,7 +31,13 @@
     {% for s in stlpce %}
       <label class="pole">
         <span class="pole__nazov">{{ s|stlpec }}</span>
+        {% if s in tituly %}
+        <input type="text" name="st_{{ loop.index0 }}" value="{{ clen.udaje.get(s, '') }}" list="tituly-{{ loop.index0 }}" autocomplete="off"
+               onclick="if (this.showPicker) try { this.showPicker(); } catch (e) {}">
+        <datalist id="tituly-{{ loop.index0 }}">{% for t in tituly[s] %}<option value="{{ t }}">{% endfor %}</datalist>
+        {% else %}
         <input type="text" name="st_{{ loop.index0 }}" value="{{ clen.udaje.get(s, '') }}">
+        {% endif %}
       </label>
     {% endfor %}
     <label class="pole">

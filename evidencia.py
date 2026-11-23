@@ -1094,7 +1094,12 @@ def uprav_clena(slug, clen_id=None):
             clen["udaje"]["Identifikačné číslo"] = dalsie
     obdobia = obdobia_clenstva(db, clen["udaje"]) if clen_id else []
     foto = nacitaj_foto(db, kluc_clena(clen["udaje"])) if clen_id else None
-    return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, clen=clen, clen_id=clen_id, farby=FARBY,
+    tituly = {}
+    for st in ("Titul", "Titul za menom"):
+        if st in stlpce:
+            hodnoty = {(json.loads(r[0]).get(st) or "").strip() for r in db.execute("SELECT udaje FROM evidencia_clen")}
+            tituly[st] = sorted(hodnoty - {""}, key=abecedne)
+    return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly,
                            obdobia=obdobia, dlzka=dlzka_clenstva(obdobia), foto=foto)
 
 
