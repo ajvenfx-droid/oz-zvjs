@@ -1073,6 +1073,11 @@ def uprav_clena(slug, clen_id=None):
             return redirect(url_for("evidencia.zo", slug=slug))
         udaje = {st: request.form.get(f"st_{i}", "").strip() for i, st in enumerate(stlpce)}
         udaje = {k: v for k, v in udaje.items() if v}
+        chyba = [st for st in povinne_stlpce(stlpce) if not udaje.get(st)]
+        if chyba and request.form.get("farba") != "cervena":
+            flash("Vyplňte povinné údaje: " + ", ".join(nazov_stlpca(st) for st in chyba) + ".")
+            clen = {"farba": request.form.get("farba", ""), "udaje": udaje}
+            return _formular_clena(db, zo, stlpce, clen, clen_id)
         for st in ("Titul", "Titul za menom"):
             if udaje.get(st):
                 udaje[st] = standard_titul(udaje[st]) or udaje[st]
@@ -1095,6 +1100,10 @@ def uprav_clena(slug, clen_id=None):
         dalsie = dalsie_cislo(db, slug)
         if dalsie:
             clen["udaje"]["Identifikačné číslo"] = dalsie
+    return _formular_clena(db, zo, stlpce, clen, clen_id)
+
+
+def _formular_clena(db, zo, stlpce, clen, clen_id):
     obdobia = obdobia_clenstva(db, clen["udaje"]) if clen_id else []
     foto = nacitaj_foto(db, kluc_clena(clen["udaje"])) if clen_id else None
     tituly = {}
@@ -1123,9 +1132,12 @@ def uprav_clena(slug, clen_id=None):
         if all(x in stlpce for x in dvojica):
             poradie += dvojica
     poradie += [x for x in stlpce if x not in poradie]
+    if clen_id is None:  # výstup sa zapisuje až pri ukončení členstva
+        poradie = [x for x in poradie if x != "Dátum výstupu z poistenia"]
     polia = [(stlpce.index(x), x) for x in poradie]
     adresa = psc_podla_adries(db, stlpce)
     return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, polia=polia, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly, adresa=adresa,
+                           povinne={stlpce.index(st) for st in povinne_stlpce(stlpce)},
                            obdobia=obdobia, dlzka=dlzka_clenstva(obdobia), foto=foto)
 
 
@@ -1169,6 +1181,12 @@ def casti_titulu(text):
         else:
             spojene.append(c)
     return spojene or None
+
+
+def povinne_stlpce(stlpce):
+    """Stĺpce, ktoré musia byť pri členovi vyplnené: meno, priezvisko, dátum narodenia, služobné číslo, adresa."""
+    pevne = ("Meno poisteného", "Priezvisko / Názov poisteného", "Dátum narodenia", "Služobné/ zam. číslo")
+    return [st for st in stlpce if st in pevne or any(x in st.lower() for x in ("ulica", "mesto", "psč"))]
 
 
 def _ulica_bez_cisla(ulica):

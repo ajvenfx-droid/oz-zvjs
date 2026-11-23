@@ -796,3 +796,6 @@ body { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .formular--clen__akcie { grid-column: 1 / -1; margin-top: 14px; }
 @media (max-width: 480px) { .formular--clen { grid-template-columns: 1fr; } .formular--clen .pole { grid-template-columns: 1fr; gap: 2px; } }
 .titul-vstup::-webkit-calendar-picker-indicator { display: none !important; }
+.formular--clen .pole--povinne input { background: #fbf5e2; border-color: #d9c690; }
+.povinne-hviezda { color: #b3261e; font-weight: 700; }
+.formular--clen__akcie { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
