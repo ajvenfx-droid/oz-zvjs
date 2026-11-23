@@ -1074,6 +1074,8 @@ def uprav_clena(slug, clen_id=None):
         udaje = {st: request.form.get(f"st_{i}", "").strip() for i, st in enumerate(stlpce)}
         if re.fullmatch(r"\+?421", udaje.get("Kontakt", "").replace(" ", "")):
             udaje["Kontakt"] = ""  # len predvyplnená predvoľba, číslo nezadané
+        elif udaje.get("Kontakt"):
+            udaje["Kontakt"] = format_telefonu(udaje["Kontakt"])
         udaje = {k: v for k, v in udaje.items() if v}
         chyba = [st for st in povinne_stlpce(stlpce) if not udaje.get(st)]
         if chyba:
@@ -1193,6 +1195,25 @@ def casti_titulu(text):
         else:
             spojene.append(c)
     return spojene or None
+
+
+def format_telefonu(text):
+    """„0948607628“ / „+421948607628“ → „+421 948 607 628“; iné tvary (zahraničné, s textom) nechá tak."""
+    if re.search(r"[A-Za-z]", text):
+        return text
+    c = re.sub(r"[^\d+]", "", text)
+    for pred in ("+421", "00421"):
+        if c.startswith(pred):
+            c = c[len(pred):]
+            break
+    else:
+        if re.match(r"0\d", c):
+            c = c[1:]
+        else:
+            return text
+    if not c.isdigit():
+        return text
+    return "+421 " + re.sub(r"(\d{3})(?=\d)", r"\1 ", c)
 
 
 def povinne_stlpce(stlpce):

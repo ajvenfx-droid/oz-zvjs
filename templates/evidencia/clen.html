@@ -36,13 +36,29 @@
                oninput="if (this.value) this.setAttribute('list', this.dataset.list); else this.removeAttribute('list');">
         <datalist id="tituly-{{ i }}">{% for t in tituly[s] %}<option value="{{ t }}">{% endfor %}</datalist>
         {% else %}
-        <input type="{{ 'email' if s == 'E-mail' else 'text' }}" name="st_{{ i }}" value="{{ clen.udaje.get(s, '') }}"{% if 'Dátum' in s %} placeholder="napr. 25.03.1985" inputmode="numeric" autocomplete="off"{% endif %}{% if i in povinne %} required{% endif %}{% if s == 'Kontakt' %} inputmode="tel" pattern=".*\d{3}\D*\d{3}.*" title="Zadajte telefónne číslo"{% endif %}>
+        <input type="{{ 'email' if s == 'E-mail' else 'text' }}" name="st_{{ i }}" value="{{ clen.udaje.get(s, '') }}"{% if 'Dátum' in s %} placeholder="napr. 25.03.1985" inputmode="numeric" autocomplete="off"{% endif %}{% if i in povinne %} required{% endif %}{% if s == 'Kontakt' %} inputmode="tel" pattern=".*\d{3}\D*\d{3}.*" title="Zadajte telefónne číslo" oninput="formatujTelefon(this)"{% endif %}>
         {% endif %}
       </label>
     {% endfor %}
     <div class="formular--clen__akcie"><button type="submit" class="tlacidlo">Uložiť</button>
       <span class="info">Polia označené <span class="povinne-hviezda">*</span> sú povinné.</span></div>
   </form>
+  <script>
+    // telefón: +421 948 607 628 (po trojiciach); 0948… sa prepíše na +421 948…
+    function formatujTelefon(el) {
+      var v = el.value, naKonci = el.selectionStart === v.length;
+      if (/[a-zA-Z]/.test(v)) return;  // nie je to číslo, nechať tak
+      var c = v.replace(/[^\d+]/g, '');
+      var pred = '';
+      if (c.indexOf('+421') === 0) { pred = '+421'; c = c.slice(4); }
+      else if (/^00421/.test(c)) { pred = '+421'; c = c.slice(5); }
+      else if (/^0\d/.test(c)) { pred = '+421'; c = c.slice(1); }
+      else if (c.charAt(0) === '+') return;  // iná krajina, nechať tak
+      c = c.replace(/\+/g, '');
+      var nove = (pred ? pred + ' ' : '') + c.replace(/(\d{3})(?=\d)/g, '$1 ');
+      if (nove !== v) { el.value = nove; if (naKonci) el.setSelectionRange(nove.length, nove.length); }
+    }
+  </script>
   {% if adresa %}
   <script>
     (function () {
