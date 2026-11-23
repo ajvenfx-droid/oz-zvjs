@@ -65,15 +65,19 @@ def zostav(zip_bytes):
             yield {h: (str(v).strip() if v is not None else "") for h, v in zip(hlavicka, r) if h}
 
     obce, z_psc, ulice, posty = {}, {}, {}, {}
+    nazvy_obci, nazvy_ulic, viac = set(), {}, {}
     for r in riadky("OBCE.XLSX"):
         nazov, psc = r.get("DOBEC") or r.get("OBEC"), r.get("PSC")
         if not nazov:
             continue
+        nazvy_obci.add(nazov)
         posta = re.sub(r"\s*\d+$", "", r.get("DPOSTA") or r.get("POSTA") or "")
         if psc and posta == nazov:  # obec, v ktorej je pošta s týmto PSČ
             posty.setdefault(psc.replace(" ", ""), nazov)
         if psc:
             obce.setdefault(kluc_obce(nazov), [psc, nazov])
+            if [psc, r.get("OKRES", "")] not in viac.setdefault(kluc_obce(nazov), []):
+                viac[kluc_obce(nazov)].append([psc, r.get("OKRES", "")])
             z_psc.setdefault(psc.replace(" ", ""), [])
             if nazov not in z_psc[psc.replace(" ", "")]:
                 z_psc[psc.replace(" ", "")].append(nazov)
@@ -83,13 +87,17 @@ def zostav(zip_bytes):
         if psc and obec and posta == obec:
             posty.setdefault(psc.replace(" ", ""), obec)
         if ulica and psc and obec:
+            nazvy_obci.add(obec)
+            nazvy_ulic.setdefault(kluc_obce(obec), set()).add(ulica)
             ulice.setdefault(kluc_obce(obec), {}).setdefault(kluc(ulica), []).append([psc, r.get("POZNAMKA", "")])
             z_psc.setdefault(psc.replace(" ", ""), [])
             if obec not in z_psc[psc.replace(" ", "")]:
                 z_psc[psc.replace(" ", "")].append(obec)
     if not obce or not ulice:
         raise ValueError("Súbory OBCE.xlsx a ULICE.xlsx nemajú očakávaný obsah.")
-    return {"obce": obce, "z_psc": z_psc, "ulice": ulice, "posty": posty}
+    return {"obce": obce, "z_psc": z_psc, "ulice": ulice, "posty": posty,
+            "obce_viac": {k: v for k, v in viac.items() if len({p for p, _ in v}) > 1},
+            "nazvy_obci": sorted(nazvy_obci), "nazvy_ulic": {k: sorted(v) for k, v in nazvy_ulic.items()}}
 
 
 # --- vyhľadávanie ----------------------------------------------------------------------------------
@@ -141,9 +149,16 @@ def najdi_psc(mesto, ulica):
             bez = [p for p, pozn in zaznamy if not pozn]
             return bez[0] if bez else zaznamy[0][0]
     for k in kandidati:
+        if k in d.get("obce_viac", {}):
+            return ""  # viac obcí s rovnakým názvom (napr. Hrušov) – PSČ vyberie človek z ponuky
         if k in d["obce"]:
             return d["obce"][k][0]
     return ""
+
+
+def moznosti_psc(mesto):
+    """Pre obce s rovnakým názvom v rôznych okresoch: [[PSČ, okres], …]."""
+    return (data() or {}).get("obce_viac", {}).get(kluc_obce(mesto or ""), [])
 
 
 def mesto_z_psc(psc):
@@ -159,12 +174,34 @@ def ma_ulice(mesto):
     return bool(d and mesto and kluc_obce(mesto) in d["ulice"] and kluc_obce(mesto) not in d["obce"])
 
 
+def _zacina(nazvy, q, pocet=15):
+    k = kluc(q)
+    if not k:
+        return []
+    zaciatok = [n for n in nazvy if kluc(n).startswith(k)]
+    vo_vnutri = [n for n in nazvy if k in kluc(n) and n not in zaciatok] if len(k) >= 3 else []
+    return (zaciatok + vo_vnutri)[:pocet]
+
+
 bp = Blueprint("psc", __name__)
+
+
+@bp.route("/psc/obce")
+def obce():
+    return jsonify(nazvy=_zacina((data() or {}).get("nazvy_obci", []), request.args.get("q", "")))
+
+
+@bp.route("/psc/ulice")
+def ulice():
+    d, mesto = data() or {}, request.args.get("mesto", "")
+    nazvy = d.get("nazvy_ulic", {}).get(kluc_obce(mesto)) or d.get("nazvy_ulic", {}).get(kluc_obce(mesto.split("-")[0]), [])
+    return jsonify(nazvy=_zacina(nazvy, request.args.get("q", "")))
 
 
 @bp.route("/psc/hladat")
 def hladat():
-    return jsonify(psc=najdi_psc(request.args.get("mesto", ""), request.args.get("ulica", "")))
+    return jsonify(psc=najdi_psc(request.args.get("mesto", ""), request.args.get("ulica", "")),
+                   moznosti=moznosti_psc(request.args.get("mesto", "")))
 
 
 @bp.route("/psc/mesto")

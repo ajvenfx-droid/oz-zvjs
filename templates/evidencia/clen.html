@@ -50,6 +50,37 @@
       var pole = function (i) { return i === null ? null : document.querySelector('[name="st_' + i + '"]'); };
       var ul = pole(A.ulica), me = pole(A.mesto), ps = pole(A.psc);
       var bez = function (t) { return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); };
+      var json = function (u) { return fetch(u).then(function (r) { return r.json(); }).catch(function () { return {}; }); };
+      // našepkávanie: zoznam sa ukáže až pri písaní
+      function naseptavac(el, id) {
+        var dl = document.createElement('datalist'); dl.id = id; el.parentNode.appendChild(dl);
+        el.setAttribute('autocomplete', 'off');
+        return function (moznosti) {
+          dl.innerHTML = '';
+          moznosti.forEach(function (m) {
+            var o = document.createElement('option');
+            if (Array.isArray(m)) { o.value = m[0]; o.label = 'okres ' + m[1]; } else { o.value = m; }
+            dl.appendChild(o);
+          });
+          if (moznosti.length) el.setAttribute('list', id); else el.removeAttribute('list');
+        };
+      }
+      var ponukniMesta = naseptavac(me, 'nas-mesta'), ponukniUlice = ul ? naseptavac(ul, 'nas-ulice') : null,
+          ponukniPsc = naseptavac(ps, 'nas-psc');
+      me.addEventListener('input', function () {
+        if (!me.value) { ponukniMesta([]); return; }
+        json('{{ url_for('psc.obce') }}?q=' + encodeURIComponent(me.value)).then(function (d) {
+          var n = d.nazvy || [];
+          ponukniMesta(n.length === 1 && n[0] === me.value ? [] : n);
+        });
+      });
+      if (ul) ul.addEventListener('input', function () {
+        if (!ul.value || /\d/.test(ul.value)) { ponukniUlice([]); return; }  // pri čísle domu už neponúkať
+        json('{{ url_for('psc.ulice') }}?mesto=' + encodeURIComponent(me.value) + '&q=' + encodeURIComponent(ul.value)).then(function (d) {
+          var n = d.nazvy || [];
+          ponukniUlice(n.length === 1 && n[0] === ul.value ? [] : n);
+        });
+      });
       var auto = '', casovac = null, poradie = 0;
       function zClenov() {
         var m = bez(me.value), u = ul ? bez(ul.value).replace(/[\s,]*\d.*$/, '').trim() : '';
@@ -60,13 +91,11 @@
         clearTimeout(casovac);
         casovac = setTimeout(function () {
           var c = ++poradie;
-          fetch('{{ url_for('psc.hladat') }}?mesto=' + encodeURIComponent(me.value) + '&ulica=' + encodeURIComponent(ul ? ul.value : ''))
-            .then(function (r) { return r.json(); }).catch(function () { return {}; })
-            .then(function (d) {
-              if (c !== poradie || (ps.value && ps.value !== auto)) return;
-              var n = (d && d.psc) || zClenov();
-              ps.value = auto = n;
-            });
+          json('{{ url_for('psc.hladat') }}?mesto=' + encodeURIComponent(me.value) + '&ulica=' + encodeURIComponent(ul ? ul.value : '')).then(function (d) {
+            if (c !== poradie || (ps.value && ps.value !== auto)) return;
+            ponukniPsc(d.moznosti || []);
+            ps.value = auto = (d.psc || ((d.moznosti || []).length ? '' : zClenov()));
+          });
         }, 300);
       }
       me.addEventListener('input', dopln);
@@ -74,8 +103,7 @@
       ps.addEventListener('input', function () {
         var p = ps.value.replace(/\s/g, '');
         if (p.length !== 5 || me.value) return;
-        fetch('{{ url_for('psc.mesto') }}?psc=' + p).then(function (r) { return r.json(); }).catch(function () { return {}; })
-          .then(function (d) { if (!me.value) me.value = (d && d.mesto) || A.z_psc[p] || ''; });
+        json('{{ url_for('psc.mesto') }}?psc=' + p).then(function (d) { if (!me.value) me.value = d.mesto || A.z_psc[p] || ''; });
       });
     })();
   </script>

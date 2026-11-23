@@ -1134,6 +1134,10 @@ def _formular_clena(db, zo, stlpce, clen, clen_id):
                     ("Meno poisteného", "Priezvisko / Názov poisteného"), ("Dátum narodenia", VSTUP)):
         if all(x in stlpce for x in dvojica):
             poradie += dvojica
+    me = next((x for x in stlpce if "mesto" in x.lower()), None)
+    ul = next((x for x in stlpce if "ulica" in x.lower()), None)
+    ps = next((x for x in stlpce if "psč" in x.lower()), None)
+    poradie += [x for x in (me, ul, ps) if x and x not in poradie]  # najprv mesto, potom ulica a PSČ
     poradie += [x for x in stlpce if x not in poradie]
     if clen_id is None:  # výstup sa zapisuje až pri ukončení členstva
         poradie = [x for x in poradie if x not in ("Dátum výstupu z poistenia", "Fotka", "Podporný fond")]
