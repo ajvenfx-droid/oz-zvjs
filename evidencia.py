@@ -1124,7 +1124,8 @@ def uprav_clena(slug, clen_id=None):
             poradie += dvojica
     poradie += [x for x in stlpce if x not in poradie]
     polia = [(stlpce.index(x), x) for x in poradie]
-    return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, polia=polia, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly,
+    adresa = psc_podla_adries(db, stlpce)
+    return render_template("evidencia/clen.html", zo=zo, stlpce=stlpce, polia=polia, clen=clen, clen_id=clen_id, farby=FARBY, tituly=tituly, adresa=adresa,
                            obdobia=obdobia, dlzka=dlzka_clenstva(obdobia), foto=foto)
 
 
@@ -1168,6 +1169,36 @@ def casti_titulu(text):
         else:
             spojene.append(c)
     return spojene or None
+
+
+def _ulica_bez_cisla(ulica):
+    return re.sub(r"[\s,]*\d.*$", "", _bez_diakritiky(ulica or "")).strip()
+
+
+def psc_podla_adries(db, stlpce):
+    """Na predvyplnenie PSČ: z adries členov v evidencii najčastejšie PSČ pre (mesto, ulica), pre mesto a mesto pre PSČ."""
+    def stlpec(slovo):
+        return next((st for st in stlpce if slovo in st.lower()), None)
+    ul, me, ps = stlpec("ulica"), stlpec("mesto"), stlpec("psč")
+    if not (me and ps):
+        return None
+    from collections import Counter
+    ulice, mesta, z_psc = {}, {}, {}
+    for r in db.execute("SELECT udaje FROM evidencia_clen"):
+        u = json.loads(r[0])
+        psc = re.sub(r"\s", "", u.get(ps) or "")
+        mesto = (u.get(me) or "").strip()
+        if not re.fullmatch(r"\d{5}", psc) or not mesto:
+            continue
+        psc = psc[:3] + " " + psc[3:]
+        km = _bez_diakritiky(mesto)
+        mesta.setdefault(km, Counter())[psc] += 1
+        z_psc.setdefault(psc[:3] + psc[4:], Counter())[mesto] += 1
+        if ul and _ulica_bez_cisla(u.get(ul)):
+            ulice.setdefault(km + "|" + _ulica_bez_cisla(u.get(ul)), Counter())[psc] += 1
+    najcastejsie = lambda d: {k: v.most_common(1)[0][0] for k, v in d.items()}
+    return {"ulica": stlpce.index(ul) if ul else None, "mesto": stlpce.index(me), "psc": stlpce.index(ps),
+            "ulice": najcastejsie(ulice), "mesta": najcastejsie(mesta), "z_psc": najcastejsie(z_psc)}
 
 
 def dalsie_cislo(db, slug):

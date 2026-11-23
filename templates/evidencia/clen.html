@@ -49,6 +49,29 @@
     </label>
     <div class="formular--clen__akcie"><button type="submit" class="tlacidlo">Uložiť</button></div>
   </form>
+  {% if adresa %}
+  <script>
+    (function () {
+      var A = {{ adresa|tojson }};
+      var pole = function (i) { return i === null ? null : document.querySelector('[name="st_' + i + '"]'); };
+      var ul = pole(A.ulica), me = pole(A.mesto), ps = pole(A.psc);
+      var bez = function (t) { return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); };
+      var auto = '';
+      function dopln() {
+        if (ps.value && ps.value !== auto) return;  // ručne zadané PSČ neprepisujeme
+        var m = bez(me.value), u = ul ? bez(ul.value).replace(/[\s,]*\d.*$/, '').trim() : '';
+        var n = (u && A.ulice[m + '|' + u]) || A.mesta[m] || '';
+        if (n) { ps.value = auto = n; }
+      }
+      me.addEventListener('input', dopln);
+      if (ul) ul.addEventListener('input', dopln);
+      ps.addEventListener('input', function () {
+        var p = ps.value.replace(/\s/g, '');
+        if (p.length === 5 && !me.value && A.z_psc[p]) me.value = A.z_psc[p];
+      });
+    })();
+  </script>
+  {% endif %}
   {% if clen_id %}
     <form method="post" onsubmit="return confirm('Naozaj vymazať tohto člena z evidencie?');">
       <input type="hidden" name="akcia" value="zmazat">
